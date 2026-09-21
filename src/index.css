@@ -214,17 +214,17 @@ html, body {
 }
 
 :root {
-  --scrollbar-bg: var(--color-bg-tertiary);
-  --scrollbar-thumb: var(--color-navy-300);
+  --scrollbar-thumb: rgb(100 116 139 / 0.55);
 }
 
 * {
   scrollbar-width: thin;
-  scrollbar-color: var(--scrollbar-thumb) var(--scrollbar-bg);
+  scrollbar-color: var(--scrollbar-thumb) transparent;
 }
 *::-webkit-scrollbar { width: 6px; height: 6px; }
-*::-webkit-scrollbar-track { background: var(--scrollbar-bg); }
-*::-webkit-scrollbar-thumb { background: var(--scrollbar-thumb); border-radius: 3px; }
+*::-webkit-scrollbar-track { background: transparent; }
+*::-webkit-scrollbar-thumb { background: var(--scrollbar-thumb); border-radius: 999px; }
+*::-webkit-scrollbar-thumb:hover { background: rgb(100 116 139 / 0.85); }
 
 .font-display { font-family: var(--font-display); }
 .font-mono { font-family: var(--font-mono); }
@@ -577,4 +577,18 @@ tr:hover td { background: var(--color-bg-hover); }
   backdrop-filter: blur(12px);
   border: 1px solid rgb(51 65 85 / 0.5);
   color: #e2e8f0;
+}
+
+/* Premium glass panel system for dashboard cards and floating UI.
+   Usage: className="glass-panel p-6" (padding comes from utilities). */
+.glass-panel {
+  background-color: rgb(15 23 42 / 0.6);
+  -webkit-backdrop-filter: blur(20px);
+  backdrop-filter: blur(20px);
+  border: 1px solid rgb(255 255 255 / 0.1);
+  border-radius: 1rem;
+  box-shadow:
+    0 25px 50px -12px rgb(0 0 0 / 0.55),
+    inset 0 1px 0 rgb(255 255 255 / 0.06);
+  color: #f1f5f9;
 }

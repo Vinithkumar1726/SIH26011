@@ -1,6 +1,6 @@
 import {
   LayoutDashboard, Upload, Box, FileText, ShieldCheck,
-  Hash, Sparkles, ScrollText, Settings, Circle
+  Hash, Sparkles, ScrollText, Settings
 } from 'lucide-react';
 import type { Screen } from '../types';
 
@@ -14,25 +14,25 @@ const SECTIONS: { title: string; items: NavItem[] }[] = [
   {
     title: 'WORKSPACE',
     items: [
-      { id: 'dashboard', label: 'Dashboard', icon: <LayoutDashboard size={13} /> },
-      { id: 'import', label: 'Import Data', icon: <Upload size={13} /> },
-      { id: 'explorer', label: '3D Explorer', icon: <Box size={13} /> },
-      { id: 'records', label: 'Property Records', icon: <FileText size={13} /> },
+      { id: 'dashboard', label: 'Dashboard', icon: <LayoutDashboard size={15} /> },
+      { id: 'import', label: 'Import Data', icon: <Upload size={15} /> },
+      { id: 'explorer', label: '3D Explorer', icon: <Box size={15} /> },
+      { id: 'records', label: 'Property Records', icon: <FileText size={15} /> },
     ],
   },
   {
     title: 'ANALYSIS',
     items: [
-      { id: 'validation', label: 'Validation', icon: <ShieldCheck size={13} /> },
-      { id: 'identifiers', label: 'Spatial Identifiers', icon: <Hash size={13} /> },
-      { id: 'ai-review', label: 'AI Review', icon: <Sparkles size={13} /> },
+      { id: 'validation', label: 'Validation', icon: <ShieldCheck size={15} /> },
+      { id: 'identifiers', label: 'Spatial Identifiers', icon: <Hash size={15} /> },
+      { id: 'ai-review', label: 'AI Review', icon: <Sparkles size={15} /> },
     ],
   },
   {
     title: 'SYSTEM',
     items: [
-      { id: 'audit', label: 'Audit Trail', icon: <ScrollText size={13} /> },
-      { id: 'settings', label: 'Settings', icon: <Settings size={13} /> },
+      { id: 'audit', label: 'Audit Trail', icon: <ScrollText size={15} /> },
+      { id: 'settings', label: 'Settings', icon: <Settings size={15} /> },
     ],
   },
 ];
@@ -44,28 +44,11 @@ interface Props {
 
 export default function Sidebar({ active, onNav }: Props) {
   return (
-    <aside
-      className="hidden lg:flex flex-col shrink-0"
-      style={{
-        width: 240,
-        background: 'var(--color-bg-surface)',
-        borderRight: '1px solid var(--color-border-secondary)',
-        height: '100%',
-      }}
-    >
-      <div className="flex-1 overflow-y-auto py-4">
+    <aside className="hidden lg:flex flex-col shrink-0 w-60 h-full bg-slate-950 px-3 py-4">
+      <div className="flex-1 overflow-y-auto">
         {SECTIONS.map((section) => (
           <div key={section.title} className="mb-5">
-            <div
-              className="px-4 mb-1"
-              style={{
-                fontSize: 9,
-                fontWeight: 600,
-                letterSpacing: '0.12em',
-                color: 'var(--color-text-quaternary)',
-                fontFamily: 'var(--font-body)',
-              }}
-            >
+            <div className="px-4 mb-1.5 text-[9px] font-semibold tracking-[0.12em] text-slate-500">
               {section.title}
             </div>
             {section.items.map((item) => {
@@ -74,15 +57,13 @@ export default function Sidebar({ active, onNav }: Props) {
                 <button
                   key={item.id}
                   onClick={() => onNav(item.id)}
-                  className="sidebar-item"
-                  style={{
-                    borderLeftColor: isActive ? 'var(--color-accent)' : 'transparent',
-                    background: isActive ? 'var(--color-primary-bg)' : 'transparent',
-                    color: isActive ? 'var(--color-primary)' : 'var(--color-text-tertiary)',
-                    fontWeight: isActive ? 500 : 400,
-                  }}
+                  className={`w-full flex items-center gap-3 px-4 py-2.5 rounded-xl text-[13px] transition-colors ${
+                    isActive
+                      ? 'bg-emerald-400/10 text-emerald-400 font-medium'
+                      : 'text-slate-400 hover:bg-white/5 hover:text-slate-200'
+                  }`}
                 >
-                  <span style={{ color: isActive ? 'var(--color-accent)' : 'var(--color-text-quaternary)' }}>
+                  <span className={`flex shrink-0 ${isActive ? 'text-emerald-400' : 'text-slate-500'}`}>
                     {item.icon}
                   </span>
                   {item.label}
@@ -94,20 +75,8 @@ export default function Sidebar({ active, onNav }: Props) {
       </div>
 
       {/* System status footer */}
-      <div
-        className="px-4 py-4"
-        style={{ borderTop: '1px solid var(--color-border-secondary)' }}
-      >
-        <div
-          style={{
-            fontSize: 9,
-            fontWeight: 600,
-            letterSpacing: '0.12em',
-            color: 'var(--color-text-quaternary)',
-            fontFamily: 'var(--font-body)',
-            marginBottom: 8,
-          }}
-        >
+      <div className="px-4 py-4 border-t border-white/10">
+        <div className="text-[9px] font-semibold tracking-[0.12em] text-slate-500 mb-2">
           SYSTEM STATUS
         </div>
         {[
@@ -116,24 +85,14 @@ export default function Sidebar({ active, onNav }: Props) {
           { label: '3D ENGINE', status: 'READY', ok: true },
           { label: 'VERSION', status: '2.4.1', ok: null },
         ].map((row) => (
-          <div
-            key={row.label}
-            className="flex justify-between items-center"
-            style={{ marginBottom: 4 }}
-          >
-            <span
-              className="font-mono"
-              style={{ fontSize: 9, color: 'var(--color-text-quaternary)', letterSpacing: '0.08em' }}
-            >
+          <div key={row.label} className="flex justify-between items-center mb-1">
+            <span className="font-mono text-[9px] tracking-[0.08em] text-slate-500">
               {row.label}
             </span>
             <span
-              className="font-mono"
-              style={{
-                fontSize: 9,
-                letterSpacing: '0.08em',
-                color: row.ok === null ? 'var(--color-text-quaternary)' : row.ok ? 'var(--color-success)' : 'var(--color-error)',
-              }}
+              className={`font-mono text-[9px] tracking-[0.08em] ${
+                row.ok === null ? 'text-slate-500' : row.ok ? 'text-emerald-400' : 'text-red-400'
+              }`}
             >
               {row.status}
             </span>

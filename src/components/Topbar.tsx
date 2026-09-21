@@ -1,4 +1,4 @@
-import { Bell, Settings, ChevronDown, Database, Wifi, Menu } from 'lucide-react';
+import { Bell, Settings, ChevronDown, Menu } from 'lucide-react';
 import type { Screen } from '../types';
 import { useState } from 'react';
 import MobileNavDrawer from './MobileNavDrawer';
@@ -25,131 +25,84 @@ export default function Topbar({ screen, onNav, apiOnline }: Props) {
   const [mobileNavOpen, setMobileNavOpen] = useState(false);
 
   return (
-    <header
-      className="topbar"
-      style={{ height: 56 }}
-    >
-      {/* Left: logo + mobile menu button */}
-      <div className="flex items-center gap-3 lg:flex-1">
+    <header className="flex items-center gap-3 px-4 h-14 shrink-0 bg-slate-950 border-b border-white/10">
+      {/* Left: mobile menu button + logo */}
+      <div className="flex items-center gap-3 min-w-0">
         <button
-          className="btn-ghost p-2 lg:hidden"
+          className="lg:hidden shrink-0 rounded-lg p-2 text-slate-300 hover:bg-white/5 hover:text-white"
           onClick={() => setMobileNavOpen(true)}
           aria-label="Open navigation menu"
-          style={{ padding: 8 }}
         >
-          <Menu size={20} style={{ color: 'var(--color-text-primary)' }} />
+          <Menu size={20} />
         </button>
         <div
-          className="flex items-center gap-3 cursor-pointer"
+          className="flex items-center gap-3 cursor-pointer min-w-0"
           onClick={() => onNav('dashboard')}
         >
-          <div
-            className="flex items-center justify-center font-display font-bold text-xs tracking-widest"
-            style={{
-              width: 36,
-              height: 36,
-              background: 'var(--color-primary)',
-              border: '1px solid var(--color-accent)',
-              color: 'var(--color-accent)',
-              borderRadius: 3,
-              letterSpacing: '0.06em',
-            }}
-          >
+          <div className="flex items-center justify-center font-display font-bold text-xs tracking-widest w-9 h-9 shrink-0 bg-slate-900 border border-emerald-400/40 text-emerald-400 rounded-lg">
             3D
           </div>
-          <div>
-            <div
-              className="font-display font-semibold leading-none"
-              style={{ fontSize: 13, color: 'var(--color-text-primary)', letterSpacing: '0.04em' }}
-            >
+          <div className="min-w-0">
+            <div className="font-display font-semibold leading-none text-[13px] text-white tracking-[0.04em] truncate">
               3D ULPIN
             </div>
-            <div
-              className="label-xs leading-none mt-0.5"
-              style={{ fontSize: 8 }}
-            >
+            <div className="text-[8px] text-slate-500 leading-none mt-0.5 truncate">
               CADASTRAL GIS WORKSTATION
             </div>
           </div>
         </div>
       </div>
 
-      {/* Center: breadcrumb (hidden on narrow screens) */}
-      <div
-        className="font-mono text-center lg:flex-1 hidden sm:block"
-        style={{ fontSize: 10, color: 'var(--color-text-quaternary)', letterSpacing: '0.1em' }}
-      >
+      {/* Center: breadcrumb */}
+      <div className="hidden sm:block flex-1 text-center font-mono text-[10px] text-slate-500 tracking-[0.1em] truncate px-2">
         {BREADCRUMBS[screen]}
       </div>
 
       {/* Right: status + user */}
-      <div className="flex items-center gap-4 lg:flex-1 justify-end">
-        <div className="flex items-center gap-3">
+      <div className="flex items-center gap-3 sm:gap-4 justify-end shrink-0 ml-auto">
+        <div className="hidden md:flex items-center gap-3">
           <div className="flex items-center gap-1.5">
             <span className="status-led online" />
-            <span
-              className="font-mono"
-              style={{ fontSize: 9, color: 'var(--color-success)', letterSpacing: '0.08em' }}
-            >
+            <span className="font-mono text-[9px] text-emerald-400 tracking-[0.08em]">
               DATABASE
             </span>
           </div>
           <div className="flex items-center gap-1.5">
             <span className={`status-led ${apiOnline ? 'online' : 'warning'}`} />
             <span
-              className="font-mono"
-              style={{ fontSize: 9, color: apiOnline ? 'var(--color-success)' : 'var(--color-warning)', letterSpacing: '0.08em' }}
+              className={`font-mono text-[9px] tracking-[0.08em] ${apiOnline ? 'text-emerald-400' : 'text-amber-400'}`}
             >
               {apiOnline ? 'API' : 'API OFFLINE'}
             </span>
           </div>
         </div>
 
-        <div style={{ width: 1, height: 20, background: 'var(--color-border-primary)' }} />
+        <div className="hidden md:block w-px h-5 bg-white/10" />
 
         <button
-          className="flex items-center gap-1.5 btn-ghost"
-          style={{ padding: '4px 8px' }}
+          className="flex items-center gap-1.5 rounded-lg px-2 py-1 text-slate-300 hover:bg-white/5 hover:text-white min-w-0 max-w-[140px]"
+          title="VINITH K"
         >
-          <div
-            className="flex items-center justify-center font-display font-semibold"
-            style={{
-              width: 24,
-              height: 24,
-              background: 'var(--color-bg-tertiary)',
-              border: '1px solid var(--color-border-primary)',
-              borderRadius: 2,
-              fontSize: 10,
-              color: 'var(--color-accent)',
-            }}
-          >
+          <div className="flex items-center justify-center font-display font-semibold w-6 h-6 shrink-0 bg-slate-800 border border-white/10 rounded-md text-[10px] text-amber-300">
             VK
           </div>
-          <span style={{ fontSize: 11, color: 'var(--color-text-tertiary)', fontFamily: 'var(--font-body)' }}>
+          <span className="hidden sm:inline truncate text-[11px]" style={{ fontFamily: 'var(--font-body)' }}>
             VINITH K
           </span>
-          <ChevronDown size={10} style={{ color: 'var(--color-text-quaternary)' }} />
+          <ChevronDown size={10} className="shrink-0 text-slate-500" />
         </button>
 
         <button
-          className="btn-ghost"
-          style={{ padding: 6 }}
+          className="rounded-lg p-1.5 text-slate-500 hover:bg-white/5 hover:text-slate-200 shrink-0"
           onClick={() => onNav('settings')}
+          aria-label="Settings"
         >
-          <Settings size={14} style={{ color: 'var(--color-text-quaternary)' }} />
+          <Settings size={14} />
         </button>
 
-        <button className="btn-ghost relative" style={{ padding: 6 }}>
-          <Bell size={14} style={{ color: 'var(--color-text-quaternary)' }} />
-          <span
-            className="absolute top-1 right-1"
-            style={{
-              width: 5,
-              height: 5,
-              background: 'var(--color-accent)',
-              borderRadius: '50%',
-            }}
-          />
+        <button className="relative rounded-lg p-1.5 text-slate-500 hover:bg-white/5 hover:text-slate-200 shrink-0" aria-label="Notifications">
+          <Bell size={14} />
+          <span className="absolute top-1 right-1 w-[5px] h-[5px] bg-amber-400 rounded-full" />
         </button>
       </div>
       <MobileNavDrawer

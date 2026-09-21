@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react';
 import { motion } from 'framer-motion';
-import { Upload, Box, MapPin, Building2, Layers, ShieldCheck, ChevronRight, Activity, ArrowUpRight } from 'lucide-react';
+import { Upload, Box, MapPin, Building2, Layers, ShieldCheck, ChevronRight, Activity } from 'lucide-react';
 import type { Screen } from '../types';
 import { api, type DashboardStats } from '../api';
 
@@ -9,10 +9,10 @@ interface Props {
 }
 
 const KPI_CARDS = [
-  { label: 'PARCELS', value: '01', sub: 'REGISTERED', icon: <MapPin size={12} />, color: '#C99A45', trend: '+1 this session' },
-  { label: 'BUILDINGS', value: '01', sub: 'MAPPED', icon: <Building2 size={12} />, color: '#4FB8AC', trend: '3 floors' },
-  { label: 'PROPERTY UNITS', value: '04', sub: '3D REGISTERED', icon: <Layers size={12} />, color: '#C99A45', trend: 'V01 · all floors' },
-  { label: 'VALIDATION', value: '100%', sub: 'PASS RATE', icon: <ShieldCheck size={12} />, color: '#4FB8AC', trend: '18/18 checks' },
+  { label: 'PARCELS', value: '01', sub: 'REGISTERED', icon: <MapPin size={14} />, color: '#C99A45', trend: '+1 this session' },
+  { label: 'BUILDINGS', value: '01', sub: 'MAPPED', icon: <Building2 size={14} />, color: '#4FB8AC', trend: '3 floors' },
+  { label: 'PROPERTY UNITS', value: '04', sub: '3D REGISTERED', icon: <Layers size={14} />, color: '#C99A45', trend: 'V01 · all floors' },
+  { label: 'VALIDATION', value: '100%', sub: 'PASS RATE', icon: <ShieldCheck size={14} />, color: '#4FB8AC', trend: '18/18 checks' },
 ];
 
 const ACTIVITY = [
@@ -103,110 +103,79 @@ export default function Dashboard({ onNav }: Props) {
   }, []);
 
   const kpiCards = stats ? [
-    { label: 'PARCELS', value: String(stats.total_parcels).padStart(2, '0'), sub: 'REGISTERED', icon: <MapPin size={12} />, color: '#C99A45', trend: 'LIVE API' },
-    { label: 'BUILDINGS', value: String(stats.total_buildings).padStart(2, '0'), sub: 'MAPPED', icon: <Building2 size={12} />, color: '#4FB8AC', trend: `${stats.total_floors} floors` },
-    { label: 'PROPERTY UNITS', value: String(stats.total_units).padStart(2, '0'), sub: '3D REGISTERED', icon: <Layers size={12} />, color: '#C99A45', trend: `${stats.total_3d_units} solids` },
-    { label: 'VALIDATION', value: stats.total_units ? `${Math.round((stats.validated_units / stats.total_units) * 100)}%` : '—', sub: 'PASS RATE', icon: <ShieldCheck size={12} />, color: '#4FB8AC', trend: `${stats.conflicts} conflicts` },
+    { label: 'PARCELS', value: String(stats.total_parcels).padStart(2, '0'), sub: 'REGISTERED', icon: <MapPin size={14} />, color: '#C99A45', trend: 'LIVE API' },
+    { label: 'BUILDINGS', value: String(stats.total_buildings).padStart(2, '0'), sub: 'MAPPED', icon: <Building2 size={14} />, color: '#4FB8AC', trend: `${stats.total_floors} floors` },
+    { label: 'PROPERTY UNITS', value: String(stats.total_units).padStart(2, '0'), sub: '3D REGISTERED', icon: <Layers size={14} />, color: '#C99A45', trend: `${stats.total_3d_units} solids` },
+    { label: 'VALIDATION', value: stats.total_units ? `${Math.round((stats.validated_units / stats.total_units) * 100)}%` : '—', sub: 'PASS RATE', icon: <ShieldCheck size={14} />, color: '#4FB8AC', trend: `${stats.conflicts} conflicts` },
   ] : KPI_CARDS;
 
   return (
-    <div className="flex flex-col h-full overflow-hidden" style={{ background: 'var(--color-bg-secondary)' }}>
+    <div className="flex flex-col h-full min-w-0 overflow-hidden bg-slate-950">
       {/* Header */}
-      <div
-        className="flex items-start justify-between px-6 py-4 shrink-0"
-        style={{ borderBottom: '1px solid var(--color-border-primary)' }}
-      >
-        <div>
-          <h1
-            className="font-display font-semibold"
-            style={{ fontSize: 18, color: 'var(--color-text-primary)', letterSpacing: '0.04em' }}
-          >
+      <div className="flex items-start justify-between gap-3 px-6 py-5 shrink-0">
+        <div className="min-w-0">
+          <h1 className="font-display font-semibold text-xl text-white tracking-[0.04em]">
             CADASTRAL OVERVIEW
           </h1>
-          <p style={{ fontSize: 11, color: 'var(--color-text-tertiary)', marginTop: 4, fontFamily: 'IBM Plex Sans' }}>
+          <p className="mt-1 text-[11px] text-slate-400" style={{ fontFamily: 'IBM Plex Sans' }}>
             3D land administration and volumetric property intelligence
           </p>
         </div>
-        <div className="flex gap-2">
-          <button className="btn-secondary" onClick={() => onNav('import')}>
+        <div className="flex gap-2 shrink-0">
+          <button
+            onClick={() => onNav('import')}
+            className="rounded-xl border border-white/15 px-4 py-2 text-[11px] font-semibold tracking-[0.08em] text-slate-300 transition-colors hover:border-white/30 hover:text-white"
+          >
             IMPORT DATA
           </button>
-          <button className="btn-primary" onClick={() => onNav('explorer')}>
+          <button
+            onClick={() => onNav('explorer')}
+            className="rounded-xl px-4 py-2 text-[11px] font-semibold tracking-[0.08em] text-slate-950 transition-colors hover:brightness-110"
+            style={{ background: '#C99A45' }}
+          >
             OPEN 3D EXPLORER
           </button>
         </div>
       </div>
 
-      <section id="hero-particle-container" aria-label="3D Particle Visualization" style={{
-        background: 'var(--color-hero-bg)',
-        borderBottom: '1px solid var(--color-hero-border)',
-        padding: '48px 24px',
-        position: 'relative',
-        overflow: 'hidden',
-      }}>
-        <div style={{ maxWidth: '1200px', margin: '0 auto', textAlign: 'center' }}>
-          <h2 className="font-display font-semibold" style={{ fontSize: 'clamp(18px, 3vw, 24px)', color: 'var(--color-hero-accent)', letterSpacing: '0.04em', marginBottom: '12px' }}>
-            3D CADASTRAL VISUALIZATION
-          </h2>
-          <p style={{ fontSize: 'clamp(12px, 1.5vw, 14px)', color: 'var(--color-hero-text-muted)', maxWidth: '600px', margin: '0 auto 24px', lineHeight: 1.6 }}>
-            Interactive 3D particle visualization of cadastral data streams. Real-time volumetric rendering with WebGL.
-          </p>
-          <div style={{ fontSize: '11px', color: 'var(--color-hero-text-muted)', fontFamily: 'var(--font-mono)', fontWeight: 500, letterSpacing: '0.1em', textTransform: 'uppercase', display: 'inline-flex', alignItems: 'center', gap: '8px', padding: '8px 16px', background: 'rgba(var(--color-hero-accent-rgb), 0.1)', border: '1px solid var(--color-hero-accent)', borderRadius: 'var(--radius-sm)' }}>
-            <span>●</span>
-            <span>Particle effect container — populated separately</span>
-          </div>
+      <section id="hero-particle-container" aria-label="3D Particle Visualization" className="glass-panel mx-6 mb-2 px-6 py-10 text-center shrink-0">
+        <h2 className="font-display font-semibold text-white tracking-[0.04em] mb-3" style={{ fontSize: 'clamp(18px, 3vw, 24px)' }}>
+          3D CADASTRAL VISUALIZATION
+        </h2>
+        <p className="mx-auto mb-6 max-w-[600px] text-slate-400" style={{ fontSize: 'clamp(12px, 1.5vw, 14px)', lineHeight: 1.6 }}>
+          Interactive 3D particle visualization of cadastral data streams. Real-time volumetric rendering with WebGL.
+        </p>
+        <div className="inline-flex items-center gap-2 rounded-lg border border-amber-400/30 bg-amber-400/10 px-4 py-2 font-mono text-[11px] font-medium uppercase tracking-[0.1em] text-amber-200/80">
+          <span>●</span>
+          <span>Particle effect container — populated separately</span>
         </div>
       </section>
 
-      <div className="flex-1 overflow-y-auto p-5 flex flex-col gap-4">
-        <div className="grid gap-3 grid-cols-1 sm:grid-cols-2 lg:grid-cols-4">
+      <div className="flex-1 min-h-0 min-w-0 overflow-y-auto p-5 md:p-6 flex flex-col gap-6">
+        <div className="grid gap-6 grid-cols-1 md:grid-cols-2 xl:grid-cols-3">
           {kpiCards.map((card, index) => (
             <motion.div
               key={card.label}
               initial={{ opacity: 0, y: 20 }}
               animate={{ opacity: 1, y: 0 }}
               transition={{ duration: 0.2, delay: index * 0.05 }}
-              style={{
-                background: '#10151C',
-                border: '1px solid #28313C',
-                borderRadius: 3,
-                borderTop: `2px solid ${card.color}`,
-                padding: '14px 16px',
-              }}
+              className="glass-panel p-6"
+              style={{ borderTop: `2px solid ${card.color}` }}
             >
-              <div className="flex items-center justify-between mb-2">
-                <span
-                  style={{
-                    fontSize: 9,
-                    fontWeight: 600,
-                    letterSpacing: '0.12em',
-                    color: '#6E7783',
-                    fontFamily: 'IBM Plex Sans',
-                  }}
-                >
+              <div className="flex items-center justify-between mb-3">
+                <span className="text-[9px] font-semibold tracking-[0.12em] text-slate-400" style={{ fontFamily: 'IBM Plex Sans' }}>
                   {card.label}
                 </span>
                 <span style={{ color: card.color }}>{card.icon}</span>
               </div>
-              <div
-                className="font-display font-semibold"
-                style={{ fontSize: 28, color: '#F1F3F5', lineHeight: 1 }}
-              >
+              <div className="font-display font-light text-5xl text-white tracking-tight leading-none">
                 {card.value}
               </div>
-              <div className="flex items-center justify-between mt-1">
-                <span
-                  style={{
-                    fontSize: 9,
-                    fontWeight: 600,
-                    letterSpacing: '0.1em',
-                    color: card.color,
-                    fontFamily: 'IBM Plex Sans',
-                  }}
-                >
+              <div className="flex items-center justify-between mt-3">
+                <span className="text-[9px] font-semibold tracking-[0.1em]" style={{ color: card.color, fontFamily: 'IBM Plex Sans' }}>
                   {card.sub}
                 </span>
-                <span style={{ fontSize: 9, color: '#6E7783', fontFamily: 'IBM Plex Mono' }}>
+                <span className="font-mono text-[9px] text-slate-500">
                   {card.trend}
                 </span>
               </div>
@@ -215,59 +184,31 @@ export default function Dashboard({ onNav }: Props) {
         </div>
 
         {/* Main area */}
-        <div className="flex gap-4" style={{ flex: 1, minHeight: 0 }}>
+        <div className="flex flex-col xl:flex-row gap-6 min-w-0">
           {/* 3D Preview */}
-          <div
-            style={{
-              flex: '1 1 60%',
-              background: '#10151C',
-              border: '1px solid #28313C',
-              borderRadius: 3,
-              overflow: 'hidden',
-              minHeight: 280,
-            }}
-          >
-            <div
-              className="flex items-center justify-between px-4 py-2"
-              style={{ borderBottom: '1px solid #28313C' }}
-            >
-              <div />
+          <div className="glass-panel min-w-0 flex-1 overflow-hidden">
+            <div className="flex items-center justify-between px-4 py-2 border-b border-white/10">
+              <span className="font-display font-medium text-[11px] text-slate-200 tracking-[0.08em]">
+                3D PREVIEW
+              </span>
               <button
-                className="btn-ghost"
-                style={{ fontSize: 10 }}
+                className="rounded-lg px-2 py-1 text-[10px] text-slate-400 transition-colors hover:bg-white/5 hover:text-white"
                 onClick={() => onNav('explorer')}
               >
                 OPEN EXPLORER <ChevronRight size={10} style={{ display: 'inline' }} />
               </button>
             </div>
-            <div
-              className="blueprint-bg"
-              style={{ height: 'calc(100% - 37px)', padding: 16 }}
-            >
+            <div className="blueprint-bg min-h-[280px] p-4" style={{ height: 320 }}>
               <IsoBuildingPreview />
             </div>
           </div>
 
           {/* Right panel */}
-          <div className="flex flex-col gap-3" style={{ flex: '0 0 280px' }}>
+          <div className="flex flex-col gap-6 w-full xl:w-72 shrink-0 min-w-0">
             {/* Activity */}
-            <div
-              style={{
-                background: '#10151C',
-                border: '1px solid #28313C',
-                borderRadius: 3,
-                flex: '1 1 50%',
-                overflow: 'hidden',
-              }}
-            >
-              <div
-                className="px-4 py-2"
-                style={{ borderBottom: '1px solid #28313C' }}
-              >
-                <span
-                  className="font-display font-medium"
-                  style={{ fontSize: 11, color: '#F1F3F5', letterSpacing: '0.08em' }}
-                >
+            <div className="glass-panel overflow-hidden">
+              <div className="px-4 py-2 border-b border-white/10">
+                <span className="font-display font-medium text-[11px] text-slate-200 tracking-[0.08em]">
                   SYSTEM ACTIVITY
                 </span>
               </div>
@@ -275,8 +216,8 @@ export default function Dashboard({ onNav }: Props) {
                 {ACTIVITY.map((a, i) => (
                   <div key={i} className="flex gap-3 items-start mb-2.5">
                     <span
-                      className="font-mono"
-                      style={{ fontSize: 9, color: '#6E7783', letterSpacing: '0.04em', minWidth: 38 }}
+                      className="font-mono text-slate-500"
+                      style={{ fontSize: 9, letterSpacing: '0.04em', minWidth: 38 }}
                     >
                       {a.time}
                     </span>
@@ -296,36 +237,26 @@ export default function Dashboard({ onNav }: Props) {
             </div>
 
             {/* Data health */}
-            <div
-              style={{
-                background: '#10151C',
-                border: '1px solid #28313C',
-                borderRadius: 3,
-                padding: 16,
-              }}
-            >
-              <div
-                className="font-display font-medium mb-3"
-                style={{ fontSize: 11, color: '#F1F3F5', letterSpacing: '0.08em' }}
-              >
+            <div className="glass-panel p-4">
+              <div className="font-display font-medium mb-3 text-[11px] text-slate-200 tracking-[0.08em]">
                 DATA HEALTH
               </div>
               {HEALTH.map((h) => (
                 <div key={h.label} className="mb-3">
                   <div className="flex justify-between mb-1">
-                    <span style={{ fontSize: 10, color: '#A8B0BA', fontFamily: 'IBM Plex Sans' }}>
+                    <span className="text-[10px] text-slate-400" style={{ fontFamily: 'IBM Plex Sans' }}>
                       {h.label}
                     </span>
                     <span
-                      className="font-mono"
-                      style={{ fontSize: 10, color: h.value === 100 ? '#4FB8AC' : '#C99A45' }}
+                      className="font-mono text-[10px]"
+                      style={{ color: h.value === 100 ? '#4FB8AC' : '#C99A45' }}
                     >
                       {h.value}%
                     </span>
                   </div>
-                  <div className="progress-bar">
+                  <div className="h-[3px] rounded overflow-hidden" style={{ background: 'rgba(255,255,255,0.08)' }}>
                     <div
-                      className="fill"
+                      className="h-full rounded"
                       style={{
                         width: `${h.value}%`,
                         background: h.value === 100 ? '#4FB8AC' : '#C99A45',
@@ -339,7 +270,7 @@ export default function Dashboard({ onNav }: Props) {
         </div>
 
         {/* Quick actions */}
-        <div className="grid gap-3 grid-cols-1 sm:grid-cols-2 lg:grid-cols-4">
+        <div className="grid gap-6 grid-cols-1 md:grid-cols-2 xl:grid-cols-3">
           {[
             {
               title: 'IMPORT NEW DATA',
@@ -372,33 +303,17 @@ export default function Dashboard({ onNav }: Props) {
               initial={{ opacity: 0, y: 20 }}
               animate={{ opacity: 1, y: 0 }}
               transition={{ duration: 0.2, delay: index * 0.05 }}
-              className="text-left transition-colors"
-              style={{
-                background: '#10151C',
-                border: '1px solid #28313C',
-                borderRadius: 3,
-                padding: '12px 14px',
-                cursor: 'pointer',
-              }}
-              onMouseEnter={(e) =>
-                ((e.currentTarget as HTMLElement).style.borderColor = '#C99A45')
-              }
-              onMouseLeave={(e) =>
-                ((e.currentTarget as HTMLElement).style.borderColor = '#28313C')
-              }
-              whileHover={{ y: -2, boxShadow: '0 4px 12px rgba(0,0,0,0.15)' }}
+              whileHover={{ y: -2 }}
               whileTap={{ scale: 0.98 }}
+              className="glass-panel p-6 text-left transition-colors hover:border-amber-400/40 cursor-pointer"
             >
               <div className="flex items-center gap-2 mb-2">
-                <span style={{ color: '#C99A45' }}>{action.icon}</span>
-                <span
-                  className="font-display font-medium"
-                  style={{ fontSize: 10, color: '#F1F3F5', letterSpacing: '0.08em' }}
-                >
+                <span className="text-amber-400/90">{action.icon}</span>
+                <span className="font-display font-medium text-[10px] text-slate-200 tracking-[0.08em]">
                   {action.title}
                 </span>
               </div>
-              <p style={{ fontSize: 10, color: '#6E7783', fontFamily: 'IBM Plex Sans', margin: 0 }}>
+              <p className="m-0 text-[10px] text-slate-400" style={{ fontFamily: 'IBM Plex Sans' }}>
                 {action.desc}
               </p>
             </motion.button>

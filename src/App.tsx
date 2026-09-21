@@ -313,18 +313,20 @@ function AppInner() {
         height: '100vh',
         display: 'flex',
         flexDirection: 'column',
-        background: '#F8FAFC', // Light theme base
+        background: '#020617',
         overflow: 'hidden',
       }}
     >
-      <Topbar screen={screen} onNav={setScreen} apiOnline={apiOnline} />
-
-      <div style={{ display: 'flex', flex: 1, overflow: 'hidden' }}>
+      <div style={{ display: 'flex', flex: 1, minHeight: 0, overflow: 'hidden' }}>
         <Sidebar active={screen} onNav={setScreen} />
 
-        <main style={{ flex: 1, overflow: 'auto', display: 'flex', flexDirection: 'column' }}>
-          {renderScreen()}
-        </main>
+        <div style={{ flex: 1, minWidth: 0, display: 'flex', flexDirection: 'column', minHeight: 0 }}>
+          <Topbar screen={screen} onNav={setScreen} apiOnline={apiOnline} />
+
+          <main style={{ flex: 1, minHeight: 0, minWidth: 0, overflow: 'auto', display: 'flex', flexDirection: 'column' }}>
+            {renderScreen()}
+          </main>
+        </div>
 
         {/* Right sidebar - Cadastral Hierarchy */}
         <CadastralHierarchy />
