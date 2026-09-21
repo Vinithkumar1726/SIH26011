@@ -3,8 +3,10 @@ import type { ReactNode } from 'react';
 import { Canvas, useFrame, useThree } from '@react-three/fiber';
 import { AdaptiveDpr, OrbitControls, useGLTF } from '@react-three/drei';
 import * as THREE from 'three';
-import type { Building, Floor, Unit } from '../workspace3d/types';
+import type { Building, Floor, SpatialID, Unit } from '../workspace3d/types';
 import { building as demoBuilding, floors as demoFloors, footprintToLocal, parcel as demoParcel, spatialIDs as demoSpatialIDs, units as demoUnits } from '../workspace3d/data';
+import { QRCode } from 'react-qr-code';
+import { renderToStaticMarkup } from 'react-dom/server';
 import CollapsePanel from '../components/CollapsePanel';
 import { loadLiveHierarchy, fetchCityBuildings, type BuildingSummary, type CityBuilding, type LiveHierarchy } from '../workspace3d/api';
 import { SYNTHETIC_PIPES, segBoxDist, classifyClearance, type Box3, type Vec3 } from '../workspace3d/underground';
@@ -72,7 +74,7 @@ function downloadCsv(bldg: Building, flrs: Floor[]) {
   URL.revokeObjectURL(url);
 }
 
-function printPdfReport(bldg: Building, flrs: Floor[]) {
+function printPdfReport(bldg: Building, flrs: Floor[], units: Unit[], sids: SpatialID[]) {
   const dash = '—';
   const money = (v?: { marketValue: number; assessedValue: number; currency: string }) =>
     v ? [formatReportCurrency(v.marketValue, v.currency), formatReportCurrency(v.assessedValue, v.currency)] : [dash, dash];
@@ -86,6 +88,18 @@ function printPdfReport(bldg: Building, flrs: Floor[]) {
       return `<tr><td>${floor.code} · ${floor.label}</td><td>${floor.ownership?.ownerName ?? dash}</td><td>${floor.ownership?.ownershipType ?? dash}</td><td>${fMarket}</td><td>${fAssessed}</td><td>${floor.valuation?.valuationYear ?? dash}</td></tr>`;
     }),
     '</tbody></table>',
+    '<h2>Unit geometry schedule</h2><table><thead><tr><th>Unit</th><th>3D identifier</th><th>Geometry hash</th><th>Version</th><th>QR</th></tr></thead><tbody>',
+    ...units.map((u) => {
+      const sid = sids.find((s) => s.unit_id === u.id);
+      const hash = sid?.hash ?? u.hash;
+      const ver = `V${String(sid?.version ?? u.version).padStart(2, '0')}`;
+      const qr = hash
+        ? renderToStaticMarkup(<QRCode value={`SIH26011:${u.id}:${hash}:${ver}`} size={56} />)
+        : dash;
+      return `<tr><td>${u.label} (${u.code})</td><td>${sid?.full ?? dash}</td><td>${hash ? hash.slice(0, 32) + '…' : dash}</td><td>${ver}</td><td>${qr}</td></tr>`;
+    }),
+    '</tbody></table>',
+    '<footer style="margin-top:24px;font-size:11px;color:#5A6B8A;border-top:1px solid #C8D0DB;padding-top:8px">Prototype 3D Property Record — not a legal document</footer>',
   ];
   const printWindow = window.open('', '_blank', 'noopener,noreferrer');
   if (!printWindow) return;
@@ -1011,7 +1025,7 @@ export default function Explorer3D() {
           <input type="range" min={0} max={60000000} step={1000000} value={minimumMarketValue} disabled={source === 'live'} onChange={(e) => setMinimumMarketValue(Number(e.target.value))} className="w-full" />
           <div className="grid grid-cols-2 gap-1 mt-2">
             <button type="button" onClick={() => downloadCsv(building, floors)} className="text-[9px] py-1.5 rounded bg-emerald-500/15 text-emerald-300 border border-emerald-400/20 hover:bg-emerald-500/25">CSV REPORT</button>
-            <button type="button" onClick={() => printPdfReport(building, floors)} className="text-[9px] py-1.5 rounded bg-white/5 text-slate-300 border border-white/10 hover:bg-white/10">PDF / PRINT</button>
+            <button type="button" onClick={() => printPdfReport(building, floors, units, spatialIDs)} className="text-[9px] py-1.5 rounded bg-white/5 text-slate-300 border border-white/10 hover:bg-white/10">PDF / PRINT</button>
           </div>
           {reportFilterActive && matchingFloorIds.size === 0 && <div className="text-[9px] text-danger mt-2">No floors match this filter.</div>}
           </CollapsePanel>
