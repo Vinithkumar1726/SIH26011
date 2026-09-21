@@ -7,6 +7,7 @@ import type { Building, Floor, SpatialID, Unit } from '../workspace3d/types';
 import { building as demoBuilding, floors as demoFloors, footprintToLocal, parcel as demoParcel, spatialIDs as demoSpatialIDs, units as demoUnits } from '../workspace3d/data';
 import QRCode from 'qrcode';
 import CollapsePanel from '../components/CollapsePanel';
+import CadastralHierarchy from '../components/CadastralHierarchy';
 import { loadLiveHierarchy, fetchCityBuildings, type BuildingSummary, type CityBuilding, type LiveHierarchy } from '../workspace3d/api';
 import { SYNTHETIC_PIPES, segBoxDist, classifyClearance, type Box3, type Vec3 } from '../workspace3d/underground';
 import { generatePolyhedralSolid, type Solid3D, validateTopology } from '../workspace3d/geo';
@@ -167,6 +168,7 @@ export default function Explorer3D() {
   const [showUnits, setShowUnits] = useState(true);
   const [openPanels, setOpenPanels] = useState({ view: true, env: false, floor: false, val: false });
   const [conflictOpen, setConflictOpen] = useState(false);
+  const [mobilePanel, setMobilePanel] = useState<'inspector' | 'hierarchy' | null>(null);
   const [narrow, setNarrow] = useState(false);
   const [compact, setCompact] = useState(false);
   const canvasRef = useRef<HTMLDivElement>(null);
@@ -1039,7 +1041,7 @@ export default function Explorer3D() {
         </div>
 
         {inspectorVisible && (
-          <div className={`absolute bottom-3 left-1/2 -translate-x-1/2 glass rounded-lg w-[400px] ${narrow ? 'max-w-full' : 'max-w-[calc(100%-34rem)]'} max-h-[48%] flex flex-col`}>
+          <div className={`absolute bottom-3 left-1/2 -translate-x-1/2 glass rounded-lg w-[400px] ${compact ? 'max-w-[calc(100%-2rem)]' : narrow ? 'max-w-full' : 'max-w-[calc(100%-34rem)]'} max-h-[48%] flex flex-col`}>
             <button
               type="button"
               onClick={() => setInspOpen((v) => !v)}
@@ -1141,7 +1143,7 @@ export default function Explorer3D() {
         )}
 
         {cityVisible && osmRecord && !inspectorVisible && (
-          <div className="absolute bottom-3 left-1/2 -translate-x-1/2 glass rounded-lg w-[400px] max-w-[calc(100%-34rem)] max-h-[48%] flex flex-col">
+          <div className={`absolute bottom-3 left-1/2 -translate-x-1/2 glass rounded-lg w-[400px] ${compact ? 'max-w-[calc(100%-2rem)]' : 'max-w-[calc(100%-34rem)]'} max-h-[48%] flex flex-col`}>
             <div className="w-full flex items-center justify-between p-3 shrink-0">
               <span className="text-[10px] font-semibold text-white uppercase tracking-wider">OSM building (context)</span>
               <span className="flex items-center gap-2">
@@ -1198,6 +1200,39 @@ export default function Explorer3D() {
               <div className="text-[9px] text-slate-500 pt-1">Context data — not a cadastral record. Heights are assumed unless tagged.</div>
               <div className="text-[9px] text-slate-500">Synthetic subdivision of an OSM footprint — not cadastral records.</div>
             </div>
+          </div>
+        )}
+
+        <div className="absolute bottom-16 left-3 md:hidden flex flex-col gap-2 z-30">
+          <button
+            type="button"
+            onClick={() => setMobilePanel((p) => (p === 'hierarchy' ? null : 'hierarchy'))}
+            className={`glass rounded-lg px-3 py-2 text-[10px] font-semibold uppercase tracking-wider ${mobilePanel === 'hierarchy' ? 'text-emerald-300' : 'text-slate-200'}`}
+          >
+            🏢 Hierarchy
+          </button>
+          <button
+            type="button"
+            onClick={() => setMobilePanel((p) => (p === 'inspector' ? null : 'inspector'))}
+            className={`glass rounded-lg px-3 py-2 text-[10px] font-semibold uppercase tracking-wider ${mobilePanel === 'inspector' ? 'text-emerald-300' : 'text-slate-200'}`}
+          >
+            📋 Inspector
+          </button>
+        </div>
+
+        {mobilePanel === 'hierarchy' && (
+          <div className="md:hidden fixed inset-x-0 bottom-0 z-40 max-h-[70vh] overflow-y-auto bg-abyss border-t border-line">
+            <div className="flex items-center justify-end p-2">
+              <button
+                type="button"
+                onClick={() => setMobilePanel(null)}
+                aria-label="Close panel"
+                className="text-slate-400 hover:text-white text-xs px-2 py-1"
+              >
+                ✕
+              </button>
+            </div>
+            <CadastralHierarchy className="w-full" />
           </div>
         )}
 
@@ -1276,12 +1311,22 @@ export default function Explorer3D() {
         </div>
       </div>
 
-      <div className="w-80 flex-shrink-0 bg-abyss border-l border-line hidden md:flex flex-col">
+      <div className={`${mobilePanel === 'inspector' ? 'fixed' : 'hidden'} md:static md:flex inset-x-0 bottom-0 z-40 md:z-auto w-auto md:w-80 max-h-[70vh] md:max-h-none overflow-y-auto md:overflow-visible flex-shrink-0 bg-abyss border-t md:border-t-0 md:border-l border-line flex-col`}>
         <div className="p-4 border-b border-line">
-          <h3 className="text-sm font-semibold text-white flex items-center gap-2">
-            <i className="fas fa-circle-info text-emerald-400 text-xs"></i>
-            Inspector
-          </h3>
+          <div className="flex items-center justify-between">
+            <h3 className="text-sm font-semibold text-white flex items-center gap-2">
+              <i className="fas fa-circle-info text-emerald-400 text-xs"></i>
+              Inspector
+            </h3>
+            <button
+              type="button"
+              onClick={() => setMobilePanel(null)}
+              aria-label="Close panel"
+              className="md:hidden text-slate-400 hover:text-white text-xs px-2 py-1"
+            >
+              ✕
+            </button>
+          </div>
         </div>
         <div className="p-4 border-b border-line">
           {selected ? (

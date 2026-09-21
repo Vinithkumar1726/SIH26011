@@ -560,9 +560,21 @@ tr:hover td { background: var(--color-bg-hover); }
 
 /* Reduced motion */
 @media (prefers-reduced-motion: reduce) {
-  *, *::before, *::after {
+  *,
+  *::before,
+  *::after {
     animation-duration: 0.01ms !important;
     animation-iteration-count: 1 !important;
     transition-duration: 0.01ms !important;
   }
+}
+
+/* Glassmorphism floating panels (3D explorer overlays).
+   Single standard definition: slate-900 at 75%, blurred, subtle border. */
+.glass {
+  background-color: rgb(15 23 42 / 0.75);
+  -webkit-backdrop-filter: blur(12px);
+  backdrop-filter: blur(12px);
+  border: 1px solid rgb(51 65 85 / 0.5);
+  color: #e2e8f0;
 }

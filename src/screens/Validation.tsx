@@ -36,7 +36,7 @@ export default function Validation() {
 
       <div className="flex-1 overflow-y-auto p-5 flex flex-col gap-4">
         {/* Engine status */}
-        <div className="grid gap-4" style={{ gridTemplateColumns: ran ? 'repeat(4,1fr)' : '1fr' }}>
+        <div className={ran ? 'grid gap-4 grid-cols-1 md:grid-cols-2 lg:grid-cols-4' : 'grid gap-4 grid-cols-1'}>
           {!ran && !running && (
             <div
               className="flex flex-col items-center justify-center"

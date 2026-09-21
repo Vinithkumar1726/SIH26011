@@ -394,7 +394,8 @@ export default function ImportWorkflow({ onExplore }: { onExplore: () => void })
               Map source attributes to the 3D cadastral schema.
             </p>
 
-            <div style={{ background: 'var(--color-bg-tertiary)', border: '1px solid var(--color-border-primary)', borderRadius: 3, overflow: 'hidden', marginBottom: 16 }}>
+            <div style={{ background: 'var(--color-bg-tertiary)', border: '1px solid var(--color-border-primary)', borderRadius: 3, overflowX: 'auto', marginBottom: 16 }}>
+              <div style={{ minWidth: 340 }}>
               <div className="grid px-4 py-2" style={{ gridTemplateColumns: '1fr 40px 1fr 32px', borderBottom: '1px solid var(--color-border-primary)' }}>
                 <span style={{ fontSize: 9, color: 'var(--color-text-tertiary)', letterSpacing: '0.1em', fontWeight: 600 }}>SOURCE FIELD</span>
                 <span />
@@ -419,6 +420,7 @@ export default function ImportWorkflow({ onExplore }: { onExplore: () => void })
                   )}
                 </div>
               ))}
+              </div>
             </div>
 
             <div className="flex gap-3">

@@ -3,7 +3,7 @@ import { ChevronRight, ChevronDown, MapPin, Building2, Layers, Box, Copy, Search
 import { api } from '../api';
 import { useAuth } from '../App';
 
-export default function CadastralHierarchy() {
+export default function CadastralHierarchy({ className = 'hidden md:flex w-72' }: { className?: string }) {
   const { user } = useAuth();
   const [parcels, setParcels] = useState<any[]>([]);
   const [expanded, setExpanded] = useState<Record<string, boolean>>({});
@@ -46,7 +46,7 @@ export default function CadastralHierarchy() {
 
   if (loading) {
     return (
-      <div className="hidden md:flex w-72 bg-surface border-l border-border flex-col">
+      <div className={`bg-surface border-l border-border flex flex-col ${className}`}>
         <div className="px-4 py-3 border-b border-border">
           <h3 className="font-display font-semibold text-sm text-text-primary">HIERARCHY</h3>
         </div>
@@ -59,7 +59,7 @@ export default function CadastralHierarchy() {
 
   if (parcels.length === 0) {
     return (
-      <div className="hidden md:flex w-72 bg-surface border-l border-border flex-col">
+      <div className={`bg-surface border-l border-border flex flex-col ${className}`}>
         <div className="px-4 py-3 border-b border-border">
           <h3 className="font-display font-semibold text-sm text-text-primary">HIERARCHY</h3>
         </div>
@@ -71,7 +71,7 @@ export default function CadastralHierarchy() {
   }
 
   return (
-    <div className="hidden md:flex w-72 bg-surface border-l border-border flex-col">
+    <div className={`bg-surface border-l border-border flex flex-col ${className}`}>
       {/* Header */}
       <div className="px-4 py-3 border-b border-border">
         <div className="flex items-center justify-between mb-2">
