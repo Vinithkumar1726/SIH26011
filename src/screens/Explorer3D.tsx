@@ -4,11 +4,47 @@ import { AdaptiveDpr, OrbitControls } from '@react-three/drei';
 import * as THREE from 'three';
 import type { Building, Floor, Unit } from '../workspace3d/types';
 import { building as demoBuilding, floors as demoFloors, footprintToLocal, parcel as demoParcel, spatialIDs as demoSpatialIDs, units as demoUnits } from '../workspace3d/data';
-import { loadLiveHierarchy, type LiveHierarchy } from '../workspace3d/api';
+import { loadLiveHierarchy, type BuildingSummary, type LiveHierarchy } from '../workspace3d/api';
 import { generatePolyhedralSolid, type Solid3D, validateTopology } from '../workspace3d/geo';
 
-const CENTER_LON = 77.209;
-const CENTER_LAT = 28.613;
+function ringOrigin(ring: number[][]): [number, number] {
+  const closed = ring.length > 1
+    && ring[0][0] === ring[ring.length - 1][0]
+    && ring[0][1] === ring[ring.length - 1][1];
+  const pts = closed ? ring.slice(0, -1) : ring;
+  let x = 0;
+  let y = 0;
+  for (const p of pts) {
+    x += p[0];
+    y += p[1];
+  }
+  return [x / pts.length, y / pts.length];
+}
+
+function footprintSpanM(ring: number[][], lon0: number, lat0: number): number {
+  const pts = footprintToLocal(ring, lon0, lat0);
+  let minX = Infinity;
+  let maxX = -Infinity;
+  let minY = Infinity;
+  let maxY = -Infinity;
+  for (const [x, y] of pts) {
+    if (x < minX) minX = x;
+    if (x > maxX) maxX = x;
+    if (y < minY) minY = y;
+    if (y > maxY) maxY = y;
+  }
+  return Math.max(maxX - minX, maxY - minY);
+}
+
+const DEMO_ORIGIN = ringOrigin(demoBuilding.footprint);
+const DEMO_SPAN_M = footprintSpanM(demoBuilding.footprint, DEMO_ORIGIN[0], DEMO_ORIGIN[1]);
+const DEMO_HEIGHT_M = demoBuilding.height_m;
+
+// Backend volume_cum is degenerate (computed in degrees, ~1e-7 m³) and needs
+// fixing at source; show "—" instead of a false number.
+function volumeText(v: number): string {
+  return v < 0.01 ? '—' : `${v.toFixed(1)} m³`;
+}
 
 function formatReportCurrency(value: number, currency: string) {
   return new Intl.NumberFormat('en-IN', { style: 'currency', currency, maximumFractionDigits: 0 }).format(value);
@@ -111,9 +147,47 @@ export default function Explorer3D() {
   const [minimumMarketValue, setMinimumMarketValue] = useState(0);
   const [liveData, setLiveData] = useState<LiveHierarchy | null>(null);
   const [source, setSource] = useState<'loading' | 'live' | 'demo'>('loading');
+  const [summaries, setSummaries] = useState<BuildingSummary[]>([]);
   const data = liveData ?? { parcel: demoParcel, building: demoBuilding, floors: demoFloors, units: demoUnits, spatialIDs: demoSpatialIDs };
   const { parcel, building, floors, units, spatialIDs } = data;
+  const origin = useMemo(() => ringOrigin(building.footprint), [building]);
+  const spanM = useMemo(() => footprintSpanM(building.footprint, origin[0], origin[1]), [building, origin]);
+  const fh = spanM / DEMO_SPAN_M;
+  const fv = building.height_m > 0 ? building.height_m / DEMO_HEIGHT_M : 1;
+  const cam = useMemo(() => ({
+    home: { pos: [70 * fh, 60 * fv, 70 * fh] as [number, number, number], tgt: [0, 3 * fv, 0] as [number, number, number] },
+    bird: { pos: [85 * fh, 95 * fv, 85 * fh] as [number, number, number], tgt: [0, 0, 0] as [number, number, number] },
+    plan: { pos: [0.5 * fh, 150 * fh, 0.5 * fh] as [number, number, number], tgt: [0, 0, 0] as [number, number, number] },
+    cutaway: { pos: [58 * fh, 16 * fv, 58 * fh] as [number, number, number], tgt: [0, -1, 0] as [number, number, number] },
+    street: { pos: [20 * fh, 1.7, 30 * fh] as [number, number, number], tgt: [0, 5 * fv, 0] as [number, number, number] },
+    interior: { pos: [14 * fh, 8 * fv, 14 * fh] as [number, number, number], tgt: [0, 3 * fv, 0] as [number, number, number] },
+  }), [fh, fv]);
   const isNight = hourOfDay < 6 || hourOfDay >= 18;
+
+  const resetForBuilding = (bldg: Building) => {
+    setSelected(null);
+    setSelectedFloorId(null);
+    setSelectedScope(null);
+    setReportSearch('');
+    setOwnershipFilter('ALL');
+    setMinimumMarketValue(0);
+    setZMax(36 * (bldg.height_m > 0 ? bldg.height_m / DEMO_HEIGHT_M : 1));
+  };
+
+  const switchBuilding = (id: string) => {
+    if (id === building.id || source !== 'live') return;
+    setSource('loading');
+    loadLiveHierarchy(id)
+      .then((d) => {
+        setLiveData(d);
+        setSummaries(d.summaries);
+        setSource('live');
+        resetForBuilding(d.building);
+      })
+      .catch(() => {
+        setSource('live');
+      });
+  };
 
   useEffect(() => {
     let cancelled = false;
@@ -121,13 +195,9 @@ export default function Explorer3D() {
       .then((d) => {
         if (cancelled) return;
         setLiveData(d);
+        setSummaries(d.summaries);
         setSource('live');
-        setSelected(null);
-        setSelectedFloorId(null);
-        setSelectedScope(null);
-        setReportSearch('');
-        setOwnershipFilter('ALL');
-        setMinimumMarketValue(0);
+        resetForBuilding(d.building);
       })
       .catch(() => {
         if (!cancelled) setSource('demo');
@@ -200,11 +270,11 @@ export default function Explorer3D() {
       : null;
   const inspectorUnits = inspectorFloor ? units.filter((u) => u.floor_id === inspectorFloor.id) : [];
   const footprintArea = useMemo(() => {
-    const pts = footprintToLocal(building.footprint, CENTER_LON, CENTER_LAT);
+    const pts = footprintToLocal(building.footprint, origin[0], origin[1]);
     let a = 0;
     for (let i = 0; i < pts.length - 1; i++) a += pts[i][0] * pts[i + 1][1] - pts[i + 1][0] * pts[i][1];
     return Math.abs(a / 2);
-  }, []);
+  }, [building, origin]);
 
   const filteredUnits = useMemo(() => {
     const query = search.trim().toLowerCase();
@@ -219,7 +289,7 @@ export default function Explorer3D() {
   useEffect(() => {
     const solids = units.map(u => {
       const floor = floors.find(f => f.id === u.floor_id)!;
-      const localFootprint = footprintToLocal(u.footprint, CENTER_LON, CENTER_LAT);
+      const localFootprint = footprintToLocal(u.footprint, origin[0], origin[1]);
       return {
         id: u.id,
         floor_id: u.floor_id,
@@ -244,7 +314,7 @@ export default function Explorer3D() {
     
     setConflicts(conflictIds);
     (window as any).__overlapDetails = overlapDetails;
-  }, [floors, units]);
+  }, [floors, units, origin]);
 
   return (
     <div className="h-full flex">
@@ -264,8 +334,8 @@ export default function Explorer3D() {
           <directionalLight position={[50, 80, 30]} intensity={sky.sun} color={sky.sunColor} castShadow={quality !== 'low'} shadow-mapSize={quality === 'high' ? [2048, 2048] : [1024, 1024]} />
           <directionalLight position={[-30, 40, -20]} intensity={sky.ambient} color={sky.sunColor} />
           <hemisphereLight args={[sky.hemiSky, sky.hemiGround, sky.ambient]} />
-          <Ground seeThrough={viewPreset === 'cutaway'} />
-          {showGrid && <GridFloor />}
+          <Ground seeThrough={viewPreset === 'cutaway'} size={200 * fh} />
+          {showGrid && <GridFloor size={200 * fh} />}
           {showParcel && <ParcelOutline />}
           <MonsoonRain active={weather === 'monsoon'} count={quality === 'high' ? 350 : quality === 'medium' ? 200 : 120} />
           <BuildingAnchor onClick={() => { setSelected(null); setSelectedFloorId(null); setSelectedScope('building'); }} />
@@ -279,6 +349,8 @@ export default function Explorer3D() {
                 key={u.id}
                 unit={u}
                 floor={fl}
+                floorIndex={floors.findIndex((f) => f.id === fl.id)}
+                origin={origin}
                 visible={(selectedFloorId === null || selectedFloorId === u.floor_id) && fl.z_max <= zMax}
                 exploded={exploded}
                 selected={selected?.id === u.id}
@@ -287,11 +359,25 @@ export default function Explorer3D() {
               />
             );
           })}
-          <ViewRig preset={viewPreset} interiorTour={interiorTour} />
+          <ViewRig preset={viewPreset} interiorTour={interiorTour} buildingId={building.id} cam={cam} />
         </Canvas>
 
         <div className="absolute top-3 left-3 glass rounded-lg p-3 w-56">
           <h4 className="text-[10px] font-semibold text-white uppercase tracking-wider mb-2">View Controls</h4>
+          {source === 'live' && (
+            <div className="mb-2">
+              <div className="text-[10px] text-slate-500 mb-1">BUILDING</div>
+              <select
+                value={building.id}
+                onChange={(e) => switchBuilding(e.target.value)}
+                className="w-full bg-deep text-[10px] text-slate-200 rounded-md px-2 py-1.5 border border-line outline-none focus:border-emerald-500/30"
+              >
+                {summaries.map((s) => (
+                  <option key={s.id} value={s.id}>{s.name} · {s.floorCount}f · {s.unitCount}u</option>
+                ))}
+              </select>
+            </div>
+          )}
           <label className="flex items-center gap-2 text-xs text-slate-300 cursor-pointer mb-2">
             <input type="checkbox" checked={exploded} onChange={(e) => setExploded(e.target.checked)} />
             Explode Floors
@@ -574,7 +660,7 @@ export default function Explorer3D() {
                               {sid !== '—' && <CopyBtn value={sid} />}
                             </div>
                             <div className="text-[9px] text-slate-500 mt-0.5">
-                              {inspectorFloor.z_min.toFixed(1)}m – {inspectorFloor.z_max.toFixed(1)}m · {u.area_sqm.toFixed(1)} m² · {u.volume_cum.toFixed(1)} m³
+                              {inspectorFloor.z_min.toFixed(1)}m – {inspectorFloor.z_max.toFixed(1)}m · {u.area_sqm.toFixed(1)} m² · {volumeText(u.volume_cum)}
                             </div>
                           </div>
                         );
@@ -660,7 +746,7 @@ export default function Explorer3D() {
                 <InfoCell label="Unit Code" value={selected.code} />
                 <InfoCell label="Height" value={`${(floors.find((f) => f.id === selected.floor_id)?.z_max || 0) - (floors.find((f) => f.id === selected.floor_id)?.z_min || 0)}m`} />
                 <InfoCell label="Area" value={`${selected.area_sqm.toFixed(1)} m²`} />
-                <InfoCell label="Volume" value={`${selected.volume_cum.toFixed(1)} m³`} />
+                <InfoCell label="Volume" value={volumeText(selected.volume_cum)} />
                 <InfoCell label="Geom. Version" value={`V${String(selected.version).padStart(2, '0')}`} />
               </div>
               <div className="bg-deep rounded-lg p-3">
@@ -745,7 +831,10 @@ export default function Explorer3D() {
 
 // ─── 3D Components ─────────────────────────────────────────────
 
-function ViewRig({ preset, interiorTour }: { preset: 'orbit' | 'bird' | 'plan' | 'cutaway' | 'street'; interiorTour: boolean }) {
+type CamPose = { pos: [number, number, number]; tgt: [number, number, number] };
+type CamPoses = { home: CamPose; bird: CamPose; plan: CamPose; cutaway: CamPose; street: CamPose; interior: CamPose };
+
+function ViewRig({ preset, interiorTour, buildingId, cam }: { preset: 'orbit' | 'bird' | 'plan' | 'cutaway' | 'street'; interiorTour: boolean; buildingId: string; cam: CamPoses }) {
   const camera = useThree((s) => s.camera);
   const controls = useThree((s) => s.controls) as unknown as { target: THREE.Vector3; update: () => void } | null;
   const invalidate = useThree((s) => s.invalidate);
@@ -755,14 +844,14 @@ function ViewRig({ preset, interiorTour }: { preset: 'orbit' | 'bird' | 'plan' |
   useEffect(() => {
     const first = !mounted.current;
     mounted.current = true;
-    if (interiorTour) goal.current = { pos: [14, 8, 14], tgt: [0, 3, 0] };
-    else if (preset === 'bird') goal.current = { pos: [85, 95, 85], tgt: [0, 0, 0] };
-    else if (preset === 'plan') goal.current = { pos: [0.5, 150, 0.5], tgt: [0, 0, 0] };
-    else if (preset === 'cutaway') goal.current = { pos: [58, 16, 58], tgt: [0, -1, 0] };
-    else if (preset === 'street') goal.current = { pos: [20, 1.7, 30], tgt: [0, 5, 0] };
-    else goal.current = first ? null : { pos: [70, 60, 70], tgt: [0, 3, 0] };
+    if (interiorTour) goal.current = cam.interior;
+    else if (preset === 'bird') goal.current = cam.bird;
+    else if (preset === 'plan') goal.current = cam.plan;
+    else if (preset === 'cutaway') goal.current = cam.cutaway;
+    else if (preset === 'street') goal.current = cam.street;
+    else goal.current = first ? null : cam.home;
     invalidate();
-  }, [preset, interiorTour, invalidate]);
+  }, [preset, interiorTour, buildingId, cam, invalidate]);
 
   useFrame((_, dt) => {
     const g = goal.current;
@@ -829,17 +918,17 @@ function MonsoonRain({ active, count = 350 }: { active: boolean; count?: number 
   );
 }
 
-function Ground({ seeThrough }: { seeThrough?: boolean }) {
+function Ground({ seeThrough, size = 200 }: { seeThrough?: boolean; size?: number }) {
   return (
     <mesh rotation={[-Math.PI / 2, 0, 0]} position={[0, -0.1, 0]} receiveShadow>
-      <planeGeometry args={[200, 200]} />
+      <planeGeometry args={[size, size]} />
       <meshStandardMaterial color="#0f1629" transparent={!!seeThrough} opacity={seeThrough ? 0.22 : 1} depthWrite={!seeThrough} />
     </mesh>
   );
 }
 
-function GridFloor() {
-  return <gridHelper args={[200, 40, '#1a2340', '#1a2340' ]} position={[0, 0, 0]} />;
+function GridFloor({ size = 200 }: { size?: number }) {
+  return <gridHelper args={[size, 40, '#1a2340', '#1a2340' ]} position={[0, 0, 0]} />;
 }
 
 function ParcelOutline() {
@@ -868,7 +957,7 @@ function BuildingAnchor({ onClick }: { onClick: () => void }) {
 }
 
 function FloorSlab({ floor, index, visible, exploded, zMax, highlighted, onClick }: {
-  floor: typeof floors[0]; index: number; visible: boolean; exploded: boolean; zMax: number; highlighted: boolean; onClick: () => void;
+  floor: Floor; index: number; visible: boolean; exploded: boolean; zMax: number; highlighted: boolean; onClick: () => void;
 }) {
   if (!visible || floor.z_max > zMax) return null;
   const floorColors = ['#64748b', '#22c55e', '#f59e0b', '#3b82f6', '#3b82f6', '#ec4899', '#84cc16', '#a855f7'];
@@ -883,22 +972,21 @@ function FloorSlab({ floor, index, visible, exploded, zMax, highlighted, onClick
   );
 }
 
-function UnitMesh({ unit, floor, visible, exploded, selected, conflict, onClick }: {
-  unit: Unit; floor: typeof floors[0]; visible: boolean; exploded: boolean; selected: boolean; conflict: boolean; onClick: () => void;
+function UnitMesh({ unit, floor, floorIndex, origin, visible, exploded, selected, conflict, onClick }: {
+  unit: Unit; floor: Floor; floorIndex: number; origin: [number, number]; visible: boolean; exploded: boolean; selected: boolean; conflict: boolean; onClick: () => void;
 }) {
   const [hovered, setHovered] = useState(false);
   const geometry = useMemo(() => {
-    const localFootprint = footprintToLocal(unit.footprint, CENTER_LON, CENTER_LAT);
+    const localFootprint = footprintToLocal(unit.footprint, origin[0], origin[1]);
     const solid = generatePolyhedralSolid(
       { coordinates: localFootprint as [number, number][] },
       floor.z_min,
       floor.z_max
     );
     return solidToBufferGeometry(solid);
-  }, [unit, floor]);
+  }, [unit, floor, origin]);
 
   if (!visible) return null;
-  const floorIndex = floors.findIndex(f => f.id === floor.id);
   const yOffset = exploded ? floorIndex * 2 : 0;
 
   let color = '#6366f1';

@@ -19,6 +19,14 @@ export interface LiveHierarchy {
   units: Unit[];
   spatialIDs: SpatialID[];
   buildingCount: number;
+  summaries: BuildingSummary[];
+}
+
+export interface BuildingSummary {
+  id: string;
+  name: string;
+  floorCount: number;
+  unitCount: number;
 }
 
 function reqStr(v: unknown, field: string): string {
@@ -56,7 +64,54 @@ function mapUnitType(t: unknown): Unit['type'] {
   }
 }
 
-export async function loadLiveHierarchy(): Promise<LiveHierarchy> {
+export async function fetchBuildingSummaries(): Promise<BuildingSummary[]> {
+  const [bRes, fRes, uRes] = await Promise.all([api.getBuildings(), api.getFloors(), api.getUnits()]);
+  if (!bRes.success || !Array.isArray(bRes.data)) throw new Error('live buildings unavailable');
+  if (!fRes.success || !Array.isArray(fRes.data)) throw new Error('live floors unavailable');
+  if (!uRes.success || !Array.isArray(uRes.data)) throw new Error('live units unavailable');
+  return summarize(
+    bRes.data as Record<string, unknown>[],
+    fRes.data as Record<string, unknown>[],
+    uRes.data as Record<string, unknown>[],
+  );
+}
+
+function summarize(
+  rawBuildings: Record<string, unknown>[],
+  rawFloors: Record<string, unknown>[],
+  rawUnits: Record<string, unknown>[],
+): BuildingSummary[] {
+  const floorIdsByBuilding = new Map<string, Set<string>>();
+  for (const f of rawFloors) {
+    if (typeof f.id !== 'string' || typeof f.building_id !== 'string') throw new Error('bad floor link');
+    let set = floorIdsByBuilding.get(f.building_id);
+    if (!set) {
+      set = new Set();
+      floorIdsByBuilding.set(f.building_id, set);
+    }
+    set.add(f.id);
+  }
+  return rawBuildings.map((b) => {
+    const id = reqStr(b.id, 'building.id');
+    const floorIds = floorIdsByBuilding.get(id) ?? new Set<string>();
+    const unitCount = rawUnits.filter((u) => typeof u.floor_id === 'string' && floorIds.has(u.floor_id)).length;
+    return {
+      id,
+      name: typeof b.name === 'string' && b.name.length > 0 ? b.name : id,
+      floorCount: floorIds.size,
+      unitCount,
+    };
+  });
+}
+
+export function pickDefaultBuilding(sums: BuildingSummary[]): BuildingSummary {
+  if (sums.length === 0) throw new Error('no buildings');
+  return [...sums].sort(
+    (a, b) => b.unitCount - a.unitCount || b.floorCount - a.floorCount || (a.id < b.id ? -1 : a.id > b.id ? 1 : 0),
+  )[0];
+}
+
+export async function loadLiveHierarchy(buildingId?: string): Promise<LiveHierarchy> {
   const [bRes, fRes, uRes, pRes, sRes] = await Promise.all([
     api.getBuildings(),
     api.getFloors(),
@@ -80,8 +135,17 @@ export async function loadLiveHierarchy(): Promise<LiveHierarchy> {
   const rawParcels = pRes.data as unknown[];
   const rawSids = sRes.data as unknown[];
   if (rawBuildings.length === 0) throw new Error('no buildings');
+  const summaries = summarize(
+    rawBuildings as Record<string, unknown>[],
+    rawFloors as Record<string, unknown>[],
+    rawUnits as Record<string, unknown>[],
+  );
 
-  const rb = rawBuildings[0] as Record<string, unknown>;
+  const wantId = buildingId ?? pickDefaultBuilding(summaries).id;
+  const rb = (rawBuildings as Record<string, unknown>[]).find((x) => x.id === wantId) as
+    | Record<string, unknown>
+    | undefined;
+  if (!rb) throw new Error(`building not found: ${wantId}`);
   const building: Building = {
     id: reqStr(rb.id, 'building.id'),
     parcel_id: reqStr(rb.parcel_id, 'building.parcel_id'),
@@ -92,9 +156,8 @@ export async function loadLiveHierarchy(): Promise<LiveHierarchy> {
     footprint: ringOf(rb.footprint, 'building.footprint'),
   };
 
-  const parcelRaw = (rawParcels as Record<string, unknown>[]).find((p) => p.id === building.parcel_id)
-    ?? (rawParcels[0] as Record<string, unknown> | undefined);
-  if (!parcelRaw) throw new Error('no parcels');
+  const parcelRaw = (rawParcels as Record<string, unknown>[]).find((p) => p.id === building.parcel_id);
+  if (!parcelRaw) throw new Error(`parcel mismatch for building ${building.id}`);
   const parcel: Parcel = {
     id: reqStr(parcelRaw.id, 'parcel.id'),
     ulpin: reqStr(parcelRaw.ulpin, 'parcel.ulpin'),
@@ -149,5 +212,5 @@ export async function loadLiveHierarchy(): Promise<LiveHierarchy> {
       unit_id: reqStr(s.property_unit_id, 'sid.unit_id'),
     }));
 
-  return { parcel, building, floors, units, spatialIDs, buildingCount: rawBuildings.length };
+  return { parcel, building, floors, units, spatialIDs, buildingCount: rawBuildings.length, summaries };
 }
