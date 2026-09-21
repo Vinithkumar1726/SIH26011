@@ -151,6 +151,7 @@ export default function Explorer3D() {
   const [exploded, setExploded] = useState(false);
   const [zMax, setZMax] = useState(36);
   const [selectedFloorId, setSelectedFloorId] = useState<string | null>(null);
+  const inspectorVisible = selectedScope === 'building' || selectedFloorId !== null || selected !== null;
   const [search, setSearch] = useState('');
   const [conflicts, setConflicts] = useState<Set<string>>(new Set());
   const [hourOfDay, setHourOfDay] = useState(12);
@@ -633,7 +634,6 @@ export default function Explorer3D() {
     }).map((floor) => floor.id));
   }, [floors, minimumMarketValue, ownershipFilter, reportSearch, source]);
   const reportFilterActive = Boolean(reportSearch.trim() || ownershipFilter !== 'ALL' || minimumMarketValue > 0);
-  const inspectorVisible = selectedScope === 'building' || selectedFloorId !== null || selected !== null;
   const inspectorFloor = selectedFloorId
     ? floors.find((fl) => fl.id === selectedFloorId) ?? null
     : selected
