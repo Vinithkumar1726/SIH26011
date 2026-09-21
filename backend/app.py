@@ -5,6 +5,7 @@ Real implementation with PostgreSQL + PostGIS
 
 import os
 import json
+import math
 import hashlib
 import uuid
 from datetime import datetime
@@ -479,7 +480,60 @@ def solid_to_wkb(solid, srid=4326):
     from sqlalchemy import func
     return func.ST_GeomFromEWKT(ewkt, type_=Geometry('POLYHEDRALSURFACEZ', dimension=3, srid=srid))
 
-def check_overlap(solid1, solid2, epsilon=1e-3):
+# Separation tolerance for 3D overlap decisions, in metres.
+# Two solids whose penetration depth is at most this value only touch
+# (shared face, edge or corner) and must NOT be reported as overlapping.
+TOUCH_EPS_M = 0.001
+
+METERS_PER_DEG_LAT = 111320.0
+
+def lonlat_to_local(lon, lat, lon0, lat0):
+    """Equirectangular projection of lon/lat to local metres around (lon0, lat0)."""
+    return [
+        (lon - lon0) * METERS_PER_DEG_LAT * math.cos(math.radians(lat0)),
+        (lat - lat0) * METERS_PER_DEG_LAT,
+    ]
+
+def dedupe_ring(coords):
+    """Drop the closing duplicate vertex of a ring, if present."""
+    if len(coords) > 1 and coords[0] == coords[-1]:
+        return coords[:-1]
+    return coords
+
+def overlap_origin(entries):
+    """Shared local-metre origin (centroid of all footprint points) for one comparison set."""
+    xs = []
+    ys = []
+    for e in entries:
+        for x, y in dedupe_ring(e["ring"]):
+            xs.append(x)
+            ys.append(y)
+    if not xs:
+        raise ValueError("No footprint points for overlap origin")
+    return [sum(xs) / len(xs), sum(ys) / len(ys)]
+
+def build_overlap_solids(entries, origin=None):
+    """Build local-metre solids for overlap testing.
+    entries: dicts with id, floor_id, ring (lon/lat), z_min, z_max.
+    All solids share one origin (given, else the set centroid) and z stays
+    in metres. Nothing here changes what is stored in the database.
+    """
+    if origin is None:
+        if not entries:
+            return []
+        origin = overlap_origin(entries)
+    lon0, lat0 = origin
+    solids = []
+    for e in entries:
+        local = [lonlat_to_local(x, y, lon0, lat0) for x, y in dedupe_ring(e["ring"])]
+        solids.append({
+            "id": e["id"],
+            "floor_id": e.get("floor_id"),
+            "solid": generate_polyhedral_solid(local, e["z_min"], e["z_max"]),
+        })
+    return solids
+
+def check_overlap(solid1, solid2, epsilon=TOUCH_EPS_M):
     """Check if two solids overlap"""
     # Get bounding boxes
     bbox1 = get_bounding_box(solid1)
@@ -572,7 +626,7 @@ def check_sat_overlap(solid1, solid2):
             normal = np.array(face["normal"])
             # Normalize
             length = np.linalg.norm(normal)
-            if length > 1e-10:
+            if length > 1e-9:
                 normal = normal / length
                 normals.append(normal)
         return normals
@@ -589,7 +643,7 @@ def check_sat_overlap(solid1, solid2):
                 v2 = vertices[face_verts[(i + 1) % len(face_verts)]]
                 edge = v2 - v1
                 length = np.linalg.norm(edge)
-                if length > 1e-10:
+                if length > 1e-9:
                     edges.append(edge / length)
         return edges
     
@@ -598,9 +652,9 @@ def check_sat_overlap(solid1, solid2):
         projections = [np.dot(np.array(v), axis) for v in vertices]
         return min(projections), max(projections)
     
-    def axes_overlap(min1, max1, min2, max2, epsilon=1e-6):
-        """Check if two 1D projections overlap"""
-        return not (max1 < min2 - epsilon or max2 < min1 - epsilon)
+    def axes_overlap(min1, max1, min2, max2, epsilon=TOUCH_EPS_M):
+        """Check if two 1D projections overlap; penetration within epsilon counts as touching"""
+        return not (max1 < min2 + epsilon or max2 < min1 + epsilon)
     
     # Get vertices as numpy arrays
     verts1 = [np.array(v) for v in solid1["vertices"]]
@@ -1231,8 +1285,9 @@ async def run_validation():
             units = result.scalars().all()
             logger.info(f"Found {len(units)} units for validation")
             
-            # Generate solids for validation
-            solids = []
+            # Generate solids for validation, in local metres around one
+            # shared origin (z stays in metres; stored data is untouched)
+            entries = []
             for unit in units:
                 floor_result = await session.execute(
                     select(Floor).where(Floor.id == unit.floor_id)
@@ -1244,17 +1299,14 @@ async def run_validation():
                     geojson_geom = geom_to_geojson(unit.footprint)
                     logger.debug(f"Unit {unit.id} footprint: {geojson_geom}")
                     if geojson_geom and geojson_geom.get("coordinates"):
-                        coords = geojson_geom["coordinates"][0]
-                        solid = generate_polyhedral_solid(
-                            coords,
-                            unit.z_min,
-                            unit.z_max
-                        )
-                        solids.append({
+                        entries.append({
                             "id": unit.id,
                             "floor_id": unit.floor_id,
-                            "solid": solid
+                            "ring": geojson_geom["coordinates"][0],
+                            "z_min": unit.z_min,
+                            "z_max": unit.z_max,
                         })
+            solids = build_overlap_solids(entries)
             
             logger.info(f"Generated {len(solids)} solids for validation")
             
@@ -1850,31 +1902,57 @@ async def update_unit_geometry(unit_id: str, request: UnitGeometryUpdateRequest)
             )
             other_units = units_result.scalars().all()
             
-            # Build solids for CURRENT state (before update)
-            current_solids = []
+            # Build solids for CURRENT state (before update), in local metres
+            # around one origin shared with the NEW set below
+            current_entries = []
             for other_unit in other_units:
                 other_unit_geom = to_shape(other_unit.footprint)
-                other_coords = list(other_unit_geom.exterior.coords)[:-1]
                 if other_unit.id == unit_id:
                     # Current unit (before update) - use its own z_min/z_max
-                    current_z_min = other_unit.z_min
-                    current_z_max = other_unit.z_max
-                    current_solid = generate_polyhedral_solid(other_coords, current_z_min, current_z_max)
-                    current_solids.append({
+                    current_entries.append({
                         "id": other_unit.id,
                         "floor_id": other_unit.floor_id,
-                        "solid": current_solid
+                        "ring": list(other_unit_geom.exterior.coords),
+                        "z_min": other_unit.z_min,
+                        "z_max": other_unit.z_max,
                     })
                 else:
                     # Use each unit's own z_min/z_max (per-unit Z-range)
-                    other_z_min = other_unit.z_min
-                    other_z_max = other_unit.z_max
-                    other_solid = generate_polyhedral_solid(other_coords, other_z_min, other_z_max)
-                    current_solids.append({
+                    current_entries.append({
                         "id": other_unit.id,
                         "floor_id": other_unit.floor_id,
-                        "solid": other_solid
+                        "ring": list(other_unit_geom.exterior.coords),
+                        "z_min": other_unit.z_min,
+                        "z_max": other_unit.z_max,
                     })
+
+            # Entries for the NEW state (after update)
+            new_entries = []
+            for other_unit in other_units:
+                if other_unit.id == unit_id:
+                    continue
+                other_unit_geom = to_shape(other_unit.footprint)
+                # Use each unit's own z_min/z_max
+                new_entries.append({
+                    "id": other_unit.id,
+                    "floor_id": other_unit.floor_id,
+                    "ring": list(other_unit_geom.exterior.coords),
+                    "z_min": other_unit.z_min,
+                    "z_max": other_unit.z_max,
+                })
+
+            # Add the NEW solid for the updated unit
+            new_entries.append({
+                "id": unit_id,
+                "floor_id": unit.floor_id,
+                "ring": coords_to_use,
+                "z_min": z_min_to_use,
+                "z_max": z_max_to_use,
+            })
+
+            gate_origin = overlap_origin(current_entries + new_entries)
+            current_solids = build_overlap_solids(current_entries, gate_origin)
+            new_solids = build_overlap_solids(new_entries, gate_origin)
             
             # Check current conflicts involving the target unit
             current_validation = validate_topology(current_solids)
@@ -1887,28 +1965,7 @@ async def update_unit_geometry(unit_id: str, request: UnitGeometryUpdateRequest)
                     current_conflicts.add(other_id)
             
             # Check for conflicts with NEW solid for the updated unit
-            new_solids = []
-            for other_unit in other_units:
-                if other_unit.id == unit_id:
-                    continue
-                other_unit_geom = to_shape(other_unit.footprint)
-                other_coords = list(other_unit_geom.exterior.coords)[:-1]
-                # Use each unit's own z_min/z_max
-                other_z_min = other_unit.z_min
-                other_z_max = other_unit.z_max
-                other_solid = generate_polyhedral_solid(other_coords, other_z_min, other_z_max)
-                new_solids.append({
-                    "id": other_unit.id,
-                    "floor_id": other_unit.floor_id,
-                    "solid": other_solid
-                })
-            
-            # Add the NEW solid for the updated unit
-            new_solids.append({
-                "id": unit_id,
-                "floor_id": unit.floor_id,
-                "solid": new_solid
-            })
+            # (new_solids built above from new_entries)
             
             # Check new conflicts
             new_validation = validate_topology(new_solids)
