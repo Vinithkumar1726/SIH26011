@@ -45,7 +45,7 @@ interface Props {
 export default function Sidebar({ active, onNav }: Props) {
   return (
     <aside
-      className="flex flex-col shrink-0"
+      className="hidden lg:flex flex-col shrink-0"
       style={{
         width: 240,
         background: 'var(--color-bg-surface)',

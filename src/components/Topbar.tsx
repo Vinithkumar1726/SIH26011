@@ -74,9 +74,9 @@ export default function Topbar({ screen, onNav, apiOnline }: Props) {
         </div>
       </div>
 
-      {/* Center: breadcrumb */}
+      {/* Center: breadcrumb (hidden on narrow screens) */}
       <div
-        className="font-mono text-center lg:flex-1"
+        className="font-mono text-center lg:flex-1 hidden sm:block"
         style={{ fontSize: 10, color: 'var(--color-text-quaternary)', letterSpacing: '0.1em' }}
       >
         {BREADCRUMBS[screen]}

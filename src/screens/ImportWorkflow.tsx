@@ -154,16 +154,16 @@ export default function ImportWorkflow({ onExplore }: { onExplore: () => void })
 
   return (
     <div className="flex flex-col h-full overflow-hidden" style={{ background: 'var(--color-bg-primary)' }}>
-      {/* Workflow stepper */}
+      {/* Workflow stepper (scrolls horizontally on narrow screens) */}
       <div
         className="flex items-center px-6 shrink-0"
-        style={{ borderBottom: '1px solid var(--color-border-primary)', height: 52, background: 'var(--color-bg-tertiary)' }}
+        style={{ borderBottom: '1px solid var(--color-border-primary)', height: 52, background: 'var(--color-bg-tertiary)', overflowX: 'auto' }}
       >
         {STEPS.map((s, i) => {
           const done = s.n < step;
           const active = s.n === step;
           return (
-            <div key={s.n} className="flex items-center">
+            <div key={s.n} className="flex items-center shrink-0">
               <button
                 onClick={() => done && setStep(s.n as Step)}
                 className="flex items-center gap-2 transition-colors"
@@ -359,7 +359,7 @@ export default function ImportWorkflow({ onExplore }: { onExplore: () => void })
                   </table>
                 </div>
 
-                <div className="grid gap-3 mb-5" style={{ gridTemplateColumns: 'repeat(4,1fr)' }}>
+                <div className="grid gap-3 mb-5 grid-cols-2 xl:grid-cols-4">
                   {[
                     { label: 'FEATURE COUNT', value: '14' },
                     { label: 'GEOMETRIES', value: '10' },
@@ -565,7 +565,7 @@ export default function ImportWorkflow({ onExplore }: { onExplore: () => void })
                   ))}
                 </div>
 
-                <div className="grid gap-3 mb-5" style={{ gridTemplateColumns: 'repeat(4,1fr)' }}>
+                <div className="grid gap-3 mb-5 grid-cols-2 xl:grid-cols-4">
                   {[
                     { label: 'CRITICAL', value: '0', color: 'var(--color-accent)' },
                     { label: 'ERRORS', value: '0', color: 'var(--color-accent)' },
@@ -619,13 +619,13 @@ export default function ImportWorkflow({ onExplore }: { onExplore: () => void })
               Transform 2D footprint + elevation data into PolyhedralSurfaceZ solids and assign versioned spatial identifiers.
             </p>
 
-            {/* Pipeline visualization */}
+            {/* Pipeline visualization (scrolls horizontally on narrow screens) */}
             <div
-              className="flex items-center justify-center gap-0 mb-5"
-              style={{ background: 'var(--color-bg-tertiary)', border: '1px solid var(--color-border-primary)', borderRadius: 3, padding: '20px 24px' }}
+              className="flex items-center gap-0 mb-5 justify-start xl:justify-center"
+              style={{ background: 'var(--color-bg-tertiary)', border: '1px solid var(--color-border-primary)', borderRadius: 3, padding: '20px 24px', overflowX: 'auto' }}
             >
               {['2D FOOTPRINT', 'Z-MIN / Z-MAX', 'POLYHEDRAL SOLID', 'GEOMETRY HASH', 'SPATIAL IDENTIFIER'].map((step, i, arr) => (
-                <div key={step} className="flex items-center">
+                <div key={step} className="flex items-center shrink-0">
                   <div
                     className="flex flex-col items-center"
                     style={{ textAlign: 'center', padding: '0 12px' }}

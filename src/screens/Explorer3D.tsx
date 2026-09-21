@@ -163,6 +163,7 @@ export default function Explorer3D() {
   const [openPanels, setOpenPanels] = useState({ view: true, env: false, floor: false, val: false });
   const [conflictOpen, setConflictOpen] = useState(false);
   const [narrow, setNarrow] = useState(false);
+  const [compact, setCompact] = useState(false);
   const canvasRef = useRef<HTMLDivElement>(null);
   const narrowInit = useRef(false);
   const togglePanel = (k: 'view' | 'env' | 'floor' | 'val') =>
@@ -173,6 +174,7 @@ export default function Explorer3D() {
     const apply = (w: number) => {
       const isNarrow = w < 900;
       setNarrow(isNarrow);
+      setCompact(w < 520);
       if (!narrowInit.current) {
         narrowInit.current = true;
         if (isNarrow) setOpenPanels({ view: false, env: false, floor: false, val: false });
@@ -797,7 +799,7 @@ export default function Explorer3D() {
           <ViewRig preset={viewPreset} interiorTour={interiorTour} buildingId={building.id} cam={cam} cityViews={cityViews} cityVisible={cityVisible} maxDistance={cityVisible && cityMeta ? 2.5 * cityMeta.radiusM : 250} focusPose={focusPose} camNonce={camNonce} />
         </Canvas>
 
-        <div className="absolute top-3 left-3 bottom-28 w-64 flex flex-col gap-2 overflow-y-auto pointer-events-none">
+        <div className={`absolute top-3 left-3 bottom-28 ${compact ? 'w-44' : narrow ? 'w-52' : 'w-64'} flex flex-col gap-2 overflow-y-auto pointer-events-none`}>
           <CollapsePanel title="View Controls" open={openPanels.view} onToggle={() => togglePanel('view')}>
           {source === 'live' && (
             <div className="mb-2">
@@ -970,7 +972,7 @@ export default function Explorer3D() {
           )}
         </div>
 
-        <div className="absolute top-3 right-3 bottom-28 w-56 flex flex-col gap-2 overflow-y-auto pointer-events-none">
+        <div className={`absolute top-3 right-3 bottom-28 ${compact ? 'w-40' : narrow ? 'w-48' : 'w-56'} flex flex-col gap-2 overflow-y-auto pointer-events-none`}>
           <CollapsePanel
             title="Floor Isolation"
             open={openPanels.floor}
@@ -1266,7 +1268,7 @@ export default function Explorer3D() {
         </div>
       </div>
 
-      <div className="w-80 flex-shrink-0 bg-abyss border-l border-line flex flex-col">
+      <div className="w-80 flex-shrink-0 bg-abyss border-l border-line hidden md:flex flex-col">
         <div className="p-4 border-b border-line">
           <h3 className="text-sm font-semibold text-white flex items-center gap-2">
             <i className="fas fa-circle-info text-emerald-400 text-xs"></i>

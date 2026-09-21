@@ -46,7 +46,7 @@ export default function CadastralHierarchy() {
 
   if (loading) {
     return (
-      <div className="w-72 bg-surface border-l border-border flex flex-col">
+      <div className="hidden md:flex w-72 bg-surface border-l border-border flex-col">
         <div className="px-4 py-3 border-b border-border">
           <h3 className="font-display font-semibold text-sm text-text-primary">HIERARCHY</h3>
         </div>
@@ -59,7 +59,7 @@ export default function CadastralHierarchy() {
 
   if (parcels.length === 0) {
     return (
-      <div className="w-72 bg-surface border-l border-border flex flex-col">
+      <div className="hidden md:flex w-72 bg-surface border-l border-border flex-col">
         <div className="px-4 py-3 border-b border-border">
           <h3 className="font-display font-semibold text-sm text-text-primary">HIERARCHY</h3>
         </div>
@@ -71,7 +71,7 @@ export default function CadastralHierarchy() {
   }
 
   return (
-    <div className="w-72 bg-surface border-l border-border flex flex-col hidden lg:flex">
+    <div className="hidden md:flex w-72 bg-surface border-l border-border flex-col">
       {/* Header */}
       <div className="px-4 py-3 border-b border-border">
         <div className="flex items-center justify-between mb-2">

@@ -30,7 +30,7 @@ export default function StatusBar() {
           }}
         />
         <span
-          className="font-mono"
+          className="font-mono hidden md:inline"
           style={{ fontSize: 9, color: 'var(--color-text-quaternary)', letterSpacing: '0.08em' }}
         >
           EPSG:4326 · WGS84
@@ -38,7 +38,7 @@ export default function StatusBar() {
       </div>
       <div className="flex items-center gap-4">
         <span
-          className="font-mono"
+          className="font-mono hidden sm:inline"
           style={{ fontSize: 9, color: 'var(--color-text-quaternary)', letterSpacing: '0.08em' }}
         >
           4 UNITS · 1 PARCEL · 1 BUILDING
