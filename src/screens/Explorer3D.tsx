@@ -482,7 +482,7 @@ export default function Explorer3D() {
     const qz0 = gz + osmRecord.minZ, qz1 = gz + osmRecord.maxZ;
     const levels = osmRecord.levels && osmRecord.levels > 0
       ? osmRecord.levels
-      : Math.max(1, Math.round(osmRecord.height / 3.2));
+      : Math.max(1, Math.floor(osmRecord.height / 3.2));
     const h = 3.2;
     const cosLat = Math.cos((origin[1] * Math.PI) / 180);
     // World (wx, wz) -> lon/lat solved against the building origin, so
@@ -502,12 +502,12 @@ export default function Explorer3D() {
     const floorsOut: Floor[] = [];
     const unitsOut: Unit[] = [];
     for (let i = 0; i < levels; i++) {
-      const fid = `osm-floor-${i}`;
+      const fid = `osm-fl-${osmRecord.id}-${i}`;
       floorsOut.push({
         id: fid,
         building_id: `osm-${osmRecord.id}`,
-        code: `L${i + 1}`,
-        label: `OSM Level ${i + 1}`,
+        code: `L${String(i + 1).padStart(2, '0')}`,
+        label: `Level ${i + 1} (OSM)`,
         z_min: i * h,
         z_max: (i + 1) * h,
         area_sqm: cellArea * 4,
@@ -517,7 +517,7 @@ export default function Explorer3D() {
           toLonLat(cx0, cz0), toLonLat(cx1, cz0), toLonLat(cx1, cz1), toLonLat(cx0, cz1), toLonLat(cx0, cz0),
         ];
         unitsOut.push({
-          id: `osm-unit-${i}-${ci}`,
+          id: `osm-unit-${osmRecord.id}-${i}-${ci}`,
           floor_id: fid,
           code: `U${ci + 1}`,
           type: 'common',
@@ -1144,7 +1144,10 @@ export default function Explorer3D() {
           <div className="absolute bottom-3 left-1/2 -translate-x-1/2 glass rounded-lg w-[400px] max-w-[calc(100%-34rem)] max-h-[48%] flex flex-col">
             <div className="w-full flex items-center justify-between p-3 shrink-0">
               <span className="text-[10px] font-semibold text-white uppercase tracking-wider">OSM building (context)</span>
-              <button type="button" onClick={clearOsm} aria-label="Close" className="text-slate-400 hover:text-white text-xs px-1">✕</button>
+              <span className="flex items-center gap-2">
+                <span className="text-[9px] font-semibold uppercase tracking-wider text-amber-300 border border-amber-400/40 bg-amber-500/10 rounded px-1.5 py-0.5">OSM · illustrative</span>
+                <button type="button" onClick={clearOsm} aria-label="Close" className="text-slate-400 hover:text-white text-xs px-1">✕</button>
+              </span>
             </div>
             <div className="px-3 pb-3 space-y-1 text-[11px] overflow-y-auto">
               <div className="flex items-center justify-between gap-2">
