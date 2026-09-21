@@ -319,14 +319,18 @@ export default function Explorer3D() {
                     ['cutaway', 'Underground Cutaway'],
                     ['street', 'Street Walk · 1.7m'],
                   ] as const).map(([v, label]) => (
-                    <button
-                      type="button"
-                      key={v}
-                      onClick={() => { setViewPreset(v); if (v === 'street' || v !== 'orbit') setInteriorTour(false); }}
-                      className={`text-left text-[10px] py-1 px-2 rounded uppercase tracking-wider ${viewPreset === v ? 'bg-emerald-500/20 text-emerald-300 border border-emerald-400/40' : 'bg-white/5 text-slate-400 border border-transparent hover:text-white'}`}
-                    >
-                      {label}
-                    </button>
+                    <div key={v}>
+                      <button
+                        type="button"
+                        onClick={() => { setViewPreset(v); if (v === 'street' || v !== 'orbit') setInteriorTour(false); }}
+                        className={`w-full text-left text-[10px] py-1 px-2 rounded uppercase tracking-wider ${viewPreset === v ? 'bg-emerald-500/20 text-emerald-300 border border-emerald-400/40' : 'bg-white/5 text-slate-400 border border-transparent hover:text-white'}`}
+                      >
+                        {label}
+                      </button>
+                      {v === 'cutaway' && (
+                        <div className="text-[9px] text-slate-500 mt-0.5 px-1">No utility data loaded — basement levels only</div>
+                      )}
+                    </div>
                   ))}
                 </div>
               </div>
@@ -554,14 +558,17 @@ function ViewRig({ preset, interiorTour }: { preset: 'orbit' | 'bird' | 'plan' |
   const camera = useThree((s) => s.camera);
   const controls = useThree((s) => s.controls) as unknown as { target: THREE.Vector3; update: () => void } | null;
   const goal = useRef<{ pos: [number, number, number]; tgt: [number, number, number] } | null>(null);
+  const mounted = useRef(false);
 
   useEffect(() => {
+    const first = !mounted.current;
+    mounted.current = true;
     if (interiorTour) goal.current = { pos: [14, 8, 14], tgt: [0, 3, 0] };
     else if (preset === 'bird') goal.current = { pos: [85, 95, 85], tgt: [0, 0, 0] };
     else if (preset === 'plan') goal.current = { pos: [0.5, 150, 0.5], tgt: [0, 0, 0] };
     else if (preset === 'cutaway') goal.current = { pos: [58, 16, 58], tgt: [0, -1, 0] };
     else if (preset === 'street') goal.current = { pos: [20, 1.7, 30], tgt: [0, 5, 0] };
-    else goal.current = null;
+    else goal.current = first ? null : { pos: [70, 60, 70], tgt: [0, 3, 0] };
   }, [preset, interiorTour]);
 
   useFrame((_, dt) => {
