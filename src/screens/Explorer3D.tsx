@@ -1,6 +1,7 @@
-import { useEffect, useMemo, useRef, useState } from 'react';
+import { Component, Suspense, useEffect, useMemo, useRef, useState } from 'react';
+import type { ReactNode } from 'react';
 import { Canvas, useFrame, useThree } from '@react-three/fiber';
-import { AdaptiveDpr, OrbitControls } from '@react-three/drei';
+import { AdaptiveDpr, OrbitControls, useGLTF } from '@react-three/drei';
 import * as THREE from 'three';
 import type { Building, Floor, Unit } from '../workspace3d/types';
 import { building as demoBuilding, floors as demoFloors, footprintToLocal, parcel as demoParcel, spatialIDs as demoSpatialIDs, units as demoUnits } from '../workspace3d/data';
@@ -148,6 +149,8 @@ export default function Explorer3D() {
   const [liveData, setLiveData] = useState<LiveHierarchy | null>(null);
   const [source, setSource] = useState<'loading' | 'live' | 'demo'>('loading');
   const [summaries, setSummaries] = useState<BuildingSummary[]>([]);
+  const [showCity, setShowCity] = useState(true);
+  const [cityMeta, setCityMeta] = useState<{ origin: { lon: number; lat: number }; radiusM: number } | null>(null);
   const data = liveData ?? { parcel: demoParcel, building: demoBuilding, floors: demoFloors, units: demoUnits, spatialIDs: demoSpatialIDs };
   const { parcel, building, floors, units, spatialIDs } = data;
   const origin = useMemo(() => ringOrigin(building.footprint), [building]);
@@ -218,6 +221,41 @@ export default function Explorer3D() {
       cancelled = true;
     };
   }, []);
+
+  useEffect(() => {
+    let cancelled = false;
+    fetch('/coimbatore/meta.json')
+      .then((r) => {
+        if (!r.ok) throw new Error('no city meta');
+        return r.json();
+      })
+      .then((j) => {
+        if (cancelled) return;
+        const o = (j as { origin?: { lon?: unknown; lat?: unknown }; radiusM?: unknown })?.origin;
+        if (typeof o?.lon !== 'number' || typeof o?.lat !== 'number' || typeof j?.radiusM !== 'number') return;
+        setCityMeta({ origin: { lon: o.lon, lat: o.lat }, radiusM: j.radiusM });
+      })
+      .catch(() => {
+        /* no city context available; scene behaves as before */
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, []);
+
+  const cityOffset = useMemo(() => {
+    if (!cityMeta) return null;
+    return footprintToLocal(
+      [[cityMeta.origin.lon, cityMeta.origin.lat]],
+      origin[0],
+      origin[1],
+    )[0];
+  }, [cityMeta, origin]);
+  const cityAvailable = cityMeta !== null;
+  const cityVisible = showCity
+    && cityAvailable
+    && cityOffset !== null
+    && Math.hypot(cityOffset[0], cityOffset[1]) <= (cityMeta?.radiusM ?? 0);
 
   useEffect(() => {
     if (!liveSync) return;
@@ -341,14 +379,26 @@ export default function Explorer3D() {
         >
           {quality !== 'high' && <AdaptiveDpr pixelated />}
           <color attach="background" args={[sky.bg]} />
-          <fog attach="fog" args={[sky.bg, sky.fogNear, sky.fogFar]} />
+          <fog attach="fog" args={[sky.bg, sky.fogNear * (cityVisible ? 3 : 1), sky.fogFar * (cityVisible ? 3 : 1)]} />
           <ambientLight intensity={sky.ambient} />
           <directionalLight position={[50, 80, 30]} intensity={sky.sun} color={sky.sunColor} castShadow={quality !== 'low'} shadow-mapSize={quality === 'high' ? [2048, 2048] : [1024, 1024]} />
           <directionalLight position={[-30, 40, -20]} intensity={sky.ambient} color={sky.sunColor} />
           <hemisphereLight args={[sky.hemiSky, sky.hemiGround, sky.ambient]} />
           <Ground seeThrough={viewPreset === 'cutaway'} size={200 * fh} />
-          {showGrid && <GridFloor size={200 * fh} />}
+          {showGrid && !cityVisible && <GridFloor size={200 * fh} />}
           {showParcel && (parcel.footprint || source === 'demo') && <ParcelOutline footprint={parcel.footprint} origin={origin} />}
+          {cityVisible && cityOffset && (
+            <CityErrorBoundary>
+              <Suspense fallback={null}>
+                <CityContext
+                  url="/coimbatore/city.glb"
+                  position={[cityOffset[0], 0, -cityOffset[1]]}
+                  cutaway={viewPreset === 'cutaway'}
+                  quality={quality}
+                />
+              </Suspense>
+            </CityErrorBoundary>
+          )}
           <MonsoonRain active={weather === 'monsoon'} count={quality === 'high' ? 350 : quality === 'medium' ? 200 : 120} />
           <BuildingAnchor shape={footprintShape} height={building.height_m} onClick={() => { setSelected(null); setSelectedFloorId(null); setSelectedScope('building'); }} />
           {showFloors && floors.map((fl, fi) => (
@@ -371,7 +421,7 @@ export default function Explorer3D() {
               />
             );
           })}
-          <ViewRig preset={viewPreset} interiorTour={interiorTour} buildingId={building.id} cam={cam} />
+          <ViewRig preset={viewPreset} interiorTour={interiorTour} buildingId={building.id} cam={cam} farView={cityVisible} />
         </Canvas>
 
         <div className="absolute top-3 left-3 glass rounded-lg p-3 w-56">
@@ -510,6 +560,12 @@ export default function Explorer3D() {
                       {label}
                     </label>
                   ))}
+                  {cityAvailable && (
+                    <label className="flex items-center gap-2 text-xs text-slate-300 cursor-pointer">
+                      <input type="checkbox" checked={showCity} onChange={(e) => setShowCity(e.target.checked)} />
+                      City context (OSM)
+                    </label>
+                  )}
                 </div>
               </div>
               <div>
@@ -701,6 +757,12 @@ export default function Explorer3D() {
           )}
         </div>
 
+        {cityVisible && (
+          <div className="absolute bottom-14 right-3 glass rounded px-2 py-1 max-w-56">
+            <div className="text-[9px] text-slate-500">OSM context (not cadastral) - © OpenStreetMap contributors (ODbL) - heights assumed</div>
+          </div>
+        )}
+
         <div className="absolute bottom-3 right-3 glass rounded-lg px-3 py-2">
           <div className="flex items-center gap-3 text-[10px]">
             <div className="flex items-center gap-1"><div className="w-2 h-2 rounded-sm bg-emerald-500"></div><span className="text-slate-400">Apartment</span></div>
@@ -846,7 +908,7 @@ export default function Explorer3D() {
 type CamPose = { pos: [number, number, number]; tgt: [number, number, number] };
 type CamPoses = { home: CamPose; bird: CamPose; plan: CamPose; cutaway: CamPose; street: CamPose; interior: CamPose };
 
-function ViewRig({ preset, interiorTour, buildingId, cam }: { preset: 'orbit' | 'bird' | 'plan' | 'cutaway' | 'street'; interiorTour: boolean; buildingId: string; cam: CamPoses }) {
+function ViewRig({ preset, interiorTour, buildingId, cam, farView }: { preset: 'orbit' | 'bird' | 'plan' | 'cutaway' | 'street'; interiorTour: boolean; buildingId: string; cam: CamPoses; farView: boolean }) {
   const camera = useThree((s) => s.camera);
   const controls = useThree((s) => s.controls) as unknown as { target: THREE.Vector3; update: () => void } | null;
   const invalidate = useThree((s) => s.invalidate);
@@ -886,7 +948,7 @@ function ViewRig({ preset, interiorTour, buildingId, cam }: { preset: 'orbit' | 
       dampingFactor={0.05}
       enableZoom
       minDistance={preset === 'street' || interiorTour ? 1 : 15}
-      maxDistance={250}
+      maxDistance={farView ? 900 : 250}
       maxPolarAngle={Math.PI / 2 - 0.05}
       target={[0, 3, 0]}
     />
@@ -928,6 +990,60 @@ function MonsoonRain({ active, count = 350 }: { active: boolean; count?: number 
       <meshBasicMaterial color="#7dd3fc" transparent opacity={0.45} />
     </instancedMesh>
   );
+}
+
+class CityErrorBoundary extends Component<{ children: ReactNode }, { failed: boolean }> {
+  state = { failed: false };
+  static getDerivedStateFromError(): { failed: boolean } {
+    return { failed: true };
+  }
+  componentDidCatch(): void {}
+  render(): ReactNode {
+    return this.state.failed ? null : this.props.children;
+  }
+}
+
+function CityContext({ url, position, cutaway, quality }: {
+  url: string;
+  position: [number, number, number];
+  cutaway: boolean;
+  quality: 'low' | 'medium' | 'high';
+}) {
+  const { scene } = useGLTF(url);
+  const cloned = useMemo(() => {
+    const c = scene.clone(true);
+    c.traverse((o) => {
+      const mesh = o as THREE.Mesh;
+      if (!mesh.isMesh) return;
+      const name = (mesh.name || '').toLowerCase();
+      if (name.startsWith('buildings')) {
+        mesh.material = quality === 'low'
+          ? new THREE.MeshLambertMaterial({ vertexColors: true })
+          : new THREE.MeshStandardMaterial({ vertexColors: true, roughness: 0.92, metalness: 0 });
+        mesh.castShadow = quality !== 'low';
+      } else {
+        mesh.material = new THREE.MeshLambertMaterial({
+          vertexColors: true,
+          transparent: cutaway,
+          opacity: cutaway ? 0.35 : 1,
+        });
+      }
+      mesh.receiveShadow = true;
+    });
+    return c;
+  }, [scene, quality, cutaway]);
+  useEffect(() => () => {
+    // Dispose only the materials created for the clone; geometries are
+    // shared with the useGLTF cache and must stay alive.
+    cloned.traverse((o) => {
+      const mesh = o as THREE.Mesh;
+      if (!mesh.isMesh) return;
+      const m = mesh.material as THREE.Material | THREE.Material[];
+      if (Array.isArray(m)) m.forEach((x) => x.dispose());
+      else m?.dispose();
+    });
+  }, [cloned]);
+  return <primitive object={cloned} position={position} />;
 }
 
 function Ground({ seeThrough, size = 200 }: { seeThrough?: boolean; size?: number }) {
