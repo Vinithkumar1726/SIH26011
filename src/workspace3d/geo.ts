@@ -222,6 +222,11 @@ export interface ValidationIssue {
  * 2. For axis-aligned boxes: exact box intersection
  * 3. For general polyhedra: Separating Axis Theorem (SAT)
  */
+// Separation tolerance for overlap decisions, in metres.
+// Two solids whose penetration depth is at most this value only touch
+// (shared face, edge or corner) and must NOT be reported as overlapping.
+export const TOUCH_EPS_M = 0.001;
+
 export function checkOverlap(solid1: Solid3D, solid2: Solid3D): { overlaps: boolean; volume?: number } {
   // Get bounding boxes
   const bbox1 = getBoundingBox(solid1);
@@ -232,10 +237,10 @@ export function checkOverlap(solid1: Solid3D, solid2: Solid3D): { overlaps: bool
     return { overlaps: false };
   }
 
-  // Additional check: if z-ranges don't overlap, no intersection
+  // Additional check: if z-ranges share at most TOUCH_EPS_M, no intersection
   // This handles units on different floors
   const zOverlap = Math.min(bbox1.max.z, bbox2.max.z) - Math.max(bbox1.min.z, bbox2.min.z);
-  if (zOverlap <= 1e-3) {
+  if (zOverlap <= TOUCH_EPS_M) {
     return { overlaps: false };
   }
 
@@ -278,7 +283,7 @@ function getBoundingBox(solid: Solid3D): BBox {
   return { min, max };
 }
 
-function aabbOverlap(box1: BBox, box2: BBox, epsilon: number = 1e-3): boolean {
+function aabbOverlap(box1: BBox, box2: BBox, epsilon: number = TOUCH_EPS_M): boolean {
   // Use 1mm tolerance for floating-point precision
   return (
     box1.min.x <= box2.max.x + epsilon && box1.max.x >= box2.min.x - epsilon &&
@@ -315,9 +320,8 @@ function extractBox(solid: Solid3D): Box | null {
  * Check exact overlap between two axis-aligned boxes
  */
 function checkBoxOverlap(box1: Box, box2: Box): { overlaps: boolean; volume?: number } {
-  // Use a more generous epsilon for floating-point tolerance
-  // 1mm tolerance to handle precision issues
-  const epsilon = 1e-3;
+  // Use TOUCH_EPS_M tolerance for floating-point precision and touching surfaces
+  const epsilon = TOUCH_EPS_M;
 
   // Calculate overlap in each dimension
   const overlapX = Math.min(box1.max.x, box2.max.x) - Math.max(box1.min.x, box2.min.x);
@@ -345,12 +349,18 @@ function checkSATOverlap(solid1: Solid3D, solid2: Solid3D): { overlaps: boolean 
 
   const axes: Vector3[] = [];
 
-  // Add face normals
+  // Add face normals, skipping degenerate zero normals (e.g. from the
+  // duplicated closing edge of a footprint ring): a zero vector is never
+  // a valid separating axis, and with the touch epsilon below it would
+  // otherwise separate every pair.
+  const pushAxis = (n: Vector3) => {
+    if (Math.sqrt(n.x ** 2 + n.y ** 2 + n.z ** 2) > 1e-9) axes.push(n);
+  };
   for (const face of solid1.faces) {
-    axes.push(face.normal);
+    pushAxis(face.normal);
   }
   for (const face of solid2.faces) {
-    axes.push(face.normal);
+    pushAxis(face.normal);
   }
 
   // Add edge cross products
@@ -367,13 +377,14 @@ function checkSATOverlap(solid1: Solid3D, solid2: Solid3D): { overlaps: boolean 
     }
   }
 
-  // Test each axis
+  // Test each axis: intervals separated, or penetrating by at most
+  // TOUCH_EPS_M (touching), means no overlap on this axis
   for (const axis of axes) {
     const proj1 = projectOntoAxis(solid1.vertices, axis);
     const proj2 = projectOntoAxis(solid2.vertices, axis);
 
     // Check if projections overlap
-    if (proj1.max < proj2.min || proj2.max < proj1.min) {
+    if (proj1.max < proj2.min + TOUCH_EPS_M || proj2.max < proj1.min + TOUCH_EPS_M) {
       // Found separating axis - no overlap
       return { overlaps: false };
     }
