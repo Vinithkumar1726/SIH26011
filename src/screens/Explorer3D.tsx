@@ -5,8 +5,7 @@ import { AdaptiveDpr, OrbitControls, useGLTF } from '@react-three/drei';
 import * as THREE from 'three';
 import type { Building, Floor, SpatialID, Unit } from '../workspace3d/types';
 import { building as demoBuilding, floors as demoFloors, footprintToLocal, parcel as demoParcel, spatialIDs as demoSpatialIDs, units as demoUnits } from '../workspace3d/data';
-import { QRCode } from 'react-qr-code';
-import { renderToStaticMarkup } from 'react-dom/server';
+import QRCode from 'qrcode';
 import CollapsePanel from '../components/CollapsePanel';
 import { loadLiveHierarchy, fetchCityBuildings, type BuildingSummary, type CityBuilding, type LiveHierarchy } from '../workspace3d/api';
 import { SYNTHETIC_PIPES, segBoxDist, classifyClearance, type Box3, type Vec3 } from '../workspace3d/underground';
@@ -74,11 +73,27 @@ function downloadCsv(bldg: Building, flrs: Floor[]) {
   URL.revokeObjectURL(url);
 }
 
-function printPdfReport(bldg: Building, flrs: Floor[], units: Unit[], sids: SpatialID[]) {
+async function printPdfReport(bldg: Building, flrs: Floor[], units: Unit[], sids: SpatialID[]) {
   const dash = '—';
+  const printWindow = window.open('', '_blank', 'noopener,noreferrer');
+  if (!printWindow) return;
   const money = (v?: { marketValue: number; assessedValue: number; currency: string }) =>
     v ? [formatReportCurrency(v.marketValue, v.currency), formatReportCurrency(v.assessedValue, v.currency)] : [dash, dash];
   const [bMarket, bAssessed] = money(bldg.valuation);
+  const unitRows = await Promise.all(units.map(async (u) => {
+    const sid = sids.find((s) => s.unit_id === u.id);
+    const hash = sid?.hash ?? u.hash;
+    const ver = `V${String(sid?.version ?? u.version).padStart(2, '0')}`;
+    let qr = dash;
+    if (hash) {
+      try {
+        qr = `<img src="${await QRCode.toDataURL(`SIH26011:${u.id}:${hash}:${ver}`, { width: 112, margin: 1 })}" width="56" height="56" alt="QR ${u.code}" />`;
+      } catch {
+        qr = dash;
+      }
+    }
+    return `<tr><td>${u.label} (${u.code})</td><td>${sid?.full ?? dash}</td><td>${hash ? hash.slice(0, 32) + '…' : dash}</td><td>${ver}</td><td>${qr}</td></tr>`;
+  }));
   const rows = [
     `<h1>SIH26011 Valuation & Ownership Report</h1><p>Generated ${new Date().toLocaleDateString('en-IN')}</p>`,
     `<h2>Building · ${bldg.name}</h2><p><b>Owner:</b> ${bldg.ownership?.ownerName ?? dash}<br><b>Ownership:</b> ${bldg.ownership?.ownershipType ?? dash}<br><b>Market value:</b> ${bMarket}<br><b>Assessed value:</b> ${bAssessed}</p>`,
@@ -89,20 +104,10 @@ function printPdfReport(bldg: Building, flrs: Floor[], units: Unit[], sids: Spat
     }),
     '</tbody></table>',
     '<h2>Unit geometry schedule</h2><table><thead><tr><th>Unit</th><th>3D identifier</th><th>Geometry hash</th><th>Version</th><th>QR</th></tr></thead><tbody>',
-    ...units.map((u) => {
-      const sid = sids.find((s) => s.unit_id === u.id);
-      const hash = sid?.hash ?? u.hash;
-      const ver = `V${String(sid?.version ?? u.version).padStart(2, '0')}`;
-      const qr = hash
-        ? renderToStaticMarkup(<QRCode value={`SIH26011:${u.id}:${hash}:${ver}`} size={56} />)
-        : dash;
-      return `<tr><td>${u.label} (${u.code})</td><td>${sid?.full ?? dash}</td><td>${hash ? hash.slice(0, 32) + '…' : dash}</td><td>${ver}</td><td>${qr}</td></tr>`;
-    }),
+    ...unitRows,
     '</tbody></table>',
     '<footer style="margin-top:24px;font-size:11px;color:#5A6B8A;border-top:1px solid #C8D0DB;padding-top:8px">Prototype 3D Property Record — not a legal document</footer>',
   ];
-  const printWindow = window.open('', '_blank', 'noopener,noreferrer');
-  if (!printWindow) return;
   printWindow.document.write(`<html><head><title>SIH26011 Valuation Report</title><style>body{font-family:Arial,sans-serif;color:#17202a;padding:32px}h1{color:#087f73}table{border-collapse:collapse;width:100%;font-size:12px}th,td{border:1px solid #cbd5e1;padding:8px;text-align:left}th{background:#e2e8f0}</style></head><body>${rows.join('')}</body></html>`);
   printWindow.document.close();
   printWindow.focus();
