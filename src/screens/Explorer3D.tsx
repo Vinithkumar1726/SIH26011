@@ -179,6 +179,8 @@ export default function Explorer3D() {
   const [hoverBlock, setHoverBlock] = useState<string | null>(null);
   const [showCity, setShowCity] = useState(true);
   const [cityMeta, setCityMeta] = useState<{ origin: { lon: number; lat: number }; radiusM: number } | null>(null);
+  const [osmCatalog, setOsmCatalog] = useState<OsmBuilding[] | null>(null);
+  const [osmSelected, setOsmSelected] = useState<string | null>(null);
   const data = liveData ?? { parcel: demoParcel, building: demoBuilding, floors: demoFloors, units: demoUnits, spatialIDs: demoSpatialIDs };
   const { parcel, building, floors, units, spatialIDs } = data;
   const origin = useMemo(() => ringOrigin(building.footprint), [building]);
@@ -211,6 +213,7 @@ export default function Explorer3D() {
     setSelected(null);
     setSelectedFloorId(null);
     setSelectedScope(null);
+    setOsmSelected(null);
     setReportSearch('');
     setOwnershipFilter('ALL');
     setMinimumMarketValue(0);
@@ -320,6 +323,94 @@ export default function Explorer3D() {
     && cityAvailable
     && cityOffset !== null
     && Math.hypot(cityOffset[0], cityOffset[1]) <= (cityMeta?.radiusM ?? 0);
+
+  useEffect(() => {
+    if (!cityMeta) return;
+    let cancelled = false;
+    fetch('/coimbatore/buildings_catalog.json')
+      .then((r) => {
+        if (!r.ok) throw new Error('no catalog');
+        return r.json();
+      })
+      .then((j) => {
+        if (cancelled || !Array.isArray(j)) return;
+        const list: OsmBuilding[] = [];
+        for (const r of j as Record<string, unknown>[]) {
+          const fp = r.footprint;
+          if (typeof r.id !== 'string' || !Array.isArray(fp)) continue;
+          const pts = (fp as unknown[]).filter(
+            (p): p is [number, number] => Array.isArray(p) && typeof p[0] === 'number' && typeof p[1] === 'number',
+          );
+          if (pts.length < 3) continue;
+          if (typeof r.height !== 'number' || !Number.isFinite(r.height)) continue;
+          let minX = Infinity, maxX = -Infinity, minZ = Infinity, maxZ = -Infinity, cx = 0, cz = 0;
+          for (const [x, z] of pts) {
+            if (x < minX) minX = x;
+            if (x > maxX) maxX = x;
+            if (z < minZ) minZ = z;
+            if (z > maxZ) maxZ = z;
+            cx += x;
+            cz += z;
+          }
+          list.push({
+            id: r.id,
+            name: typeof r.name === 'string' ? r.name : '',
+            type: typeof r.type === 'string' ? r.type : '',
+            levels: typeof r.levels === 'number' ? r.levels : null,
+            height: r.height,
+            heightSource: typeof r.heightSource === 'string' ? r.heightSource : '',
+            area: typeof r.area === 'number' && Number.isFinite(r.area) ? r.area : NaN,
+            footprint: pts,
+            minX, maxX, minZ, maxZ,
+            cx: cx / pts.length,
+            cz: cz / pts.length,
+          });
+        }
+        if (!cancelled && list.length > 0) setOsmCatalog(list);
+      })
+      .catch(() => {
+        /* OSM selection simply unavailable */
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, [cityMeta]);
+
+  const osmRecord = osmCatalog?.find((r) => r.id === osmSelected) ?? null;
+  const clearOsm = () => setOsmSelected(null);
+  const selectOsm = (id: string) => {
+    setOsmSelected((prev) => (prev === id ? null : id));
+    setSelected(null);
+    setSelectedFloorId(null);
+    setSelectedScope(null);
+    setInteriorTour(false);
+    setViewPreset('focus');
+  };
+
+  useEffect(() => {
+    if (inspectorVisible) setOsmSelected(null);
+  }, [inspectorVisible]);
+
+  useEffect(() => {
+    if (!osmSelected) return;
+    const h = (e: KeyboardEvent) => {
+      if (e.key === 'Escape') setOsmSelected(null);
+    };
+    window.addEventListener('keydown', h);
+    return () => window.removeEventListener('keydown', h);
+  }, [osmSelected]);
+
+  const focusPose = useMemo(() => {
+    if (!cityVisible || !cityOffset || !osmRecord) return null;
+    const gx = cityOffset[0], gz = -cityOffset[1];
+    const cx = gx + osmRecord.cx, cz = gz + osmRecord.cz;
+    const span = Math.max(osmRecord.maxX - osmRecord.minX, osmRecord.maxZ - osmRecord.minZ);
+    const d = Math.max(60, 2.5 * Math.max(span, osmRecord.height));
+    return {
+      pos: [cx + 0.7 * d, 0.6 * d, cz + 0.7 * d] as [number, number, number],
+      tgt: [cx, osmRecord.height / 2, cz] as [number, number, number],
+    };
+  }, [cityVisible, cityOffset, osmRecord]);
   const cityViews = useMemo(() => {
     if (!cityVisible || !cityOffset || !cityMeta) return null;
     const R = cityMeta.radiusM;
@@ -482,9 +573,21 @@ export default function Explorer3D() {
                   position={[cityOffset[0], 0, -cityOffset[1]]}
                   cutaway={viewPreset === 'cutaway'}
                   quality={quality}
+                  onPick={(x, z) => {
+                    if (!osmCatalog) return;
+                    const hit = pickOsmBuilding(osmCatalog, x, z);
+                    if (hit) selectOsm(hit.id);
+                  }}
                 />
               </Suspense>
             </CityErrorBoundary>
+          )}
+          {cityVisible && osmRecord && cityOffset && (
+            <OsmHighlight
+              footprint={osmRecord.footprint}
+              height={osmRecord.height}
+              position={[cityOffset[0], 0, -cityOffset[1]]}
+            />
           )}
           <MonsoonRain active={weather === 'monsoon'} count={quality === 'high' ? 350 : quality === 'medium' ? 200 : 120} />
           <BuildingAnchor shape={footprintShape} height={building.height_m} onClick={() => { setSelected(null); setSelectedFloorId(null); setSelectedScope('building'); }} />
@@ -517,7 +620,7 @@ export default function Explorer3D() {
               />
             );
           })}
-          <ViewRig preset={viewPreset} interiorTour={interiorTour} buildingId={building.id} cam={cam} cityViews={cityViews} cityVisible={cityVisible} maxDistance={cityVisible && cityMeta ? 2.5 * cityMeta.radiusM : 250} />
+          <ViewRig preset={viewPreset} interiorTour={interiorTour} buildingId={building.id} cam={cam} cityViews={cityViews} cityVisible={cityVisible} maxDistance={cityVisible && cityMeta ? 2.5 * cityMeta.radiusM : 250} focusPose={focusPose} />
         </Canvas>
 
         <div className="absolute top-3 left-3 bottom-28 w-64 flex flex-col gap-2 overflow-y-auto pointer-events-none">
@@ -832,6 +935,63 @@ export default function Explorer3D() {
           </div>
         )}
 
+        {cityVisible && osmRecord && !inspectorVisible && (
+          <div className="absolute bottom-3 left-1/2 -translate-x-1/2 glass rounded-lg w-[400px] max-w-[calc(100%-34rem)] max-h-[48%] flex flex-col">
+            <div className="w-full flex items-center justify-between p-3 shrink-0">
+              <span className="text-[10px] font-semibold text-white uppercase tracking-wider">OSM building (context)</span>
+              <button type="button" onClick={clearOsm} aria-label="Close" className="text-slate-400 hover:text-white text-xs px-1">✕</button>
+            </div>
+            <div className="px-3 pb-3 space-y-1 text-[11px] overflow-y-auto">
+              <div className="flex items-center justify-between gap-2">
+                <span className="text-slate-500">OSM id</span>
+                <span className="text-slate-200 mono">
+                  {osmRecord.id}
+                  {osmRecord.id.startsWith('w') && (
+                    <a
+                      href={`https://www.openstreetmap.org/way/${osmRecord.id.slice(1)}`}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      onClick={(e) => e.stopPropagation()}
+                      className="ml-2 text-emerald-300 hover:underline"
+                    >
+                      Open in OSM
+                    </a>
+                  )}
+                </span>
+              </div>
+              <div className="flex items-center justify-between gap-2">
+                <span className="text-slate-500">Name</span>
+                <span className="text-slate-200">{osmRecord.name || 'Unnamed'}</span>
+              </div>
+              <div className="flex items-center justify-between gap-2">
+                <span className="text-slate-500">Type</span>
+                <span className="text-slate-200">{osmRecord.type || '—'}</span>
+              </div>
+              <div className="flex items-center justify-between gap-2">
+                <span className="text-slate-500">Levels</span>
+                <span className="text-slate-200">{osmRecord.levels ?? '—'}</span>
+              </div>
+              <div className="flex items-center justify-between gap-2">
+                <span className="text-slate-500">Height</span>
+                <span className="text-slate-200">
+                  {osmRecord.height} m ({osmRecord.heightSource === 'osm_height' || osmRecord.heightSource === 'osm_levels' ? 'OSM tag' : 'assumed'})
+                </span>
+              </div>
+              <div className="flex items-center justify-between gap-2">
+                <span className="text-slate-500">Footprint area</span>
+                <span className="text-slate-200">{Number.isFinite(osmRecord.area) ? `${osmRecord.area} m²` : '—'}</span>
+              </div>
+              <div className="flex items-center justify-between gap-2">
+                <span className="text-slate-500">Distance</span>
+                <span className="text-slate-200">
+                  {cityOffset ? `${Math.hypot(cityOffset[0] + osmRecord.cx, -cityOffset[1] + osmRecord.cz).toFixed(0)} m` : '—'}
+                </span>
+              </div>
+              <div className="text-[9px] text-slate-500 pt-1">Context data — not a cadastral record. Heights are assumed unless tagged.</div>
+            </div>
+          </div>
+        )}
+
         <div className="absolute bottom-3 left-3 glass rounded-lg px-3 py-2 flex items-center gap-4">
           <div className="text-center"><div className="text-sm font-bold text-white">{units.length}</div><div className="text-[9px] text-slate-500">Units</div></div>
           <div className="w-px h-6 bg-white/10"></div>
@@ -1013,11 +1173,11 @@ export default function Explorer3D() {
 
 // ─── 3D Components ─────────────────────────────────────────────
 
-type ViewPreset = 'orbit' | 'bird' | 'plan' | 'cutaway' | 'street' | 'city';
+type ViewPreset = 'orbit' | 'bird' | 'plan' | 'cutaway' | 'street' | 'city' | 'focus';
 type CamPose = { pos: [number, number, number]; tgt: [number, number, number] };
 type CamPoses = { home: CamPose; bird: CamPose; plan: CamPose; cutaway: CamPose; street: CamPose; interior: CamPose };
 
-function ViewRig({ preset, interiorTour, buildingId, cam, cityViews, cityVisible, maxDistance }: { preset: ViewPreset; interiorTour: boolean; buildingId: string; cam: CamPoses; cityViews: { city: CamPose; plan: CamPose } | null; cityVisible: boolean; maxDistance: number }) {
+function ViewRig({ preset, interiorTour, buildingId, cam, cityViews, cityVisible, maxDistance, focusPose }: { preset: ViewPreset; interiorTour: boolean; buildingId: string; cam: CamPoses; cityViews: { city: CamPose; plan: CamPose } | null; cityVisible: boolean; maxDistance: number; focusPose: CamPose | null }) {
   const camera = useThree((s) => s.camera);
   const controls = useThree((s) => s.controls) as unknown as { target: THREE.Vector3; update: () => void } | null;
   const invalidate = useThree((s) => s.invalidate);
@@ -1033,9 +1193,10 @@ function ViewRig({ preset, interiorTour, buildingId, cam, cityViews, cityVisible
     else if (preset === 'cutaway') goal.current = cam.cutaway;
     else if (preset === 'street') goal.current = cam.street;
     else if (preset === 'city') goal.current = cityViews?.city ?? cam.home;
+    else if (preset === 'focus') goal.current = focusPose ?? cam.home;
     else goal.current = first ? null : cam.home;
     invalidate();
-  }, [preset, interiorTour, buildingId, cam, cityViews, invalidate]);
+  }, [preset, interiorTour, buildingId, cam, cityViews, focusPose, invalidate]);
 
   useEffect(() => {
     const c = camera as THREE.PerspectiveCamera;
@@ -1126,11 +1287,67 @@ class CityErrorBoundary extends Component<{ children: ReactNode }, { failed: boo
   }
 }
 
-function CityContext({ url, position, cutaway, quality }: {
+interface OsmBuilding {
+  id: string;
+  name: string;
+  type: string;
+  levels: number | null;
+  height: number;
+  heightSource: string;
+  area: number;
+  footprint: [number, number][];
+  minX: number;
+  maxX: number;
+  minZ: number;
+  maxZ: number;
+  cx: number;
+  cz: number;
+}
+
+function pipOsm(x: number, z: number, poly: [number, number][]): boolean {
+  let inside = false;
+  for (let i = 0, j = poly.length - 1; i < poly.length; j = i++) {
+    const xi = poly[i][0], zi = poly[i][1], xj = poly[j][0], zj = poly[j][1];
+    if (((zi > z) !== (zj > z)) && (x < ((xj - xi) * (z - zi)) / (zj - zi) + xi)) inside = !inside;
+  }
+  return inside;
+}
+
+function distPtSeg(x: number, z: number, ax: number, az: number, bx: number, bz: number): number {
+  const dx = bx - ax, dz = bz - az;
+  const len2 = dx * dx + dz * dz;
+  const t = len2 > 0 ? Math.min(1, Math.max(0, ((x - ax) * dx + (z - az) * dz) / len2)) : 0;
+  return Math.hypot(x - (ax + t * dx), z - (az + t * dz));
+}
+
+function pickOsmBuilding(list: OsmBuilding[], x: number, z: number): OsmBuilding | null {
+  for (const b of list) {
+    if (x < b.minX || x > b.maxX || z < b.minZ || z > b.maxZ) continue;
+    if (pipOsm(x, z, b.footprint)) return b;
+  }
+  let best: OsmBuilding | null = null;
+  let bestD = 2;
+  for (const b of list) {
+    if (x < b.minX - 2 || x > b.maxX + 2 || z < b.minZ - 2 || z > b.maxZ + 2) continue;
+    const n = b.footprint.length;
+    for (let i = 0; i < n; i++) {
+      const a = b.footprint[i], c = b.footprint[(i + 1) % n];
+      const d = distPtSeg(x, z, a[0], a[1], c[0], c[1]);
+      if (d < bestD) {
+        bestD = d;
+        best = b;
+      }
+    }
+  }
+  return best;
+}
+
+function CityContext({ url, position, cutaway, quality, onPick }: {
   url: string;
   position: [number, number, number];
   cutaway: boolean;
   quality: 'low' | 'medium' | 'high';
+  onPick: (x: number, z: number) => void;
 }) {
   const { scene } = useGLTF(url);
   const cloned = useMemo(() => {
@@ -1166,7 +1383,61 @@ function CityContext({ url, position, cutaway, quality }: {
       else m?.dispose();
     });
   }, [cloned]);
-  return <primitive object={cloned} position={position} />;
+  return (
+    <primitive
+      object={cloned}
+      position={position}
+      onClick={(e) => {
+        const mesh = e.object as THREE.Mesh;
+        if (!((mesh?.name || '').toLowerCase().startsWith('buildings'))) return;
+        e.stopPropagation();
+        const p = e.point.clone().sub(new THREE.Vector3(position[0], position[1], position[2]));
+        onPick(p.x, p.z);
+      }}
+      onPointerOver={(e) => {
+        const mesh = e.object as THREE.Mesh;
+        if (!((mesh?.name || '').toLowerCase().startsWith('buildings'))) return;
+        e.stopPropagation();
+        document.body.style.cursor = 'pointer';
+      }}
+      onPointerOut={() => {
+        document.body.style.cursor = 'default';
+      }}
+    />
+  );
+}
+
+function OsmHighlight({ footprint, height, position }: {
+  footprint: [number, number][];
+  height: number;
+  position: [number, number, number];
+}) {
+  const geom = useMemo(() => {
+    const shape = new THREE.Shape();
+    footprint.forEach(([x, z], i) => {
+      if (i === 0) shape.moveTo(x, -z);
+      else shape.lineTo(x, -z);
+    });
+    shape.closePath();
+    return new THREE.ExtrudeGeometry(shape, { depth: Math.max(height, 0.1), bevelEnabled: false, steps: 1 });
+  }, [footprint, height]);
+  useEffect(() => () => {
+    geom.dispose();
+  }, [geom]);
+  const edges = useMemo(() => new THREE.EdgesGeometry(geom), [geom]);
+  useEffect(() => () => {
+    edges.dispose();
+  }, [edges]);
+  return (
+    <mesh position={position} rotation={[-Math.PI / 2, 0, 0]}>
+      <primitive object={geom} attach="geometry" />
+      <meshStandardMaterial color="#22d3ee" transparent opacity={0.5} side={THREE.DoubleSide} />
+      <lineSegments>
+        <primitive object={edges} attach="geometry" />
+        <lineBasicMaterial color="#a5f3fc" transparent opacity={0.9} />
+      </lineSegments>
+    </mesh>
+  );
 }
 
 function Ground({ seeThrough, size = 200 }: { seeThrough?: boolean; size?: number }) {
