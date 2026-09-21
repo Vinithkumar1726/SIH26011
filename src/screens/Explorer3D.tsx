@@ -5,7 +5,7 @@ import { AdaptiveDpr, OrbitControls, useGLTF } from '@react-three/drei';
 import * as THREE from 'three';
 import type { Building, Floor, Unit } from '../workspace3d/types';
 import { building as demoBuilding, floors as demoFloors, footprintToLocal, parcel as demoParcel, spatialIDs as demoSpatialIDs, units as demoUnits } from '../workspace3d/data';
-import { loadLiveHierarchy, type BuildingSummary, type LiveHierarchy } from '../workspace3d/api';
+import { loadLiveHierarchy, fetchCityBuildings, type BuildingSummary, type CityBuilding, type LiveHierarchy } from '../workspace3d/api';
 import { generatePolyhedralSolid, type Solid3D, validateTopology } from '../workspace3d/geo';
 
 function ringOrigin(ring: number[][]): [number, number] {
@@ -149,6 +149,8 @@ export default function Explorer3D() {
   const [liveData, setLiveData] = useState<LiveHierarchy | null>(null);
   const [source, setSource] = useState<'loading' | 'live' | 'demo'>('loading');
   const [summaries, setSummaries] = useState<BuildingSummary[]>([]);
+  const [cityBuildings, setCityBuildings] = useState<CityBuilding[]>([]);
+  const [hoverBlock, setHoverBlock] = useState<string | null>(null);
   const [showCity, setShowCity] = useState(true);
   const [cityMeta, setCityMeta] = useState<{ origin: { lon: number; lat: number }; radiusM: number } | null>(null);
   const data = liveData ?? { parcel: demoParcel, building: demoBuilding, floors: demoFloors, units: demoUnits, spatialIDs: demoSpatialIDs };
@@ -189,8 +191,10 @@ export default function Explorer3D() {
     setZMax(36 * (bldg.height_m > 0 ? bldg.height_m / DEMO_HEIGHT_M : 1));
   };
 
-  const switchBuilding = (id: string) => {
+  const skipCityOnce = useRef(false);
+  const switchBuilding = (id: string, preset?: ViewPreset) => {
     if (id === building.id || source !== 'live') return;
+    if (preset === 'bird') skipCityOnce.current = true;
     setSource('loading');
     loadLiveHierarchy(id)
       .then((d) => {
@@ -198,6 +202,7 @@ export default function Explorer3D() {
         setSummaries(d.summaries);
         setSource('live');
         resetForBuilding(d.building);
+        if (preset) setViewPreset(preset);
       })
       .catch(() => {
         setSource('live');
@@ -221,6 +226,37 @@ export default function Explorer3D() {
       cancelled = true;
     };
   }, []);
+
+  useEffect(() => {
+    let cancelled = false;
+    fetchCityBuildings()
+      .then((list) => {
+        if (!cancelled) setCityBuildings(list);
+      })
+      .catch(() => {
+        /* neighbour layer stays empty */
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, []);
+
+  const neighbours = useMemo(() => {
+    if (source !== 'live') return [];
+    return cityBuildings
+      .filter((b) => b.id !== building.id)
+      .map((b) => {
+        const o = ringOrigin(b.footprint);
+        const off = footprintToLocal([[o[0], o[1]]], origin[0], origin[1])[0];
+        const pts = footprintToLocal(b.footprint, origin[0], origin[1]);
+        let a = 0;
+        for (let i = 0; i < pts.length - 1; i++) a += pts[i][0] * pts[i + 1][1] - pts[i + 1][0] * pts[i][1];
+        return { ...b, ox: off[0], oy: off[1], dist: Math.hypot(off[0], off[1]), area: Math.abs(a / 2) };
+      })
+      .filter((n) => n.dist <= 1500)
+      .sort((x, y) => x.dist - y.dist)
+      .slice(0, 40);
+  }, [source, cityBuildings, building, origin]);
 
   useEffect(() => {
     let cancelled = false;
@@ -270,6 +306,10 @@ export default function Explorer3D() {
   useEffect(() => {
     const was = prevCityFlight.current;
     prevCityFlight.current = { b: building.id, v: cityVisible };
+    if (skipCityOnce.current) {
+      skipCityOnce.current = false;
+      return;
+    }
     if (cityVisible && (was.b !== building.id || !was.v)) {
       setViewPreset('city');
       setInteriorTour(false);
@@ -420,6 +460,15 @@ export default function Explorer3D() {
           )}
           <MonsoonRain active={weather === 'monsoon'} count={quality === 'high' ? 350 : quality === 'medium' ? 200 : 120} />
           <BuildingAnchor shape={footprintShape} height={building.height_m} onClick={() => { setSelected(null); setSelectedFloorId(null); setSelectedScope('building'); }} />
+          {source === 'live' && neighbours.map((nb) => (
+            <NeighbourBlock
+              key={nb.id}
+              nb={nb}
+              origin={origin}
+              onSelect={(id) => switchBuilding(id, 'bird')}
+              onHover={(name) => setHoverBlock(name)}
+            />
+          ))}
           {showFloors && floors.map((fl, fi) => (
             <FloorSlab key={fl.id} floor={fl} index={fi} shape={footprintShape} visible={(selectedFloorId === null || selectedFloorId === fl.id)} exploded={exploded} zMax={zMax} highlighted={!reportFilterActive || matchingFloorIds.has(fl.id)} onClick={() => { setSelected(null); setSelectedFloorId(fl.id); setSelectedScope('floor'); }} />
           ))}
@@ -797,6 +846,12 @@ export default function Explorer3D() {
           )}
         </div>
 
+        {hoverBlock && (
+          <div className="absolute top-12 left-1/2 -translate-x-1/2 glass rounded px-2 py-1">
+            <span className="text-[10px] text-slate-200">{hoverBlock} · simplified footprint</span>
+          </div>
+        )}
+
         {conflicts.size > 0 && (
           <div className="absolute top-20 left-1/2 -translate-x-1/2 glass rounded-lg px-4 py-3 border border-danger/30 max-w-lg">
             <div className="flex items-start gap-2">
@@ -1114,6 +1169,50 @@ function ParcelOutline({ footprint, origin }: { footprint?: number[][]; origin: 
     (lineObj.material as THREE.Material).dispose();
   }, [lineObj]);
   return <primitive object={lineObj} />;
+}
+
+function NeighbourBlock({ nb, origin, onSelect, onHover }: {
+  nb: { id: string; name: string; height_m: number; footprint: number[][] };
+  origin: [number, number];
+  onSelect: (id: string) => void;
+  onHover: (name: string | null) => void;
+}) {
+  const [hovered, setHovered] = useState(false);
+  const geom = useMemo(() => {
+    const pts = footprintToLocal(nb.footprint, origin[0], origin[1]);
+    const closedDup = pts.length > 1 && pts[0][0] === pts[pts.length - 1][0] && pts[0][1] === pts[pts.length - 1][1];
+    const ring = closedDup ? pts.slice(0, -1) : pts;
+    const shape = new THREE.Shape();
+    ring.forEach(([x, y], i) => {
+      if (i === 0) shape.moveTo(x, y);
+      else shape.lineTo(x, y);
+    });
+    shape.closePath();
+    return new THREE.ExtrudeGeometry(shape, { depth: Math.max(nb.height_m, 0.1), bevelEnabled: false, steps: 1 });
+  }, [nb, origin]);
+  useEffect(() => () => {
+    geom.dispose();
+  }, [geom]);
+  const edges = useMemo(() => new THREE.EdgesGeometry(geom), [geom]);
+  useEffect(() => () => {
+    edges.dispose();
+  }, [edges]);
+  return (
+    <mesh
+      position={[0, 0.02, 0]}
+      rotation={[-Math.PI / 2, 0, 0]}
+      onClick={(e) => { e.stopPropagation(); onSelect(nb.id); }}
+      onPointerOver={(e) => { e.stopPropagation(); setHovered(true); onHover(nb.name); document.body.style.cursor = 'pointer'; }}
+      onPointerOut={() => { setHovered(false); onHover(null); document.body.style.cursor = 'default'; }}
+    >
+      <primitive object={geom} attach="geometry" />
+      <meshStandardMaterial color="#94a3b8" transparent opacity={hovered ? 0.8 : 0.55} side={THREE.DoubleSide} />
+      <lineSegments>
+        <primitive object={edges} attach="geometry" />
+        <lineBasicMaterial color={hovered ? '#ffffff' : '#cbd5e1'} transparent opacity={0.6} />
+      </lineSegments>
+    </mesh>
+  );
 }
 
 function BuildingAnchor({ shape, height, onClick }: { shape: THREE.Shape; height: number; onClick: () => void }) {

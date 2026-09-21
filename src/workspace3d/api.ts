@@ -74,6 +74,33 @@ function mapUnitType(t: unknown): Unit['type'] {
   }
 }
 
+export async function fetchCityBuildings(): Promise<CityBuilding[]> {
+  const r = await api.getBuildings();
+  if (!r.success || !Array.isArray(r.data)) throw new Error('live buildings unavailable');
+  const out: CityBuilding[] = [];
+  for (const raw of r.data as Record<string, unknown>[]) {
+    try {
+      const h = raw.height_m;
+      out.push({
+        id: reqStr(raw.id, 'building.id'),
+        name: typeof raw.name === 'string' && raw.name.length > 0 ? raw.name : reqStr(raw.id, 'building.id'),
+        height_m: typeof h === 'number' && Number.isFinite(h) && h > 0 ? h : 10,
+        footprint: ringOf(raw.footprint, 'building.footprint'),
+      });
+    } catch {
+      /* skip a malformed neighbour entry rather than dropping the whole layer */
+    }
+  }
+  return out;
+}
+
+export interface CityBuilding {
+  id: string;
+  name: string;
+  height_m: number;
+  footprint: number[][];
+}
+
 export async function fetchBuildingSummaries(): Promise<BuildingSummary[]> {
   const [bRes, fRes, uRes] = await Promise.all([api.getBuildings(), api.getFloors(), api.getUnits()]);
   if (!bRes.success || !Array.isArray(bRes.data)) throw new Error('live buildings unavailable');
