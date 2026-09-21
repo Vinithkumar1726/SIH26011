@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { Canvas, useFrame, useThree } from '@react-three/fiber';
-import { OrbitControls } from '@react-three/drei';
+import { AdaptiveDpr, OrbitControls } from '@react-three/drei';
 import * as THREE from 'three';
 import type { Unit } from '../workspace3d/types';
 import { building, floors, footprintToLocal, parcel, spatialIDs, units } from '../workspace3d/data';
@@ -91,6 +91,7 @@ export default function Explorer3D() {
   const [showFloors, setShowFloors] = useState(true);
   const [showUnits, setShowUnits] = useState(true);
   const [envOpen, setEnvOpen] = useState(true);
+  const [quality, setQuality] = useState<'low' | 'medium' | 'high'>('low');
   const [interiorTour, setInteriorTour] = useState(false);
   const [reportSearch, setReportSearch] = useState('');
   const [ownershipFilter, setOwnershipFilter] = useState('ALL');
@@ -190,20 +191,23 @@ export default function Explorer3D() {
       <div className="flex-1 relative bg-void">
         <Canvas
           camera={{ position: [70, 60, 70], fov: 50 }}
-          shadows
-          gl={{ antialias: true, alpha: false }}
+          frameloop={weather === 'monsoon' ? 'always' : 'demand'}
+          dpr={quality === 'low' ? 1 : quality === 'medium' ? [1, 1.5] : [1, 2]}
+          shadows={quality !== 'low'}
+          gl={{ antialias: true, alpha: false, powerPreference: quality === 'low' ? 'low-power' : 'default' }}
           style={{ background: sky.bg }}
         >
+          {quality !== 'high' && <AdaptiveDpr pixelated />}
           <color attach="background" args={[sky.bg]} />
           <fog attach="fog" args={[sky.bg, sky.fogNear, sky.fogFar]} />
           <ambientLight intensity={sky.ambient} />
-          <directionalLight position={[50, 80, 30]} intensity={sky.sun} color={sky.sunColor} castShadow shadow-mapSize={[2048, 2048]} />
+          <directionalLight position={[50, 80, 30]} intensity={sky.sun} color={sky.sunColor} castShadow={quality !== 'low'} shadow-mapSize={quality === 'high' ? [2048, 2048] : [1024, 1024]} />
           <directionalLight position={[-30, 40, -20]} intensity={sky.ambient} color={sky.sunColor} />
           <hemisphereLight args={[sky.hemiSky, sky.hemiGround, sky.ambient]} />
           <Ground seeThrough={viewPreset === 'cutaway'} />
           {showGrid && <GridFloor />}
           {showParcel && <ParcelOutline />}
-          <MonsoonRain active={weather === 'monsoon'} />
+          <MonsoonRain active={weather === 'monsoon'} count={quality === 'high' ? 350 : quality === 'medium' ? 200 : 120} />
           <BuildingAnchor onClick={() => { setSelected(null); setSelectedFloorId(null); setSelectedScope('building'); }} />
           {showFloors && floors.map((fl, fi) => (
             <FloorSlab key={fl.id} floor={fl} index={fi} visible={(selectedFloorId === null || selectedFloorId === fl.id)} exploded={exploded} zMax={zMax} highlighted={!reportFilterActive || matchingFloorIds.has(fl.id)} onClick={() => { setSelected(null); setSelectedFloorId(fl.id); setSelectedScope('floor'); }} />
@@ -347,6 +351,21 @@ export default function Explorer3D() {
                       <input type="checkbox" checked={val} onChange={(e) => setVal(e.target.checked)} />
                       {label}
                     </label>
+                  ))}
+                </div>
+              </div>
+              <div>
+                <div className="text-[10px] text-slate-500 mb-1">GRAPHICS QUALITY</div>
+                <div className="grid grid-cols-3 gap-1">
+                  {(['low', 'medium', 'high'] as const).map((q) => (
+                    <button
+                      type="button"
+                      key={q}
+                      onClick={() => setQuality(q)}
+                      className={`text-[10px] py-1 rounded uppercase tracking-wider ${quality === q ? 'bg-emerald-500/20 text-emerald-300 border border-emerald-400/40' : 'bg-white/5 text-slate-400 border border-transparent hover:text-white'}`}
+                    >
+                      {q}
+                    </button>
                   ))}
                 </div>
               </div>
@@ -557,6 +576,7 @@ export default function Explorer3D() {
 function ViewRig({ preset, interiorTour }: { preset: 'orbit' | 'bird' | 'plan' | 'cutaway' | 'street'; interiorTour: boolean }) {
   const camera = useThree((s) => s.camera);
   const controls = useThree((s) => s.controls) as unknown as { target: THREE.Vector3; update: () => void } | null;
+  const invalidate = useThree((s) => s.invalidate);
   const goal = useRef<{ pos: [number, number, number]; tgt: [number, number, number] } | null>(null);
   const mounted = useRef(false);
 
@@ -569,11 +589,13 @@ function ViewRig({ preset, interiorTour }: { preset: 'orbit' | 'bird' | 'plan' |
     else if (preset === 'cutaway') goal.current = { pos: [58, 16, 58], tgt: [0, -1, 0] };
     else if (preset === 'street') goal.current = { pos: [20, 1.7, 30], tgt: [0, 5, 0] };
     else goal.current = first ? null : { pos: [70, 60, 70], tgt: [0, 3, 0] };
-  }, [preset, interiorTour]);
+    invalidate();
+  }, [preset, interiorTour, invalidate]);
 
   useFrame((_, dt) => {
     const g = goal.current;
     if (!g) return;
+    invalidate();
     const k = 1 - Math.exp(-Math.min(dt, 0.1) * 3);
     camera.position.lerp(new THREE.Vector3(g.pos[0], g.pos[1], g.pos[2]), k);
     if (controls) {
@@ -587,6 +609,7 @@ function ViewRig({ preset, interiorTour }: { preset: 'orbit' | 'bird' | 'plan' |
     <OrbitControls
       makeDefault
       enableDamping
+      regress
       dampingFactor={0.05}
       enableZoom
       minDistance={preset === 'street' || interiorTour ? 1 : 15}
@@ -597,15 +620,15 @@ function ViewRig({ preset, interiorTour }: { preset: 'orbit' | 'bird' | 'plan' |
   );
 }
 
-function MonsoonRain({ active }: { active: boolean }) {
+function MonsoonRain({ active, count = 350 }: { active: boolean; count?: number }) {
   const ref = useRef<THREE.InstancedMesh>(null);
   const drops = useMemo(() => {
     const arr: Array<{ x: number; y: number; z: number; speed: number }> = [];
-    for (let i = 0; i < 350; i++) {
+    for (let i = 0; i < count; i++) {
       arr.push({ x: (Math.random() - 0.5) * 130, y: Math.random() * 60, z: (Math.random() - 0.5) * 130, speed: 22 + Math.random() * 14 });
     }
     return arr;
-  }, []);
+  }, [count]);
   const dummy = useMemo(() => new THREE.Object3D(), []);
   useFrame((_, dt) => {
     const mesh = ref.current;
@@ -627,7 +650,7 @@ function MonsoonRain({ active }: { active: boolean }) {
   });
   if (!active) return null;
   return (
-    <instancedMesh ref={ref} args={[undefined, undefined, 350] as unknown as [undefined, undefined, number]} frustumCulled={false}>
+    <instancedMesh key={count} ref={ref} args={[undefined, undefined, count] as unknown as [undefined, undefined, number]} frustumCulled={false}>
       <boxGeometry args={[0.07, 1.3, 0.07]} />
       <meshBasicMaterial color="#7dd3fc" transparent opacity={0.45} />
     </instancedMesh>
