@@ -5,6 +5,7 @@ import { AdaptiveDpr, OrbitControls, useGLTF } from '@react-three/drei';
 import * as THREE from 'three';
 import type { Building, Floor, Unit } from '../workspace3d/types';
 import { building as demoBuilding, floors as demoFloors, footprintToLocal, parcel as demoParcel, spatialIDs as demoSpatialIDs, units as demoUnits } from '../workspace3d/data';
+import CollapsePanel from '../components/CollapsePanel';
 import { loadLiveHierarchy, fetchCityBuildings, type BuildingSummary, type CityBuilding, type LiveHierarchy } from '../workspace3d/api';
 import { generatePolyhedralSolid, type Solid3D, validateTopology } from '../workspace3d/geo';
 
@@ -139,7 +140,32 @@ export default function Explorer3D() {
   const [showParcel, setShowParcel] = useState(true);
   const [showFloors, setShowFloors] = useState(true);
   const [showUnits, setShowUnits] = useState(true);
-  const [envOpen, setEnvOpen] = useState(true);
+  const [openPanels, setOpenPanels] = useState({ view: true, env: false, floor: false, val: false });
+  const [conflictOpen, setConflictOpen] = useState(false);
+  const [narrow, setNarrow] = useState(false);
+  const canvasRef = useRef<HTMLDivElement>(null);
+  const narrowInit = useRef(false);
+  const togglePanel = (k: 'view' | 'env' | 'floor' | 'val') =>
+    setOpenPanels((p) => ({ ...p, [k]: !p[k] }));
+  useEffect(() => {
+    const el = canvasRef.current;
+    if (!el) return;
+    const apply = (w: number) => {
+      const isNarrow = w < 900;
+      setNarrow(isNarrow);
+      if (!narrowInit.current) {
+        narrowInit.current = true;
+        if (isNarrow) setOpenPanels({ view: false, env: false, floor: false, val: false });
+      }
+    };
+    apply(el.clientWidth);
+    const ro = new ResizeObserver((entries) => {
+      const w = entries[0]?.contentRect.width;
+      if (typeof w === 'number') apply(w);
+    });
+    ro.observe(el);
+    return () => ro.disconnect();
+  }, []);
   const [quality, setQuality] = useState<'low' | 'medium' | 'high'>('low');
   const [inspOpen, setInspOpen] = useState(true);
   const [interiorTour, setInteriorTour] = useState(false);
@@ -194,6 +220,8 @@ export default function Explorer3D() {
   const skipCityOnce = useRef(false);
   const switchBuilding = (id: string, preset?: ViewPreset) => {
     if (id === building.id || source !== 'live') return;
+    setHoverBlock(null);
+    document.body.style.cursor = '';
     if (preset === 'bird') skipCityOnce.current = true;
     setSource('loading');
     loadLiveHierarchy(id)
@@ -427,7 +455,7 @@ export default function Explorer3D() {
 
   return (
     <div className="h-full flex">
-      <div className="flex-1 relative bg-void">
+      <div ref={canvasRef} className="flex-1 relative bg-void">
         <Canvas
           camera={{ position: [70, 60, 70], fov: 50 }}
           frameloop={weather === 'monsoon' ? 'always' : 'demand'}
@@ -492,8 +520,8 @@ export default function Explorer3D() {
           <ViewRig preset={viewPreset} interiorTour={interiorTour} buildingId={building.id} cam={cam} cityViews={cityViews} cityVisible={cityVisible} maxDistance={cityVisible && cityMeta ? 2.5 * cityMeta.radiusM : 250} />
         </Canvas>
 
-        <div className="absolute top-3 left-3 glass rounded-lg p-3 w-56">
-          <h4 className="text-[10px] font-semibold text-white uppercase tracking-wider mb-2">View Controls</h4>
+        <div className="absolute top-3 left-3 bottom-28 w-64 flex flex-col gap-2 overflow-y-auto pointer-events-none">
+          <CollapsePanel title="View Controls" open={openPanels.view} onToggle={() => togglePanel('view')}>
           {source === 'live' && (
             <div className="mb-2">
               <div className="text-[10px] text-slate-500 mb-1">BUILDING</div>
@@ -540,19 +568,9 @@ export default function Explorer3D() {
             Interior Tour · zoom in
           </label>
           <div className="text-[9px] text-slate-500 mt-1">{interiorTour ? 'Close camera enabled — scroll to enter the floor layout.' : 'Enable to unlock close interior navigation.'}</div>
-        </div>
-
-        <div className="absolute top-3 left-[236px] w-60 glass rounded-lg">
-          <button
-            type="button"
-            onClick={() => setEnvOpen((v) => !v)}
-            className="w-full flex items-center justify-between p-3 text-left"
-          >
-            <span className="text-[10px] font-semibold text-white uppercase tracking-wider">Environment & View</span>
-            <span className="text-slate-400 text-xs">{envOpen ? '▾' : '▸'}</span>
-          </button>
-          {envOpen && (
-            <div className="px-3 pb-3 space-y-3">
+          </CollapsePanel>
+          <CollapsePanel title="Environment & View" open={openPanels.env} onToggle={() => togglePanel('env')}>
+            <div className="space-y-3">
               <div>
                 <div className="flex items-center justify-between mb-1">
                   <span className="text-[10px] text-slate-500">TIME OF DAY</span>
@@ -648,16 +666,20 @@ export default function Explorer3D() {
                 </div>
               </div>
             </div>
-          )}
+          </CollapsePanel>
         </div>
 
-        <div className="absolute top-3 right-3 glass rounded-lg p-3 w-56">
-          <div className="flex items-center justify-between mb-2">
-            <h4 className="text-[10px] font-semibold text-white uppercase tracking-wider">Floor Isolation</h4>
-            <span className="text-[9px] text-emerald-300 mono">
-              {selectedFloorId ? floors.find((fl) => fl.id === selectedFloorId)?.code : 'ALL'}
-            </span>
-          </div>
+        <div className="absolute top-3 right-3 bottom-28 w-56 flex flex-col gap-2 overflow-y-auto pointer-events-none">
+          <CollapsePanel
+            title="Floor Isolation"
+            open={openPanels.floor}
+            onToggle={() => togglePanel('floor')}
+            extra={(
+              <span className="text-[9px] text-emerald-300 mono">
+                {selectedFloorId ? floors.find((fl) => fl.id === selectedFloorId)?.code : 'ALL'}
+              </span>
+            )}
+          >
           <div className="space-y-1 max-h-52 overflow-y-auto">
             <button
               type="button"
@@ -685,13 +707,15 @@ export default function Explorer3D() {
               </button>
             ))}
           </div>
-        </div>
-
-        <div className="absolute top-[270px] right-3 glass rounded-lg p-3 w-56">
-          <div className="flex items-center justify-between mb-2">
-            <h4 className="text-[10px] font-semibold text-white uppercase tracking-wider">Valuation Filters</h4>
-            {reportFilterActive && <span className="text-[9px] text-amber-300 mono">{matchingFloorIds.size}/{floors.length}</span>}
-          </div>
+          </CollapsePanel>
+          <CollapsePanel
+            title="Valuation Filters"
+            open={openPanels.val}
+            onToggle={() => togglePanel('val')}
+            extra={reportFilterActive && (
+              <span className="text-[9px] text-amber-300 mono">{matchingFloorIds.size}/{floors.length}</span>
+            )}
+          >
           <input value={reportSearch} onChange={(e) => setReportSearch(e.target.value)} placeholder="Search floor or owner…" className="w-full bg-deep text-[10px] text-slate-200 rounded-md px-2 py-1.5 border border-line outline-none focus:border-emerald-500/30 mb-2" />
           <select value={ownershipFilter} onChange={(e) => setOwnershipFilter(e.target.value)} className="w-full bg-deep text-[10px] text-slate-300 rounded-md px-2 py-1.5 border border-line outline-none mb-2">
             {ownershipOptions.map((option) => <option key={option} value={option}>{option === 'ALL' ? 'All ownership types' : option}</option>)}
@@ -703,10 +727,11 @@ export default function Explorer3D() {
             <button type="button" onClick={() => printPdfReport(building, floors)} className="text-[9px] py-1.5 rounded bg-white/5 text-slate-300 border border-white/10 hover:bg-white/10">PDF / PRINT</button>
           </div>
           {reportFilterActive && matchingFloorIds.size === 0 && <div className="text-[9px] text-danger mt-2">No floors match this filter.</div>}
+          </CollapsePanel>
         </div>
 
         {inspectorVisible && (
-          <div className="absolute bottom-3 left-1/2 -translate-x-1/2 glass rounded-lg w-[400px] max-w-[44%] max-h-[48%] flex flex-col">
+          <div className={`absolute bottom-3 left-1/2 -translate-x-1/2 glass rounded-lg w-[400px] ${narrow ? 'max-w-full' : 'max-w-[calc(100%-34rem)]'} max-h-[48%] flex flex-col`}>
             <button
               type="button"
               onClick={() => setInspOpen((v) => !v)}
@@ -836,35 +861,48 @@ export default function Explorer3D() {
           </div>
         </div>
 
-        <div className="absolute top-3 left-1/2 -translate-x-1/2 glass rounded-full px-3 py-1">
-          {source === 'live' ? (
-            <span className="text-[10px] text-emerald-300">● Live backend</span>
-          ) : source === 'loading' ? (
-            <span className="text-[10px] text-slate-400">Loading…</span>
-          ) : (
-            <span className="text-[10px] text-amber-300">● Demo data</span>
-          )}
-        </div>
-
-        {hoverBlock && (
-          <div className="absolute top-12 left-1/2 -translate-x-1/2 glass rounded px-2 py-1">
-            <span className="text-[10px] text-slate-200">{hoverBlock} · simplified footprint</span>
+        <div className="absolute top-3 left-1/2 -translate-x-1/2 flex flex-col items-center gap-1 max-w-[calc(100%-34rem)] pointer-events-none">
+          <div className="flex items-center gap-2 pointer-events-auto">
+            <div className="glass rounded-full px-3 py-1">
+              {source === 'live' ? (
+                <span className="text-[10px] text-emerald-300">● Live backend</span>
+              ) : source === 'loading' ? (
+                <span className="text-[10px] text-slate-400">Loading…</span>
+              ) : (
+                <span className="text-[10px] text-amber-300">● Demo data</span>
+              )}
+            </div>
+            {conflicts.size > 0 && (
+              <button
+                type="button"
+                onClick={() => setConflictOpen((v) => !v)}
+                aria-expanded={conflictOpen}
+                className="glass rounded-full px-3 py-1 flex items-center gap-1.5"
+              >
+                <i className="fas fa-triangle-exclamation text-danger text-[10px]"></i>
+                <span className="text-[10px] text-danger">{conflicts.size} overlaps</span>
+              </button>
+            )}
           </div>
-        )}
-
-        {conflicts.size > 0 && (
-          <div className="absolute top-20 left-1/2 -translate-x-1/2 glass rounded-lg px-4 py-3 border border-danger/30 max-w-lg">
-            <div className="flex items-start gap-2">
-              <i className="fas fa-triangle-exclamation text-danger text-xs mt-0.5"></i>
-              <div className="flex-1">
-                <div className="text-xs text-danger font-medium mb-1">Volumetric Overlap Detected</div>
-                <div className="text-[11px] text-text-secondary">
-                  The system detects duplicate or overlapping volumetric spatial claims using computational 3D topology validation.
+          {hoverBlock && (
+            <div className="glass rounded px-2 py-1 pointer-events-none">
+              <span className="text-[10px] text-slate-200">{hoverBlock} · simplified footprint</span>
+            </div>
+          )}
+          {conflicts.size > 0 && conflictOpen && (
+            <div className="glass rounded-lg px-4 py-3 border border-danger/30 max-w-lg pointer-events-auto">
+              <div className="flex items-start gap-2">
+                <i className="fas fa-triangle-exclamation text-danger text-xs mt-0.5"></i>
+                <div className="flex-1">
+                  <div className="text-xs text-danger font-medium mb-1">Volumetric Overlap Detected</div>
+                  <div className="text-[11px] text-text-secondary">
+                    The system detects duplicate or overlapping volumetric spatial claims using computational 3D topology validation.
+                  </div>
                 </div>
               </div>
             </div>
-          </div>
-        )}
+          )}
+        </div>
       </div>
 
       <div className="w-80 flex-shrink-0 bg-abyss border-l border-line flex flex-col">
