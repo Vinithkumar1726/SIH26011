@@ -134,7 +134,7 @@ export default function Explorer3D() {
   const [hourOfDay, setHourOfDay] = useState(12);
   const [liveSync, setLiveSync] = useState(false);
   const [weather, setWeather] = useState<'clear' | 'clouds' | 'monsoon'>('clear');
-  const [viewPreset, setViewPreset] = useState<'orbit' | 'bird' | 'plan' | 'cutaway' | 'street'>('orbit');
+  const [viewPreset, setViewPreset] = useState<ViewPreset>('orbit');
   const [showGrid, setShowGrid] = useState(true);
   const [showParcel, setShowParcel] = useState(true);
   const [showFloors, setShowFloors] = useState(true);
@@ -256,6 +256,25 @@ export default function Explorer3D() {
     && cityAvailable
     && cityOffset !== null
     && Math.hypot(cityOffset[0], cityOffset[1]) <= (cityMeta?.radiusM ?? 0);
+  const cityViews = useMemo(() => {
+    if (!cityVisible || !cityOffset || !cityMeta) return null;
+    const R = cityMeta.radiusM;
+    const C: [number, number, number] = [cityOffset[0], 0, -cityOffset[1]];
+    return {
+      city: { pos: [C[0] + 0.9 * R, 0.75 * R, C[2] + 0.9 * R] as [number, number, number], tgt: C },
+      plan: { pos: [C[0], 1.6 * R, C[2]] as [number, number, number], tgt: C },
+    };
+  }, [cityVisible, cityOffset, cityMeta]);
+
+  const prevCityFlight = useRef<{ b: string; v: boolean }>({ b: '', v: false });
+  useEffect(() => {
+    const was = prevCityFlight.current;
+    prevCityFlight.current = { b: building.id, v: cityVisible };
+    if (cityVisible && (was.b !== building.id || !was.v)) {
+      setViewPreset('city');
+      setInteriorTour(false);
+    }
+  }, [building.id, cityVisible]);
 
   useEffect(() => {
     if (!liveSync) return;
@@ -379,12 +398,12 @@ export default function Explorer3D() {
         >
           {quality !== 'high' && <AdaptiveDpr pixelated />}
           <color attach="background" args={[sky.bg]} />
-          <fog attach="fog" args={[sky.bg, sky.fogNear * (cityVisible ? 3 : 1), sky.fogFar * (cityVisible ? 3 : 1)]} />
+          <fog attach="fog" args={[sky.bg, cityVisible && cityMeta ? Math.max(sky.fogNear, 1.5 * cityMeta.radiusM) : sky.fogNear, cityVisible && cityMeta ? Math.max(sky.fogFar, 4 * cityMeta.radiusM) : sky.fogFar]} />
           <ambientLight intensity={sky.ambient} />
           <directionalLight position={[50, 80, 30]} intensity={sky.sun} color={sky.sunColor} castShadow={quality !== 'low'} shadow-mapSize={quality === 'high' ? [2048, 2048] : [1024, 1024]} />
           <directionalLight position={[-30, 40, -20]} intensity={sky.ambient} color={sky.sunColor} />
           <hemisphereLight args={[sky.hemiSky, sky.hemiGround, sky.ambient]} />
-          <Ground seeThrough={viewPreset === 'cutaway'} size={200 * fh} />
+          <Ground seeThrough={viewPreset === 'cutaway'} size={cityVisible && cityMeta ? 3 * cityMeta.radiusM : 200 * fh} />
           {showGrid && !cityVisible && <GridFloor size={200 * fh} />}
           {showParcel && (parcel.footprint || source === 'demo') && <ParcelOutline footprint={parcel.footprint} origin={origin} />}
           {cityVisible && cityOffset && (
@@ -421,7 +440,7 @@ export default function Explorer3D() {
               />
             );
           })}
-          <ViewRig preset={viewPreset} interiorTour={interiorTour} buildingId={building.id} cam={cam} farView={cityVisible} />
+          <ViewRig preset={viewPreset} interiorTour={interiorTour} buildingId={building.id} cam={cam} cityViews={cityViews} cityVisible={cityVisible} maxDistance={cityVisible && cityMeta ? 2.5 * cityMeta.radiusM : 250} />
         </Canvas>
 
         <div className="absolute top-3 left-3 glass rounded-lg p-3 w-56">
@@ -524,13 +543,9 @@ export default function Explorer3D() {
               <div>
                 <div className="text-[10px] text-slate-500 mb-1">CAMERA VIEWS</div>
                 <div className="grid grid-cols-1 gap-1">
-                  {([
-                    ['orbit', 'Free Orbit'],
-                    ['bird', "Bird's Eye"],
-                    ['plan', 'Cadastral Plan'],
-                    ['cutaway', 'Underground Cutaway'],
-                    ['street', 'Street Walk · 1.7m'],
-                  ] as const).map(([v, label]) => (
+                  {((cityVisible
+                    ? [['city', 'City Overview'], ['orbit', 'Free Orbit'], ['bird', "Bird's Eye"], ['plan', 'Cadastral Plan'], ['cutaway', 'Underground Cutaway'], ['street', 'Street Walk · 1.7m']]
+                    : [['orbit', 'Free Orbit'], ['bird', "Bird's Eye"], ['plan', 'Cadastral Plan'], ['cutaway', 'Underground Cutaway'], ['street', 'Street Walk · 1.7m']]) as [ViewPreset, string][]).map(([v, label]) => (
                     <div key={v}>
                       <button
                         type="button"
@@ -905,10 +920,11 @@ export default function Explorer3D() {
 
 // ─── 3D Components ─────────────────────────────────────────────
 
+type ViewPreset = 'orbit' | 'bird' | 'plan' | 'cutaway' | 'street' | 'city';
 type CamPose = { pos: [number, number, number]; tgt: [number, number, number] };
 type CamPoses = { home: CamPose; bird: CamPose; plan: CamPose; cutaway: CamPose; street: CamPose; interior: CamPose };
 
-function ViewRig({ preset, interiorTour, buildingId, cam, farView }: { preset: 'orbit' | 'bird' | 'plan' | 'cutaway' | 'street'; interiorTour: boolean; buildingId: string; cam: CamPoses; farView: boolean }) {
+function ViewRig({ preset, interiorTour, buildingId, cam, cityViews, cityVisible, maxDistance }: { preset: ViewPreset; interiorTour: boolean; buildingId: string; cam: CamPoses; cityViews: { city: CamPose; plan: CamPose } | null; cityVisible: boolean; maxDistance: number }) {
   const camera = useThree((s) => s.camera);
   const controls = useThree((s) => s.controls) as unknown as { target: THREE.Vector3; update: () => void } | null;
   const invalidate = useThree((s) => s.invalidate);
@@ -920,12 +936,26 @@ function ViewRig({ preset, interiorTour, buildingId, cam, farView }: { preset: '
     mounted.current = true;
     if (interiorTour) goal.current = cam.interior;
     else if (preset === 'bird') goal.current = cam.bird;
-    else if (preset === 'plan') goal.current = cam.plan;
+    else if (preset === 'plan') goal.current = cityViews?.plan ?? cam.plan;
     else if (preset === 'cutaway') goal.current = cam.cutaway;
     else if (preset === 'street') goal.current = cam.street;
+    else if (preset === 'city') goal.current = cityViews?.city ?? cam.home;
     else goal.current = first ? null : cam.home;
     invalidate();
-  }, [preset, interiorTour, buildingId, cam, invalidate]);
+  }, [preset, interiorTour, buildingId, cam, cityViews, invalidate]);
+
+  useEffect(() => {
+    const c = camera as THREE.PerspectiveCamera;
+    if (cityVisible) {
+      c.near = 1;
+      c.far = 4000;
+    } else {
+      c.near = 0.1;
+      c.far = 1000;
+    }
+    c.updateProjectionMatrix();
+    invalidate();
+  }, [cityVisible, camera, invalidate]);
 
   useFrame((_, dt) => {
     const g = goal.current;
@@ -948,7 +978,7 @@ function ViewRig({ preset, interiorTour, buildingId, cam, farView }: { preset: '
       dampingFactor={0.05}
       enableZoom
       minDistance={preset === 'street' || interiorTour ? 1 : 15}
-      maxDistance={farView ? 900 : 250}
+      maxDistance={maxDistance}
       maxPolarAngle={Math.PI / 2 - 0.05}
       target={[0, 3, 0]}
     />
