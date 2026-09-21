@@ -861,19 +861,23 @@ async def health():
 async def get_stats():
     async with async_session() as session:
         from sqlalchemy import select, func
-        
-        parcels = await session.execute(select(func.count(LandParcel.id)))
-        buildings = await session.execute(select(func.count(Building.id)))
-        floors = await session.execute(select(func.count(Floor.id)))
-        units = await session.execute(select(func.count(PropertyUnit.id)))
-        
+
+        # Consume each result immediately: re-reading one Result (e.g. calling
+        # .scalar() twice) raises ResourceClosedError because scalar()
+        # hard-closes the result after the first read, and a later execute
+        # on the same session can invalidate an earlier unconsumed result.
+        parcels = (await session.execute(select(func.count(LandParcel.id)))).scalar() or 0
+        buildings = (await session.execute(select(func.count(Building.id)))).scalar() or 0
+        floors = (await session.execute(select(func.count(Floor.id)))).scalar() or 0
+        units = (await session.execute(select(func.count(PropertyUnit.id)))).scalar() or 0
+
         return {
-            "total_parcels": parcels.scalar() or 0,
-            "total_buildings": buildings.scalar() or 0,
-            "total_floors": floors.scalar() or 0,
-            "total_units": units.scalar() or 0,
-            "total_3d_units": units.scalar() or 0,
-            "validated_units": units.scalar() or 0,
+            "total_parcels": parcels,
+            "total_buildings": buildings,
+            "total_floors": floors,
+            "total_units": units,
+            "total_3d_units": units,
+            "validated_units": units,
             "conflicts": 0,
             "ai_proposals_pending": 0
         }
