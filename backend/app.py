@@ -512,6 +512,23 @@ def overlap_origin(entries):
         raise ValueError("No footprint points for overlap origin")
     return [sum(xs) / len(xs), sum(ys) / len(ys)]
 
+def footprint_area_m2(ring_lonlat, origin=None):
+    """Shoelace area in m² of a lon/lat ring, projected with lonlat_to_local
+    (the one shared coordinate-conversion path) around origin
+    (default: the ring centroid)."""
+    pts = dedupe_ring(ring_lonlat)
+    if len(pts) < 3:
+        return 0.0
+    if origin is None:
+        origin = [sum(p[0] for p in pts) / len(pts), sum(p[1] for p in pts) / len(pts)]
+    local = [lonlat_to_local(x, y, origin[0], origin[1]) for x, y in pts]
+    area = 0.0
+    for i in range(len(local)):
+        x0, y0 = local[i]
+        x1, y1 = local[(i + 1) % len(local)]
+        area += x0 * y1 - x1 * y0
+    return abs(area) / 2
+
 def build_overlap_solids(entries, origin=None):
     """Build local-metre solids for overlap testing.
     entries: dicts with id, floor_id, ring (lon/lat), z_min, z_max.
@@ -826,8 +843,22 @@ def serialize_floor(f):
         "solid_geom": geom_to_geojson(f.solid_geom)
     }
 
+async def floor_counts_by_building(session):
+    """Actual linked floor counts per building (derived, not the stored value)."""
+    from sqlalchemy import select, func
+    rows = await session.execute(
+        select(Floor.building_id, func.count(Floor.id)).group_by(Floor.building_id)
+    )
+    return {bid: n for bid, n in rows.all()}
+
 def serialize_unit(u):
     """Serialize PropertyUnit model to dict"""
+    fp = geom_to_geojson(u.footprint)
+    ring = fp["coordinates"][0] if fp and fp.get("coordinates") else None
+    if ring and u.z_min is not None and u.z_max is not None:
+        volume = footprint_area_m2(ring) * max(u.z_max - u.z_min, 0)
+    else:
+        volume = u.volume_cum
     return {
         "id": u.id,
         "floor_id": u.floor_id,
@@ -835,8 +866,8 @@ def serialize_unit(u):
         "unit_type": u.unit_type,
         "label": u.label,
         "area_sqm": u.area_sqm,
-        "volume_cum": u.volume_cum,
-        "footprint": geom_to_geojson(u.footprint),
+        "volume_cum": volume,
+        "footprint": fp,
         "solid_geom": geom_to_geojson(u.solid_geom),
         "geometry_hash": u.geometry_hash,
         "geometry_version": u.geometry_version,
@@ -1049,6 +1080,16 @@ async def persist_import(
             
             # Flush floors so they can be referenced by units
             await session.flush()
+
+            # Derive floors_count from the actual linked floors
+            from sqlalchemy import select as _select, func as _func
+            for bid, n in (await session.execute(
+                _select(Floor.building_id, _func.count(Floor.id)).group_by(Floor.building_id)
+            )).all():
+                bres = await session.execute(_select(Building).where(Building.id == bid))
+                bldg = bres.scalar_one_or_none()
+                if bldg is not None:
+                    bldg.floors_count = n
             
             # Parse and persist property units
             if units:
@@ -1118,7 +1159,7 @@ async def persist_import(
                             unit_type=props.get("unit_type") or "apartment",
                             label=props.get("label") or f"Unit {units_created}",
                             area_sqm=float(props.get("area_sqm") or 50.0),
-                            volume_cum=solid["volume"],
+                            volume_cum=footprint_area_m2(list(shapely_geom.exterior.coords)) * max(z_max - z_min, 0),
                             footprint=footprint_wkb,
                             solid_geom=solid_wkb,
                             geometry_hash=geom_hash,
@@ -1388,7 +1429,8 @@ async def get_parcel(parcel_id: str):
                 select(Floor).where(Floor.building_id == building.id)
             )
             floors = floors_result.scalars().all()
-            
+
+            bldg_data["floors_count"] = len(floors)
             bldg_data["floors"] = []
             for floor in floors:
                 floor_data = serialize_floor(floor)
@@ -1419,8 +1461,11 @@ async def get_building(building_id: str):
         
         if not building:
             raise HTTPException(status_code=404, detail="Building not found")
-        
-        return serialize_building(building)
+
+        counts = await floor_counts_by_building(session)
+        data = serialize_building(building)
+        data["floors_count"] = counts.get(building.id, 0)
+        return data
 
 
 @app.get("/api/buildings")
@@ -1430,7 +1475,13 @@ async def list_buildings():
         from sqlalchemy import select
         result = await session.execute(select(Building))
         buildings = result.scalars().all()
-        return [serialize_building(b) for b in buildings]
+        counts = await floor_counts_by_building(session)
+        out = []
+        for b in buildings:
+            data = serialize_building(b)
+            data["floors_count"] = counts.get(b.id, 0)
+            out.append(data)
+        return out
 
 
 @app.get("/api/floors/{floor_id}")
@@ -2052,7 +2103,8 @@ async def update_unit_geometry(unit_id: str, request: UnitGeometryUpdateRequest)
             
             unit.geometry_hash = new_geom_hash
             unit.geometry_version = new_version
-            unit.volume_cum = new_solid["volume"]
+            vol_ring = new_coords if new_coords else list(to_shape(unit.footprint).exterior.coords)
+            unit.volume_cum = footprint_area_m2(vol_ring) * max(z_max_to_use - z_min_to_use, 0)
             
             # Update unit's own z_min/z_max if changed (NOT floor's)
             if request.z_min_m is not None:
