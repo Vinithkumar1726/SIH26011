@@ -19,6 +19,7 @@ export interface Parcel {
   name: string;
   area_sqm: number;
   srid: number;
+  footprint?: number[][]; // outer ring of the parcel polygon, [[lon,lat], ...]
 }
 
 export interface Building {

@@ -48,6 +48,16 @@ function ringOf(geom: unknown, field: string): number[][] {
   return ring as number[][];
 }
 
+function parcelOuterRing(geom: unknown): number[][] | undefined {
+  if (!geom || typeof geom !== 'object') return undefined;
+  const g = geom as { type?: unknown; coordinates?: unknown };
+  if (g.type !== 'MultiPolygon' || !Array.isArray(g.coordinates)) return undefined;
+  const firstPoly = (g.coordinates as unknown[])[0];
+  if (!Array.isArray(firstPoly)) return undefined;
+  const outer = (firstPoly as unknown[])[0];
+  if (!Array.isArray(outer) || outer.length < 4) return undefined;
+  return outer as number[][];
+}
 function mapUnitType(t: unknown): Unit['type'] {
   switch (t) {
     case 'apartment':
@@ -164,6 +174,7 @@ export async function loadLiveHierarchy(buildingId?: string): Promise<LiveHierar
     name: reqStr(parcelRaw.name, 'parcel.name'),
     area_sqm: reqNum(parcelRaw.area_sqm, 'parcel.area_sqm'),
     srid: reqNum(parcelRaw.srid, 'parcel.srid'),
+    footprint: parcelOuterRing(parcelRaw.geometry),
   };
 
   const floors: Floor[] = (rawFloors as Record<string, unknown>[])

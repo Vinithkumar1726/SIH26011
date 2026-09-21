@@ -152,6 +152,18 @@ export default function Explorer3D() {
   const { parcel, building, floors, units, spatialIDs } = data;
   const origin = useMemo(() => ringOrigin(building.footprint), [building]);
   const spanM = useMemo(() => footprintSpanM(building.footprint, origin[0], origin[1]), [building, origin]);
+  const footprintShape = useMemo(() => {
+    const pts = footprintToLocal(building.footprint, origin[0], origin[1]);
+    const closedDup = pts.length > 1 && pts[0][0] === pts[pts.length - 1][0] && pts[0][1] === pts[pts.length - 1][1];
+    const ring = closedDup ? pts.slice(0, -1) : pts;
+    const shape = new THREE.Shape();
+    ring.forEach(([x, y], i) => {
+      if (i === 0) shape.moveTo(x, y);
+      else shape.lineTo(x, y);
+    });
+    shape.closePath();
+    return shape;
+  }, [building, origin]);
   const fh = spanM / DEMO_SPAN_M;
   const fv = building.height_m > 0 ? building.height_m / DEMO_HEIGHT_M : 1;
   const cam = useMemo(() => ({
@@ -336,11 +348,11 @@ export default function Explorer3D() {
           <hemisphereLight args={[sky.hemiSky, sky.hemiGround, sky.ambient]} />
           <Ground seeThrough={viewPreset === 'cutaway'} size={200 * fh} />
           {showGrid && <GridFloor size={200 * fh} />}
-          {showParcel && <ParcelOutline />}
+          {showParcel && (parcel.footprint || source === 'demo') && <ParcelOutline footprint={parcel.footprint} origin={origin} />}
           <MonsoonRain active={weather === 'monsoon'} count={quality === 'high' ? 350 : quality === 'medium' ? 200 : 120} />
-          <BuildingAnchor onClick={() => { setSelected(null); setSelectedFloorId(null); setSelectedScope('building'); }} />
+          <BuildingAnchor shape={footprintShape} height={building.height_m} onClick={() => { setSelected(null); setSelectedFloorId(null); setSelectedScope('building'); }} />
           {showFloors && floors.map((fl, fi) => (
-            <FloorSlab key={fl.id} floor={fl} index={fi} visible={(selectedFloorId === null || selectedFloorId === fl.id)} exploded={exploded} zMax={zMax} highlighted={!reportFilterActive || matchingFloorIds.has(fl.id)} onClick={() => { setSelected(null); setSelectedFloorId(fl.id); setSelectedScope('floor'); }} />
+            <FloorSlab key={fl.id} floor={fl} index={fi} shape={footprintShape} visible={(selectedFloorId === null || selectedFloorId === fl.id)} exploded={exploded} zMax={zMax} highlighted={!reportFilterActive || matchingFloorIds.has(fl.id)} onClick={() => { setSelected(null); setSelectedFloorId(fl.id); setSelectedScope('floor'); }} />
           ))}
           {showUnits && units.map((u) => {
             const fl = floors.find((f) => f.id === u.floor_id)!;
@@ -931,42 +943,67 @@ function GridFloor({ size = 200 }: { size?: number }) {
   return <gridHelper args={[size, 40, '#1a2340', '#1a2340' ]} position={[0, 0, 0]} />;
 }
 
-function ParcelOutline() {
-  const points = useMemo(() => [
-    new THREE.Vector3(-40, 0.05, -30),
-    new THREE.Vector3(40, 0.05, -30),
-    new THREE.Vector3(40, 0.05, 30),
-    new THREE.Vector3(-40, 0.05, 30),
-    new THREE.Vector3(-40, 0.05, -30),
-  ], []);
+function ParcelOutline({ footprint, origin }: { footprint?: number[][]; origin: [number, number] }) {
+  const points = useMemo(() => {
+    if (!footprint) {
+      return [
+        new THREE.Vector3(-40, 0.05, -30),
+        new THREE.Vector3(40, 0.05, -30),
+        new THREE.Vector3(40, 0.05, 30),
+        new THREE.Vector3(-40, 0.05, 30),
+        new THREE.Vector3(-40, 0.05, -30),
+      ];
+    }
+    return footprintToLocal(footprint, origin[0], origin[1]).map(
+      ([x, y]) => new THREE.Vector3(x, 0.05, -y),
+    );
+  }, [footprint, origin]);
   const lineObj = useMemo(() => {
     const geom = new THREE.BufferGeometry().setFromPoints(points);
     const mat = new THREE.LineBasicMaterial({ color: '#10b981', linewidth: 2, transparent: true, opacity: 0.6 });
     return new THREE.Line(geom, mat);
   }, [points]);
+  useEffect(() => () => {
+    lineObj.geometry.dispose();
+    (lineObj.material as THREE.Material).dispose();
+  }, [lineObj]);
   return <primitive object={lineObj} />;
 }
 
-function BuildingAnchor({ onClick }: { onClick: () => void }) {
+function BuildingAnchor({ shape, height, onClick }: { shape: THREE.Shape; height: number; onClick: () => void }) {
+  const geom = useMemo(() => {
+    const g = new THREE.ExtrudeGeometry(shape, { depth: Math.max(height, 0.1), bevelEnabled: false, steps: 1 });
+    return g;
+  }, [shape, height]);
+  useEffect(() => () => {
+    geom.dispose();
+  }, [geom]);
   return (
-    <mesh position={[0, 0.02, 0]} onClick={(e) => { e.stopPropagation(); onClick(); }}>
-      <boxGeometry args={[42, 0.08, 30]} />
+    <mesh position={[0, 0.02, 0]} rotation={[-Math.PI / 2, 0, 0]} onClick={(e) => { e.stopPropagation(); onClick(); }}>
+      <primitive object={geom} attach="geometry" />
       <meshBasicMaterial transparent opacity={0.001} depthWrite={false} />
     </mesh>
   );
 }
 
-function FloorSlab({ floor, index, visible, exploded, zMax, highlighted, onClick }: {
-  floor: Floor; index: number; visible: boolean; exploded: boolean; zMax: number; highlighted: boolean; onClick: () => void;
+function FloorSlab({ floor, index, shape, visible, exploded, zMax, highlighted, onClick }: {
+  floor: Floor; index: number; shape: THREE.Shape; visible: boolean; exploded: boolean; zMax: number; highlighted: boolean; onClick: () => void;
 }) {
-  if (!visible || floor.z_max > zMax) return null;
   const floorColors = ['#64748b', '#22c55e', '#f59e0b', '#3b82f6', '#3b82f6', '#ec4899', '#84cc16', '#a855f7'];
   const yOffset = exploded ? index * 2 : 0;
   const height = floor.z_max - floor.z_min;
-  const y = floor.z_min + height / 2 + yOffset;
+  const geom = useMemo(() => {
+    const g = new THREE.ExtrudeGeometry(shape, { depth: Math.max(height - 0.2, 0.1), bevelEnabled: false, steps: 1 });
+    g.translate(0, 0, floor.z_min + 0.1);
+    return g;
+  }, [shape, floor, height]);
+  useEffect(() => () => {
+    geom.dispose();
+  }, [geom]);
+  if (!visible || floor.z_max > zMax) return null;
   return (
-    <mesh position={[0, y, 0]} castShadow receiveShadow onClick={(e) => { e.stopPropagation(); onClick(); }}>
-      <boxGeometry args={[42, height - 0.2, 30]} />
+    <mesh position={[0, yOffset, 0]} rotation={[-Math.PI / 2, 0, 0]} castShadow receiveShadow onClick={(e) => { e.stopPropagation(); onClick(); }}>
+      <primitive object={geom} attach="geometry" />
       <meshStandardMaterial color={highlighted ? '#fbbf24' : floorColors[index % floorColors.length]} transparent opacity={highlighted ? 0.34 : 0.06} side={THREE.DoubleSide} />
     </mesh>
   );
