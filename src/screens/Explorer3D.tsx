@@ -136,6 +136,11 @@ export default function Explorer3D() {
   const [liveSync, setLiveSync] = useState(false);
   const [weather, setWeather] = useState<'clear' | 'clouds' | 'monsoon'>('clear');
   const [viewPreset, setViewPreset] = useState<ViewPreset>('orbit');
+  const [camNonce, setCamNonce] = useState(0);
+  const flyTo = (v: ViewPreset) => {
+    setViewPreset(v);
+    setCamNonce((n) => n + 1);
+  };
   const [showGrid, setShowGrid] = useState(true);
   const [showParcel, setShowParcel] = useState(true);
   const [showFloors, setShowFloors] = useState(true);
@@ -214,6 +219,8 @@ export default function Explorer3D() {
     setSelectedFloorId(null);
     setSelectedScope(null);
     setOsmSelected(null);
+    setOsmFloorId(null);
+    setOsmUnitId(null);
     setReportSearch('');
     setOwnershipFilter('ALL');
     setMinimumMarketValue(0);
@@ -233,7 +240,7 @@ export default function Explorer3D() {
         setSummaries(d.summaries);
         setSource('live');
         resetForBuilding(d.building);
-        if (preset) setViewPreset(preset);
+        if (preset) flyTo(preset);
       })
       .catch(() => {
         setSource('live');
@@ -377,14 +384,26 @@ export default function Explorer3D() {
   }, [cityMeta]);
 
   const osmRecord = osmCatalog?.find((r) => r.id === osmSelected) ?? null;
-  const clearOsm = () => setOsmSelected(null);
+  const clearOsm = () => deselectOsm();
+  const prevPresetRef = useRef<ViewPreset>('orbit');
   const selectOsm = (id: string) => {
-    setOsmSelected((prev) => (prev === id ? null : id));
+    if (osmSelected === id) {
+      deselectOsm();
+      return;
+    }
+    prevPresetRef.current = viewPreset === 'focus' ? 'orbit' : viewPreset;
+    setOsmSelected(id);
+    setOsmFloorId(null);
+    setOsmUnitId(null);
     setSelected(null);
     setSelectedFloorId(null);
     setSelectedScope(null);
     setInteriorTour(false);
-    setViewPreset('focus');
+    flyTo('focus');
+  };
+  const deselectOsm = () => {
+    setOsmSelected(null);
+    flyTo(prevPresetRef.current);
   };
 
   useEffect(() => {
@@ -394,11 +413,81 @@ export default function Explorer3D() {
   useEffect(() => {
     if (!osmSelected) return;
     const h = (e: KeyboardEvent) => {
-      if (e.key === 'Escape') setOsmSelected(null);
+      if (e.key === 'Escape') deselectOsm();
     };
     window.addEventListener('keydown', h);
     return () => window.removeEventListener('keydown', h);
   }, [osmSelected]);
+
+  const [osmFloorId, setOsmFloorId] = useState<string | null>(null);
+  const [osmUnitId, setOsmUnitId] = useState<string | null>(null);
+
+  const osmModel = useMemo(() => {
+    if (!osmRecord || !cityVisible || !cityOffset) return null;
+    // World-frame (x east, z with north = -z) bounds of the OSM footprint.
+    const gx = cityOffset[0], gz = -cityOffset[1];
+    const qx0 = gx + osmRecord.minX, qx1 = gx + osmRecord.maxX;
+    const qz0 = gz + osmRecord.minZ, qz1 = gz + osmRecord.maxZ;
+    const levels = osmRecord.levels && osmRecord.levels > 0
+      ? osmRecord.levels
+      : Math.max(1, Math.round(osmRecord.height / 3.2));
+    const h = 3.2;
+    const cosLat = Math.cos((origin[1] * Math.PI) / 180);
+    // World (wx, wz) -> lon/lat solved against the building origin, so
+    // UnitMesh's own footprintToLocal lands back at this world spot.
+    const toLonLat = (wx: number, wz: number): [number, number] => [
+      origin[0] + wx / (111320 * cosLat),
+      origin[1] + (-wz) / 111320,
+    ];
+    const mx = (qx0 + qx1) / 2, mz = (qz0 + qz1) / 2;
+    const cells: Array<[number, number, number, number]> = [
+      [qx0, qz0, mx, mz],
+      [mx, qz0, qx1, mz],
+      [qx0, mz, mx, qz1],
+      [mx, mz, qx1, qz1],
+    ];
+    const cellArea = ((qx1 - qx0) / 2) * ((qz1 - qz0) / 2);
+    const floorsOut: Floor[] = [];
+    const unitsOut: Unit[] = [];
+    for (let i = 0; i < levels; i++) {
+      const fid = `osm-floor-${i}`;
+      floorsOut.push({
+        id: fid,
+        building_id: `osm-${osmRecord.id}`,
+        code: `L${i + 1}`,
+        label: `OSM Level ${i + 1}`,
+        z_min: i * h,
+        z_max: (i + 1) * h,
+        area_sqm: cellArea * 4,
+      });
+      cells.forEach(([cx0, cz0, cx1, cz1], ci) => {
+        const ring: [number, number][] = [
+          toLonLat(cx0, cz0), toLonLat(cx1, cz0), toLonLat(cx1, cz1), toLonLat(cx0, cz1), toLonLat(cx0, cz0),
+        ];
+        unitsOut.push({
+          id: `osm-unit-${i}-${ci}`,
+          floor_id: fid,
+          code: `U${ci + 1}`,
+          type: 'common',
+          label: `OSM U${ci + 1}`,
+          area_sqm: cellArea,
+          volume_cum: cellArea * h,
+          footprint: ring,
+          hash: '',
+          version: 1,
+        });
+      });
+    }
+    const shape = new THREE.Shape();
+    const corners: Array<[number, number]> = [[qx0, qz0], [qx1, qz0], [qx1, qz1], [qx0, qz1]];
+    corners.forEach(([wx, wz], ci) => {
+      // local frame: (east, north) = (wx, -wz)
+      if (ci === 0) shape.moveTo(wx, -wz);
+      else shape.lineTo(wx, -wz);
+    });
+    shape.closePath();
+    return { floors: floorsOut, units: unitsOut, shape };
+  }, [osmRecord, cityVisible, cityOffset, origin]);
 
   const focusPose = useMemo(() => {
     if (!cityVisible || !cityOffset || !osmRecord) return null;
@@ -430,7 +519,7 @@ export default function Explorer3D() {
       return;
     }
     if (cityVisible && (was.b !== building.id || !was.v)) {
-      setViewPreset('city');
+      flyTo('city');
       setInteriorTour(false);
     }
   }, [building.id, cityVisible]);
@@ -620,7 +709,40 @@ export default function Explorer3D() {
               />
             );
           })}
-          <ViewRig preset={viewPreset} interiorTour={interiorTour} buildingId={building.id} cam={cam} cityViews={cityViews} cityVisible={cityVisible} maxDistance={cityVisible && cityMeta ? 2.5 * cityMeta.radiusM : 250} focusPose={focusPose} />
+          {osmModel && showFloors && osmModel.floors.map((fl, fi) => (
+            <FloorSlab
+              key={fl.id}
+              floor={fl}
+              index={fi}
+              shape={osmModel.shape}
+              visible
+              exploded={exploded}
+              zMax={zMax}
+              highlighted={osmFloorId === null || osmFloorId === fl.id}
+              onClick={() => { setOsmFloorId((prev) => (prev === fl.id ? null : fl.id)); }}
+            />
+          ))}
+          {osmModel && showUnits && osmModel.units.map((u) => {
+            const fl = osmModel.floors.find((f) => f.id === u.floor_id)!;
+            const fi = osmModel.floors.findIndex((f) => f.id === u.floor_id);
+            const vis = (osmFloorId === null || osmFloorId === u.floor_id) && fl.z_max <= zMax;
+            if (!vis) return null;
+            return (
+              <UnitMesh
+                key={u.id}
+                unit={u}
+                floor={fl}
+                floorIndex={fi}
+                origin={origin}
+                visible
+                exploded={exploded}
+                selected={osmUnitId === u.id}
+                conflict={false}
+                onClick={() => { setOsmUnitId((prev) => (prev === u.id ? null : u.id)); }}
+              />
+            );
+          })}
+          <ViewRig preset={viewPreset} interiorTour={interiorTour} buildingId={building.id} cam={cam} cityViews={cityViews} cityVisible={cityVisible} maxDistance={cityVisible && cityMeta ? 2.5 * cityMeta.radiusM : 250} focusPose={focusPose} camNonce={camNonce} />
         </Canvas>
 
         <div className="absolute top-3 left-3 bottom-28 w-64 flex flex-col gap-2 overflow-y-auto pointer-events-none">
@@ -667,7 +789,7 @@ export default function Explorer3D() {
             </div>
           </div>
           <label className="flex items-center gap-2 text-xs text-slate-300 cursor-pointer mt-3">
-            <input type="checkbox" checked={interiorTour} onChange={(e) => { setInteriorTour(e.target.checked); if (e.target.checked) setViewPreset('orbit'); }} />
+            <input type="checkbox" checked={interiorTour} onChange={(e) => { setInteriorTour(e.target.checked); if (e.target.checked) flyTo('orbit'); }} />
             Interior Tour · zoom in
           </label>
           <div className="text-[9px] text-slate-500 mt-1">{interiorTour ? 'Close camera enabled — scroll to enter the floor layout.' : 'Enable to unlock close interior navigation.'}</div>
@@ -719,7 +841,7 @@ export default function Explorer3D() {
                     <div key={v}>
                       <button
                         type="button"
-                        onClick={() => { setViewPreset(v); if (v === 'street' || v !== 'orbit') setInteriorTour(false); }}
+                        onClick={() => { flyTo(v); if (v === 'street' || v !== 'orbit') setInteriorTour(false); }}
                         className={`w-full text-left text-[10px] py-1 px-2 rounded uppercase tracking-wider ${viewPreset === v ? 'bg-emerald-500/20 text-emerald-300 border border-emerald-400/40' : 'bg-white/5 text-slate-400 border border-transparent hover:text-white'}`}
                       >
                         {label}
@@ -988,6 +1110,7 @@ export default function Explorer3D() {
                 </span>
               </div>
               <div className="text-[9px] text-slate-500 pt-1">Context data — not a cadastral record. Heights are assumed unless tagged.</div>
+              <div className="text-[9px] text-slate-500">Synthetic subdivision of an OSM footprint — not cadastral records.</div>
             </div>
           </div>
         )}
@@ -1024,7 +1147,9 @@ export default function Explorer3D() {
         <div className="absolute top-3 left-1/2 -translate-x-1/2 flex flex-col items-center gap-1 max-w-[calc(100%-34rem)] pointer-events-none">
           <div className="flex items-center gap-2 pointer-events-auto">
             <div className="glass rounded-full px-3 py-1">
-              {source === 'live' ? (
+              {osmRecord ? (
+                <span className="text-[10px] text-amber-300">● OSM · illustrative</span>
+              ) : source === 'live' ? (
                 <span className="text-[10px] text-emerald-300">● Live backend</span>
               ) : source === 'loading' ? (
                 <span className="text-[10px] text-slate-400">Loading…</span>
@@ -1177,7 +1302,7 @@ type ViewPreset = 'orbit' | 'bird' | 'plan' | 'cutaway' | 'street' | 'city' | 'f
 type CamPose = { pos: [number, number, number]; tgt: [number, number, number] };
 type CamPoses = { home: CamPose; bird: CamPose; plan: CamPose; cutaway: CamPose; street: CamPose; interior: CamPose };
 
-function ViewRig({ preset, interiorTour, buildingId, cam, cityViews, cityVisible, maxDistance, focusPose }: { preset: ViewPreset; interiorTour: boolean; buildingId: string; cam: CamPoses; cityViews: { city: CamPose; plan: CamPose } | null; cityVisible: boolean; maxDistance: number; focusPose: CamPose | null }) {
+function ViewRig({ preset, interiorTour, buildingId, cam, cityViews, cityVisible, maxDistance, focusPose, camNonce }: { preset: ViewPreset; interiorTour: boolean; buildingId: string; cam: CamPoses; cityViews: { city: CamPose; plan: CamPose } | null; cityVisible: boolean; maxDistance: number; focusPose: CamPose | null; camNonce: number }) {
   const camera = useThree((s) => s.camera);
   const controls = useThree((s) => s.controls) as unknown as { target: THREE.Vector3; update: () => void } | null;
   const invalidate = useThree((s) => s.invalidate);
@@ -1196,7 +1321,7 @@ function ViewRig({ preset, interiorTour, buildingId, cam, cityViews, cityVisible
     else if (preset === 'focus') goal.current = focusPose ?? cam.home;
     else goal.current = first ? null : cam.home;
     invalidate();
-  }, [preset, interiorTour, buildingId, cam, cityViews, focusPose, invalidate]);
+  }, [preset, interiorTour, buildingId, cam, cityViews, focusPose, camNonce, invalidate]);
 
   useEffect(() => {
     const c = camera as THREE.PerspectiveCamera;
