@@ -159,6 +159,7 @@ export default function Dashboard({ onNav }: Props) {
       </section>
 
       <div className="flex-1 overflow-y-auto p-5 flex flex-col gap-4">
+        <div className="grid gap-3 grid-cols-1 sm:grid-cols-2 lg:grid-cols-4">
           {kpiCards.map((card, index) => (
             <motion.div
               key={card.label}
