@@ -1,0 +1,185 @@
+import { useState } from 'react';
+import { Sparkles, CheckCircle, X, Edit2, ArrowRight } from 'lucide-react';
+
+const PROPOSALS = [
+  {
+    id: '#001', src: 'building_no', dst: 'building_id', confidence: 94,
+    reason: 'Field semantics and value pattern match building identifier schema.',
+    type: 'FIELD MAPPING',
+  },
+  {
+    id: '#002', src: 'storey', dst: 'Floor Number', confidence: 88,
+    reason: 'Integer values in range 1–8 match floor numbering convention.',
+    type: 'FIELD MAPPING',
+  },
+  {
+    id: '#003', src: 'sqm', dst: 'Area (m²)', confidence: 97,
+    reason: 'Numeric values with decimal precision match area measurement schema.',
+    type: 'FIELD MAPPING',
+  },
+  {
+    id: '#004', src: 'elev_bot', dst: 'Minimum Elevation', confidence: 82,
+    reason: 'Values correspond to ground floor elevation offsets. Confirm Z reference.',
+    type: 'FIELD MAPPING',
+  },
+  {
+    id: '#005', src: 'Unit_U04', dst: 'anomaly:boundary_precision', confidence: 71,
+    reason: 'Boundary segment 7 deviates 0.018m from adjacent unit. Minor precision issue.',
+    type: 'ANOMALY',
+  },
+];
+
+type Status = 'pending' | 'accepted' | 'rejected' | 'editing';
+
+export default function AIReview() {
+  const [statuses, setStatuses] = useState<Record<string, Status>>(
+    Object.fromEntries(PROPOSALS.map((p) => [p.id, 'pending']))
+  );
+
+  const accepted = Object.values(statuses).filter((s) => s === 'accepted').length;
+  const rejected = Object.values(statuses).filter((s) => s === 'rejected').length;
+  const pending = Object.values(statuses).filter((s) => s === 'pending').length;
+
+  return (
+    <div className="flex flex-col h-full overflow-hidden" style={{ background: '#0A0D12' }}>
+      <div className="px-6 py-4 shrink-0" style={{ borderBottom: '1px solid #28313C' }}>
+        <div className="flex items-center gap-3 mb-1">
+          <Sparkles size={14} color="#C99A45" />
+          <h1 className="font-display font-semibold" style={{ fontSize: 18, color: '#F1F3F5', letterSpacing: '0.04em' }}>
+            AI-ASSISTED MAPPING REVIEW
+          </h1>
+        </div>
+        <p style={{ fontSize: 11, color: '#6E7783' }}>
+          Review AI field-mapping proposals and anomaly detections. Approve or reject each item.
+        </p>
+
+        {/* Summary chips */}
+        <div className="flex gap-3 mt-3">
+          {[
+            { label: 'PENDING', val: pending, color: '#C99A45' },
+            { label: 'ACCEPTED', val: accepted, color: '#4FB8AC' },
+            { label: 'REJECTED', val: rejected, color: '#C85C5C' },
+          ].map((m) => (
+            <div key={m.label} className="flex items-center gap-2"
+              style={{ background: '#10151C', border: '1px solid #28313C', borderRadius: 2, padding: '4px 10px' }}>
+              <span className="font-display font-bold" style={{ fontSize: 14, color: m.color }}>{m.val}</span>
+              <span style={{ fontSize: 9, color: '#6E7783', letterSpacing: '0.08em', fontFamily: 'IBM Plex Sans' }}>{m.label}</span>
+            </div>
+          ))}
+        </div>
+      </div>
+
+      <div className="flex-1 overflow-y-auto p-5">
+        <div className="flex flex-col gap-3" style={{ maxWidth: 720 }}>
+          {PROPOSALS.map((p) => {
+            const st = statuses[p.id];
+            return (
+              <div
+                key={p.id}
+                className="fade-in"
+                style={{
+                  background: '#10151C',
+                  border: `1px solid ${st === 'accepted' ? '#4FB8AC' : st === 'rejected' ? '#C85C5C' : '#28313C'}`,
+                  borderRadius: 3,
+                  padding: 16,
+                  opacity: st === 'rejected' ? 0.5 : 1,
+                  transition: 'opacity 0.2s, border-color 0.2s',
+                }}
+              >
+                <div className="flex items-start justify-between">
+                  <div className="flex-1">
+                    <div className="flex items-center gap-2 mb-3">
+                      <span className="font-mono" style={{ fontSize: 9, color: '#C99A45', letterSpacing: '0.1em' }}>
+                        AI PROPOSAL {p.id}
+                      </span>
+                      <span
+                        style={{
+                          fontSize: 8,
+                          color: p.type === 'ANOMALY' ? '#D6A84F' : '#6E7783',
+                          border: `1px solid ${p.type === 'ANOMALY' ? '#D6A84F' : '#28313C'}`,
+                          padding: '1px 6px',
+                          borderRadius: 2,
+                          letterSpacing: '0.08em',
+                          fontFamily: 'IBM Plex Sans',
+                          fontWeight: 600,
+                        }}
+                      >
+                        {p.type}
+                      </span>
+                      {st !== 'pending' && (
+                        <span className={st === 'accepted' ? 'tag-valid' : 'tag-error'}>
+                          {st.toUpperCase()}
+                        </span>
+                      )}
+                    </div>
+
+                    <div className="flex items-center gap-3 mb-3">
+                      <span className="font-mono"
+                        style={{ fontSize: 12, color: '#A8B0BA', background: '#151B23', padding: '3px 10px', borderRadius: 2, border: '1px solid #28313C' }}>
+                        {p.src}
+                      </span>
+                      <ArrowRight size={12} color="#C99A45" />
+                      <span className="font-mono"
+                        style={{ fontSize: 12, color: '#F1F3F5', background: '#151B23', padding: '3px 10px', borderRadius: 2, border: '1px solid #28313C' }}>
+                        {p.dst}
+                      </span>
+                    </div>
+
+                    <p style={{ fontSize: 11, color: '#A8B0BA', margin: 0, lineHeight: 1.5 }}>
+                      {p.reason}
+                    </p>
+                  </div>
+
+                  <div className="flex flex-col items-end gap-1 ml-6 shrink-0">
+                    <div
+                      className="font-display font-bold"
+                      style={{ fontSize: 22, color: p.confidence > 90 ? '#4FB8AC' : p.confidence > 80 ? '#C99A45' : '#D6A84F' }}
+                    >
+                      {p.confidence}%
+                    </div>
+                    <div style={{ fontSize: 8, color: '#6E7783', letterSpacing: '0.08em', fontFamily: 'IBM Plex Sans' }}>
+                      CONFIDENCE
+                    </div>
+                    <div className="progress-bar" style={{ width: 60, height: 3, marginTop: 2 }}>
+                      <div className="fill"
+                        style={{
+                          width: `${p.confidence}%`,
+                          background: p.confidence > 90 ? '#4FB8AC' : '#C99A45',
+                        }}
+                      />
+                    </div>
+                  </div>
+                </div>
+
+                {st === 'pending' && (
+                  <div className="flex gap-2 mt-4 pt-3" style={{ borderTop: '1px solid #1B222C' }}>
+                    <button
+                      className="btn-secondary"
+                      style={{ fontSize: 10, padding: '5px 14px' }}
+                      onClick={() => setStatuses((prev) => ({ ...prev, [p.id]: 'rejected' }))}
+                    >
+                      REJECT
+                    </button>
+                    <button
+                      className="btn-ghost"
+                      style={{ fontSize: 10, padding: '5px 14px', border: '1px solid #28313C' }}
+                    >
+                      EDIT
+                    </button>
+                    <button
+                      className="btn-primary"
+                      style={{ fontSize: 10, padding: '5px 14px' }}
+                      onClick={() => setStatuses((prev) => ({ ...prev, [p.id]: 'accepted' }))}
+                    >
+                      ACCEPT
+                    </button>
+                  </div>
+                )}
+              </div>
+            );
+          })}
+        </div>
+      </div>
+    </div>
+  );
+}

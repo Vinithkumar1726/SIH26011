@@ -1,0 +1,22 @@
+{
+  // SIH26011 — pin the project to a single model.
+  // Unknown/retired models must surface as errors, not silently swap to
+  // OpenCode's openrouter/auto router. `openrouter/auto` is disabled below.
+  "$schema": "https://opencode.ai/config.json",
+
+  // Default model for all new sessions and runs in this project.
+  // Full OpenRouter selector: provider prefix + model slug.
+  "model": "openrouter/nvidia/nemotron-3-ultra-550b-a55b:free",
+
+  // Defense-in-depth: make sure OpenCode can never select openrouter/auto
+  // (OpenRouter's automatic model-switching router) in this project.
+  "providers": {
+    "openrouter": {
+      "models": {
+        "auto": {
+          "disabled": true
+        }
+      }
+    }
+  }
+}

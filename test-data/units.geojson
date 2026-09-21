@@ -1,0 +1,101 @@
+{
+  "type": "FeatureCollection",
+  "features": [
+    {
+      "type": "Feature",
+      "properties": {
+        "unit_code": "U0001",
+        "floor_id": "floor-f01",
+        "unit_type": "apartment",
+        "label": "Flat 101",
+        "area_sqm": 85,
+        "z_min_m": 3.5,
+        "z_max_m": 6.5
+      },
+      "geometry": {
+        "type": "Polygon",
+        "coordinates": [
+          [
+            [77.2086, 28.6126],
+            [77.2090, 28.6126],
+            [77.2090, 28.6130],
+            [77.2086, 28.6130],
+            [77.2086, 28.6126]
+          ]
+        ]
+      }
+    },
+    {
+      "type": "Feature",
+      "properties": {
+        "unit_code": "U0002",
+        "floor_id": "floor-f01",
+        "unit_type": "apartment",
+        "label": "Flat 102",
+        "area_sqm": 95,
+        "z_min_m": 3.5,
+        "z_max_m": 6.5
+      },
+      "geometry": {
+        "type": "Polygon",
+        "coordinates": [
+          [
+            [77.2090, 28.6126],
+            [77.2094, 28.6126],
+            [77.2094, 28.6130],
+            [77.2090, 28.6130],
+            [77.2090, 28.6126]
+          ]
+        ]
+      }
+    },
+    {
+      "type": "Feature",
+      "properties": {
+        "unit_code": "U0003",
+        "floor_id": "floor-f02",
+        "unit_type": "apartment",
+        "label": "Flat 201",
+        "area_sqm": 85,
+        "z_min_m": 6.5,
+        "z_max_m": 9.5
+      },
+      "geometry": {
+        "type": "Polygon",
+        "coordinates": [
+          [
+            [77.2086, 28.6126],
+            [77.2090, 28.6126],
+            [77.2090, 28.6130],
+            [77.2086, 28.6130],
+            [77.2086, 28.6126]
+          ]
+        ]
+      }
+    },
+    {
+      "type": "Feature",
+      "properties": {
+        "unit_code": "U0004",
+        "floor_id": "floor-f02",
+        "unit_type": "apartment",
+        "label": "Flat 202",
+        "area_sqm": 95,
+        "z_min_m": 6.5,
+        "z_max_m": 9.5
+      },
+      "geometry": {
+        "type": "Polygon",
+        "coordinates": [
+          [
+            [77.2090, 28.6126],
+            [77.2094, 28.6126],
+            [77.2094, 28.6130],
+            [77.2090, 28.6130],
+            [77.2090, 28.6126]
+          ]
+        ]
+      }
+    }
+  ]
+}

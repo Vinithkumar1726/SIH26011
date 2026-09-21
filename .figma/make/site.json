@@ -1,0 +1,10 @@
+{
+  "description": "This web application streamlines product design and review processes, offering a 3D explorer, AI validation, and responsive workflows for efficient collaboration.",
+  "robots": {
+    "index": false
+  },
+  "accessibility": {
+    "addBypassLinks": false,
+    "ignoreReducedMotion": false
+  }
+}

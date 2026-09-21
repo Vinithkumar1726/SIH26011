@@ -1,0 +1,28 @@
+{
+  "type": "FeatureCollection",
+  "features": [
+    {
+      "type": "Feature",
+      "properties": {
+        "id": "parcel-001",
+        "ulpin": "29384756102934",
+        "name": "Sector 48 Plot A-12",
+        "area_sqm": 4800
+      },
+      "geometry": {
+        "type": "MultiPolygon",
+        "coordinates": [
+          [
+            [
+              [77.208, 28.612],
+              [77.210, 28.612],
+              [77.210, 28.614],
+              [77.208, 28.614],
+              [77.208, 28.612]
+            ]
+          ]
+        ]
+      }
+    }
+  ]
+}

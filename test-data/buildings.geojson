@@ -1,0 +1,28 @@
+{
+  "type": "FeatureCollection",
+  "features": [
+    {
+      "type": "Feature",
+      "properties": {
+        "building_code": "bldg-001",
+        "parcel_ref": "parcel-001",
+        "name": "Tower A - Residential",
+        "height_m": 36,
+        "height_source": "LIDAR",
+        "floors_count": 12
+      },
+      "geometry": {
+        "type": "Polygon",
+        "coordinates": [
+          [
+            [77.2085, 28.6125],
+            [77.2095, 28.6125],
+            [77.2095, 28.6135],
+            [77.2085, 28.6135],
+            [77.2085, 28.6125]
+          ]
+        ]
+      }
+    }
+  ]
+}

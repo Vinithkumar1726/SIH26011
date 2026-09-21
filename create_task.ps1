@@ -1,0 +1,1 @@
+schtasks /create /tn "SIH26011Backend" /tr "C:\Users\Vivekkumar\Desktop\vinith\SIH26011\SIH26011-enhanced-full-pass\backend\start_backend.bat" /sc onstart /rl highest /f
