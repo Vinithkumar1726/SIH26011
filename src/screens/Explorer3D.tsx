@@ -92,6 +92,7 @@ export default function Explorer3D() {
   const [showUnits, setShowUnits] = useState(true);
   const [envOpen, setEnvOpen] = useState(true);
   const [quality, setQuality] = useState<'low' | 'medium' | 'high'>('low');
+  const [inspOpen, setInspOpen] = useState(true);
   const [interiorTour, setInteriorTour] = useState(false);
   const [reportSearch, setReportSearch] = useState('');
   const [ownershipFilter, setOwnershipFilter] = useState('ALL');
@@ -145,6 +146,19 @@ export default function Explorer3D() {
     }).map((floor) => floor.id));
   }, [minimumMarketValue, ownershipFilter, reportSearch]);
   const reportFilterActive = Boolean(reportSearch.trim() || ownershipFilter !== 'ALL' || minimumMarketValue > 0);
+  const inspectorVisible = selectedScope === 'building' || selectedFloorId !== null || selected !== null;
+  const inspectorFloor = selectedFloorId
+    ? floors.find((fl) => fl.id === selectedFloorId) ?? null
+    : selected
+      ? floors.find((f) => f.id === selected.floor_id) ?? null
+      : null;
+  const inspectorUnits = inspectorFloor ? units.filter((u) => u.floor_id === inspectorFloor.id) : [];
+  const footprintArea = useMemo(() => {
+    const pts = footprintToLocal(building.footprint, CENTER_LON, CENTER_LAT);
+    let a = 0;
+    for (let i = 0; i < pts.length - 1; i++) a += pts[i][0] * pts[i + 1][1] - pts[i + 1][0] * pts[i][1];
+    return Math.abs(a / 2);
+  }, []);
 
   const filteredUnits = useMemo(() => {
     const query = search.trim().toLowerCase();
@@ -426,6 +440,108 @@ export default function Explorer3D() {
           </div>
           {reportFilterActive && matchingFloorIds.size === 0 && <div className="text-[9px] text-danger mt-2">No floors match this filter.</div>}
         </div>
+
+        {inspectorVisible && (
+          <div className="absolute bottom-3 left-1/2 -translate-x-1/2 glass rounded-lg w-[400px] max-w-[44%] max-h-[48%] flex flex-col">
+            <button
+              type="button"
+              onClick={() => setInspOpen((v) => !v)}
+              className="w-full flex items-center justify-between p-3 text-left shrink-0"
+            >
+              <span className="text-[10px] font-semibold text-white uppercase tracking-wider">Building Inspector</span>
+              <span className="text-slate-400 text-xs">{inspOpen ? '▾' : '▸'}</span>
+            </button>
+            {inspOpen && (
+              <div className="px-3 pb-3 space-y-3 overflow-y-auto">
+                <div className="text-[9px] text-slate-500">Demo data — not live backend</div>
+                <div className="space-y-1 text-[11px]">
+                  <div className="flex items-center justify-between gap-2">
+                    <span className="text-slate-500">Name</span>
+                    <span className="text-slate-200 truncate">{building.name}</span>
+                  </div>
+                  <div className="flex items-center justify-between gap-2">
+                    <span className="text-slate-500">Parcel ID</span>
+                    <span className="text-slate-200 mono truncate">{parcel.ulpin}<CopyBtn value={parcel.ulpin} /></span>
+                  </div>
+                  <div className="flex items-center justify-between gap-2">
+                    <span className="text-slate-500">3D identifier</span>
+                    <span className="text-slate-200">—</span>
+                  </div>
+                  <div className="flex items-center justify-between gap-2">
+                    <span className="text-slate-500">Storeys</span>
+                    <span className="text-slate-200">{building.floors_count}</span>
+                  </div>
+                  <div className="flex items-center justify-between gap-2">
+                    <span className="text-slate-500">Total height</span>
+                    <span className="text-slate-200">{building.height_m}m</span>
+                  </div>
+                  <div className="flex items-center justify-between gap-2">
+                    <span className="text-slate-500">Footprint area</span>
+                    <span className="text-slate-200">{footprintArea.toFixed(0)} m²</span>
+                  </div>
+                </div>
+                <div>
+                  <div className="text-[10px] text-slate-500 mb-1">FLOORS</div>
+                  <div className="flex flex-wrap gap-1">
+                    {floors.map((fl) => (
+                      <button
+                        type="button"
+                        key={fl.id}
+                        title={fl.label}
+                        onClick={() => {
+                          if (selectedFloorId === fl.id) {
+                            setSelectedFloorId(null);
+                            setSelected(null);
+                            setSelectedScope(null);
+                          } else {
+                            setSelectedFloorId(fl.id);
+                            setSelected(null);
+                            setSelectedScope('floor');
+                          }
+                        }}
+                        className={`text-[10px] mono py-1 px-2 rounded border ${selectedFloorId === fl.id ? 'bg-emerald-500/20 text-emerald-300 border-emerald-400/40' : 'bg-white/5 text-slate-400 border-transparent hover:text-white'}`}
+                      >
+                        {fl.code}
+                      </button>
+                    ))}
+                  </div>
+                </div>
+                {inspectorFloor ? (
+                  <div>
+                    <div className="text-[10px] text-slate-500 mb-1">UNITS · {inspectorFloor.code}</div>
+                    <div className="space-y-1 max-h-40 overflow-y-auto">
+                      {inspectorUnits.map((u) => {
+                        const sid = spatialIDs.find((s) => s.unit_id === u.id)?.full ?? '—';
+                        const isSel = selected?.id === u.id;
+                        return (
+                          <div
+                            key={u.id}
+                            onClick={() => { setSelected(u); setSelectedScope(null); setSelectedFloorId(u.floor_id); }}
+                            className={`px-2 py-1.5 rounded border cursor-pointer ${isSel ? 'bg-emerald-500/15 border-emerald-500/30' : 'bg-white/[0.02] border-transparent hover:bg-white/5'}`}
+                          >
+                            <div className="flex items-center justify-between gap-2 text-[11px]">
+                              <span className={isSel ? 'text-emerald-300' : 'text-slate-200'}>{u.label}</span>
+                              <span className="text-slate-500 capitalize">{u.type}</span>
+                            </div>
+                            <div className="flex items-center justify-between gap-2 text-[9px] mono text-slate-500">
+                              <span className="truncate">{sid}</span>
+                              {sid !== '—' && <CopyBtn value={sid} />}
+                            </div>
+                            <div className="text-[9px] text-slate-500 mt-0.5">
+                              {inspectorFloor.z_min.toFixed(1)}m – {inspectorFloor.z_max.toFixed(1)}m · {u.area_sqm.toFixed(1)} m² · {u.volume_cum.toFixed(1)} m³
+                            </div>
+                          </div>
+                        );
+                      })}
+                    </div>
+                  </div>
+                ) : (
+                  <div className="text-[10px] text-slate-500">Select a floor to list its units.</div>
+                )}
+              </div>
+            )}
+          </div>
+        )}
 
         <div className="absolute bottom-3 left-3 glass rounded-lg px-3 py-2 flex items-center gap-4">
           <div className="text-center"><div className="text-sm font-bold text-white">{units.length}</div><div className="text-[9px] text-slate-500">Units</div></div>
@@ -828,6 +944,30 @@ function InfoCell({ label, value }: any) {
       <div className="text-[9px] text-text-tertiary uppercase tracking-wider mb-0.5">{label}</div>
       <div className="text-xs text-text-primary capitalize">{value}</div>
     </div>
+  );
+}
+
+function CopyBtn({ value }: { value: string }) {
+  const [ok, setOk] = useState(false);
+  if (!value) return null;
+  return (
+    <button
+      type="button"
+      title="Copy to clipboard"
+      onClick={(e) => {
+        e.stopPropagation();
+        try {
+          void navigator.clipboard?.writeText(value);
+        } catch {
+          /* clipboard unavailable */
+        }
+        setOk(true);
+        setTimeout(() => setOk(false), 1200);
+      }}
+      className="ml-1 text-[10px] text-slate-500 hover:text-emerald-300"
+    >
+      {ok ? '✓' : '⧉'}
+    </button>
   );
 }
 
