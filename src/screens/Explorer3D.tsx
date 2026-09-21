@@ -7,6 +7,7 @@ import type { Building, Floor, Unit } from '../workspace3d/types';
 import { building as demoBuilding, floors as demoFloors, footprintToLocal, parcel as demoParcel, spatialIDs as demoSpatialIDs, units as demoUnits } from '../workspace3d/data';
 import CollapsePanel from '../components/CollapsePanel';
 import { loadLiveHierarchy, fetchCityBuildings, type BuildingSummary, type CityBuilding, type LiveHierarchy } from '../workspace3d/api';
+import { SYNTHETIC_PIPES, segBoxDist, classifyClearance, type Box3, type Vec3 } from '../workspace3d/underground';
 import { generatePolyhedralSolid, type Solid3D, validateTopology } from '../workspace3d/geo';
 
 function ringOrigin(ring: number[][]): [number, number] {
@@ -183,6 +184,7 @@ export default function Explorer3D() {
   const [cityBuildings, setCityBuildings] = useState<CityBuilding[]>([]);
   const [hoverBlock, setHoverBlock] = useState<string | null>(null);
   const [showCity, setShowCity] = useState(true);
+  const [showPipes, setShowPipes] = useState(true);
   const [cityMeta, setCityMeta] = useState<{ origin: { lon: number; lat: number }; radiusM: number } | null>(null);
   const [osmCatalog, setOsmCatalog] = useState<OsmBuilding[] | null>(null);
   const [osmSelected, setOsmSelected] = useState<string | null>(null);
@@ -326,10 +328,39 @@ export default function Explorer3D() {
     )[0];
   }, [cityMeta, origin]);
   const cityAvailable = cityMeta !== null;
+  const buildingPipes = useMemo(
+    () => SYNTHETIC_PIPES.filter((p) => p.buildingId === building.id),
+    [building],
+  );
+  const foundation: Box3 | null = useMemo(() => {
+    if (buildingPipes.length === 0) return null;
+    const pts = footprintToLocal(building.footprint, origin[0], origin[1]);
+    let minX = Infinity, maxX = -Infinity, minY = Infinity, maxY = -Infinity;
+    for (const [x, y] of pts) {
+      if (x < minX) minX = x;
+      if (x > maxX) maxX = x;
+      if (y < minY) minY = y;
+      if (y > maxY) maxY = y;
+    }
+    const minZ = Math.min(...floors.map((f) => f.z_min));
+    if (!(minZ < 0)) return null;
+    return { min: [minX, minZ, -maxY], max: [maxX, 0, -minY] };
+  }, [buildingPipes, building, floors, origin]);
   const cityVisible = showCity
     && cityAvailable
     && cityOffset !== null
     && Math.hypot(cityOffset[0], cityOffset[1]) <= (cityMeta?.radiusM ?? 0);
+  const pipeStatus = useMemo(() => {
+    if (!cityVisible || !cityOffset) return [];
+    return buildingPipes.map((p) => {
+      if (!foundation) return { id: p.id, depth: p.depthM, dist: null as number | null, status: '—' };
+      const gx = cityOffset[0], gz = -cityOffset[1];
+      const a: Vec3 = [gx + p.a[0], -p.depthM, gz + p.a[1]];
+      const b: Vec3 = [gx + p.b[0], -p.depthM, gz + p.b[1]];
+      const dist = segBoxDist(a, b, foundation);
+      return { id: p.id, depth: p.depthM, dist, status: classifyClearance(dist) };
+    });
+  }, [buildingPipes, foundation, cityVisible, cityOffset]);
 
   useEffect(() => {
     if (!cityMeta) return;
@@ -678,6 +709,13 @@ export default function Explorer3D() {
               position={[cityOffset[0], 0, -cityOffset[1]]}
             />
           )}
+          {showPipes && cityVisible && cityOffset && buildingPipes.length > 0 && (
+            <UndergroundPipes
+              pipes={buildingPipes}
+              groupPos={[cityOffset[0], 0, -cityOffset[1]]}
+              statuses={new Map(pipeStatus.map((p) => [p.id, p.status]))}
+            />
+          )}
           <MonsoonRain active={weather === 'monsoon'} count={quality === 'high' ? 350 : quality === 'medium' ? 200 : 120} />
           <BuildingAnchor shape={footprintShape} height={building.height_m} onClick={() => { setSelected(null); setSelectedFloorId(null); setSelectedScope('building'); }} />
           {source === 'live' && neighbours.map((nb) => (
@@ -873,6 +911,12 @@ export default function Explorer3D() {
                       City context (OSM)
                     </label>
                   )}
+                  {buildingPipes.length > 0 && (
+                    <label className="flex items-center gap-2 text-xs text-slate-300 cursor-pointer">
+                      <input type="checkbox" checked={showPipes} onChange={(e) => setShowPipes(e.target.checked)} />
+                      Underground utilities (synthetic)
+                    </label>
+                  )}
                 </div>
               </div>
               <div>
@@ -892,6 +936,24 @@ export default function Explorer3D() {
               </div>
             </div>
           </CollapsePanel>
+          {buildingPipes.length > 0 && (
+            <div className="glass rounded-lg pointer-events-auto">
+              <div className="p-3">
+                <div className="text-[10px] font-semibold text-white uppercase tracking-wider mb-1">Underground utilities · synthetic</div>
+                <div className="space-y-1">
+                  {pipeStatus.map((p) => (
+                    <div key={p.id} className="flex items-center justify-between gap-2 text-[10px]">
+                      <span className="text-slate-400 mono truncate">{p.id} · −{p.depth}m</span>
+                      <span className={p.status === 'Conflict' ? 'text-danger' : p.status === 'Within buffer' ? 'text-amber-300' : p.status === '—' ? 'text-slate-500' : 'text-emerald-300'}>
+                        {p.status}{typeof p.dist === 'number' ? ` · ${p.dist.toFixed(1)}m` : ''}
+                      </span>
+                    </div>
+                  ))}
+                </div>
+                <div className="text-[9px] text-slate-500 mt-1">Synthetic demo utilities routed on OSM road lines — not surveyed.</div>
+              </div>
+            </div>
+          )}
         </div>
 
         <div className="absolute top-3 right-3 bottom-28 w-56 flex flex-col gap-2 overflow-y-auto pointer-events-none">
@@ -1562,6 +1624,39 @@ function OsmHighlight({ footprint, height, position }: {
         <lineBasicMaterial color="#a5f3fc" transparent opacity={0.9} />
       </lineSegments>
     </mesh>
+  );
+}
+
+function UndergroundPipes({ pipes, groupPos, statuses }: {
+  pipes: Array<{ id: string; a: [number, number]; b: [number, number]; depthM: number }>;
+  groupPos: [number, number, number];
+  statuses: Map<string, string>;
+}) {
+  const geoms = useMemo(() => pipes.map((p) => {
+    const curve = new THREE.CatmullRomCurve3([
+      new THREE.Vector3(p.a[0], -p.depthM, p.a[1]),
+      new THREE.Vector3(p.b[0], -p.depthM, p.b[1]),
+    ]);
+    return { id: p.id, geom: new THREE.TubeGeometry(curve, 32, 0.35, 6, false) };
+  }), [pipes]);
+  useEffect(() => () => {
+    for (const g of geoms) g.geom.dispose();
+  }, [geoms]);
+  const colorFor = (id: string) => {
+    const s = statuses.get(id);
+    if (s === 'Conflict') return '#ef4444';
+    if (s === 'Within buffer') return '#fbbf24';
+    return '#2dd4bf';
+  };
+  return (
+    <group position={groupPos}>
+      {geoms.map((g) => (
+        <mesh key={g.id}>
+          <primitive object={g.geom} attach="geometry" />
+          <meshStandardMaterial color={colorFor(g.id)} transparent opacity={0.95} />
+        </mesh>
+      ))}
+    </group>
   );
 }
 
