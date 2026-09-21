@@ -1,5 +1,5 @@
-import { useEffect, useMemo, useState } from 'react';
-import { Canvas, useThree } from '@react-three/fiber';
+import { useEffect, useMemo, useRef, useState } from 'react';
+import { Canvas, useFrame, useThree } from '@react-three/fiber';
 import { OrbitControls } from '@react-three/drei';
 import * as THREE from 'three';
 import type { Unit } from '../workspace3d/types';
@@ -44,6 +44,36 @@ function printPdfReport() {
   printWindow.print();
 }
 
+function clamp01(v: number) {
+  return Math.min(1, Math.max(0, v));
+}
+
+function daylightFactor(hour: number) {
+  const h = ((hour % 24) + 24) % 24;
+  const t = (h - 6) / 12;
+  if (t <= 0 || t >= 1) return 0;
+  const s = Math.sin(t * Math.PI);
+  return s * s * (3 - 2 * s);
+}
+
+function mixHex(a: string, b: string, t: number) {
+  const ca = new THREE.Color(a);
+  const cb = new THREE.Color(b);
+  ca.lerp(cb, clamp01(t));
+  return '#' + ca.getHexString();
+}
+
+function lerpNum(a: number, b: number, t: number) {
+  return a + (b - a) * clamp01(t);
+}
+
+function formatHour(h: number) {
+  const norm = ((h % 24) + 24) % 24;
+  const hh = Math.floor(norm);
+  const mm = Math.floor((norm - hh) * 60);
+  return String(hh).padStart(2, '0') + ':' + String(mm).padStart(2, '0');
+}
+
 export default function Explorer3D() {
   const [selected, setSelected] = useState<Unit | null>(null);
   const [selectedScope, setSelectedScope] = useState<'building' | 'floor' | null>(null);
@@ -52,12 +82,57 @@ export default function Explorer3D() {
   const [selectedFloorId, setSelectedFloorId] = useState<string | null>(null);
   const [search, setSearch] = useState('');
   const [conflicts, setConflicts] = useState<Set<string>>(new Set());
-  const [lightingMode, setLightingMode] = useState<'day' | 'night'>('day');
+  const [hourOfDay, setHourOfDay] = useState(12);
+  const [liveSync, setLiveSync] = useState(false);
+  const [weather, setWeather] = useState<'clear' | 'clouds' | 'monsoon'>('clear');
+  const [viewPreset, setViewPreset] = useState<'orbit' | 'bird' | 'plan' | 'cutaway' | 'street'>('orbit');
+  const [showGrid, setShowGrid] = useState(true);
+  const [showParcel, setShowParcel] = useState(true);
+  const [showFloors, setShowFloors] = useState(true);
+  const [showUnits, setShowUnits] = useState(true);
+  const [envOpen, setEnvOpen] = useState(true);
   const [interiorTour, setInteriorTour] = useState(false);
   const [reportSearch, setReportSearch] = useState('');
   const [ownershipFilter, setOwnershipFilter] = useState('ALL');
   const [minimumMarketValue, setMinimumMarketValue] = useState(0);
-  const isNight = lightingMode === 'night';
+  const isNight = hourOfDay < 6 || hourOfDay >= 18;
+
+  useEffect(() => {
+    if (!liveSync) return;
+    const syncClock = () => {
+      const now = new Date();
+      setHourOfDay(now.getHours() + now.getMinutes() / 60 + now.getSeconds() / 3600);
+    };
+    syncClock();
+    const id = setInterval(syncClock, 30000);
+    return () => clearInterval(id);
+  }, [liveSync]);
+
+  const sky = useMemo(() => {
+    const dl = daylightFactor(hourOfDay);
+    let bg = mixHex('#02040a', '#07090f', dl);
+    let fogNear = lerpNum(90, 150, dl);
+    let fogFar = lerpNum(260, 400, dl);
+    if (weather === 'clouds') {
+      fogFar *= 0.7;
+      fogNear *= 0.85;
+    }
+    if (weather === 'monsoon') {
+      fogFar *= 0.5;
+      fogNear *= 0.7;
+      bg = mixHex(bg, '#0a0f1c', 0.5);
+    }
+    return {
+      bg,
+      fogNear,
+      fogFar,
+      ambient: lerpNum(0.16, 0.4, dl) * (weather === 'monsoon' ? 0.8 : 1),
+      sun: lerpNum(0.18, 1.2, dl) * (weather === 'clouds' ? 0.75 : weather === 'monsoon' ? 0.5 : 1),
+      sunColor: mixHex('#6d86c9', '#ffffff', dl),
+      hemiSky: mixHex('#101a42', '#1a2340', dl),
+      hemiGround: mixHex('#02040a', '#07090f', dl),
+    };
+  }, [hourOfDay, weather]);
   const selectedFloor = selectedFloorId ? floors.find((fl) => fl.id === selectedFloorId) : null;
   const ownershipOptions = useMemo(() => ['ALL', ...Array.from(new Set(floors.map((floor) => floor.ownership.ownershipType)))], []);
   const matchingFloorIds = useMemo(() => {
@@ -117,26 +192,23 @@ export default function Explorer3D() {
           camera={{ position: [70, 60, 70], fov: 50 }}
           shadows
           gl={{ antialias: true, alpha: false }}
-          style={{ background: isNight ? '#02040a' : '#07090f' }}
+          style={{ background: sky.bg }}
         >
-          <color attach="background" args={[isNight ? '#02040a' : '#07090f']} />
-          <fog attach="fog" args={[
-            isNight ? '#02040a' : '#07090f',
-            isNight ? 90 : 150,
-            isNight ? 260 : 400
-          ]} />
-          <ambientLight intensity={isNight ? 0.16 : 0.4} />
-          <directionalLight position={[50, 80, 30]} intensity={isNight ? 0.18 : 1.2} color={isNight ? '#6d86c9' : '#ffffff'} castShadow shadow-mapSize={[2048, 2048]} />
-          <directionalLight position={[-30, 40, -20]} intensity={isNight ? 0.16 : 0.4} color={isNight ? '#6d86c9' : '#ffffff'} />
-          <hemisphereLight args={[isNight ? '#101a42' : '#1a2340', isNight ? '#02040a' : '#07090f', isNight ? 0.16 : 0.4]} />
-          <Ground />
-          <GridFloor />
-          <ParcelOutline />
+          <color attach="background" args={[sky.bg]} />
+          <fog attach="fog" args={[sky.bg, sky.fogNear, sky.fogFar]} />
+          <ambientLight intensity={sky.ambient} />
+          <directionalLight position={[50, 80, 30]} intensity={sky.sun} color={sky.sunColor} castShadow shadow-mapSize={[2048, 2048]} />
+          <directionalLight position={[-30, 40, -20]} intensity={sky.ambient} color={sky.sunColor} />
+          <hemisphereLight args={[sky.hemiSky, sky.hemiGround, sky.ambient]} />
+          <Ground seeThrough={viewPreset === 'cutaway'} />
+          {showGrid && <GridFloor />}
+          {showParcel && <ParcelOutline />}
+          <MonsoonRain active={weather === 'monsoon'} />
           <BuildingAnchor onClick={() => { setSelected(null); setSelectedFloorId(null); setSelectedScope('building'); }} />
-          {floors.map((fl, fi) => (
+          {showFloors && floors.map((fl, fi) => (
             <FloorSlab key={fl.id} floor={fl} index={fi} visible={(selectedFloorId === null || selectedFloorId === fl.id)} exploded={exploded} zMax={zMax} highlighted={!reportFilterActive || matchingFloorIds.has(fl.id)} onClick={() => { setSelected(null); setSelectedFloorId(fl.id); setSelectedScope('floor'); }} />
           ))}
-          {units.map((u) => {
+          {showUnits && units.map((u) => {
             const fl = floors.find((f) => f.id === u.floor_id)!;
             return (
               <UnitMesh
@@ -151,7 +223,7 @@ export default function Explorer3D() {
               />
             );
           })}
-          <TourControls interiorTour={interiorTour} />
+          <ViewRig preset={viewPreset} interiorTour={interiorTour} />
         </Canvas>
 
         <div className="absolute top-3 left-3 glass rounded-lg p-3 w-56">
@@ -167,23 +239,115 @@ export default function Explorer3D() {
           <div className="mt-3 pt-3 border-t border-white/10">
             <div className="text-[10px] text-slate-500 mb-1.5">LIGHTING</div>
             <div className="grid grid-cols-2 gap-1">
-              {(['day', 'night'] as const).map((mode) => (
-                <button
-                  type="button"
-                  key={mode}
-                  onClick={() => setLightingMode(mode)}
-                  className={`text-[10px] py-1 rounded uppercase tracking-wider ${lightingMode === mode ? 'bg-emerald-500/20 text-emerald-300 border border-emerald-400/40' : 'bg-white/5 text-slate-400 border border-transparent hover:text-white'}`}
-                >
-                  {mode === 'day' ? '☀ DAY' : '☾ NIGHT'}
-                </button>
-              ))}
+              <button
+                type="button"
+                onClick={() => { setLiveSync(false); setHourOfDay(12); }}
+                className={`text-[10px] py-1 rounded uppercase tracking-wider ${!isNight ? 'bg-emerald-500/20 text-emerald-300 border border-emerald-400/40' : 'bg-white/5 text-slate-400 border border-transparent hover:text-white'}`}
+              >
+                ☀ DAY
+              </button>
+              <button
+                type="button"
+                onClick={() => { setLiveSync(false); setHourOfDay(0); }}
+                className={`text-[10px] py-1 rounded uppercase tracking-wider ${isNight ? 'bg-emerald-500/20 text-emerald-300 border border-emerald-400/40' : 'bg-white/5 text-slate-400 border border-transparent hover:text-white'}`}
+              >
+                ☾ NIGHT
+              </button>
             </div>
           </div>
           <label className="flex items-center gap-2 text-xs text-slate-300 cursor-pointer mt-3">
-            <input type="checkbox" checked={interiorTour} onChange={(e) => setInteriorTour(e.target.checked)} />
+            <input type="checkbox" checked={interiorTour} onChange={(e) => { setInteriorTour(e.target.checked); if (e.target.checked) setViewPreset('orbit'); }} />
             Interior Tour · zoom in
           </label>
           <div className="text-[9px] text-slate-500 mt-1">{interiorTour ? 'Close camera enabled — scroll to enter the floor layout.' : 'Enable to unlock close interior navigation.'}</div>
+        </div>
+
+        <div className="absolute top-3 left-[236px] w-60 glass rounded-lg">
+          <button
+            type="button"
+            onClick={() => setEnvOpen((v) => !v)}
+            className="w-full flex items-center justify-between p-3 text-left"
+          >
+            <span className="text-[10px] font-semibold text-white uppercase tracking-wider">Environment & View</span>
+            <span className="text-slate-400 text-xs">{envOpen ? '▾' : '▸'}</span>
+          </button>
+          {envOpen && (
+            <div className="px-3 pb-3 space-y-3">
+              <div>
+                <div className="flex items-center justify-between mb-1">
+                  <span className="text-[10px] text-slate-500">TIME OF DAY</span>
+                  <span className="text-[10px] mono text-emerald-300">{formatHour(hourOfDay)} · {isNight ? 'Night' : 'Day'}</span>
+                </div>
+                <input
+                  type="range"
+                  min={0}
+                  max={24}
+                  step={0.25}
+                  value={hourOfDay}
+                  disabled={liveSync}
+                  onChange={(e) => setHourOfDay(Number(e.target.value))}
+                  className="w-full"
+                  aria-label="Time of day"
+                />
+                <label className="flex items-center gap-2 text-xs text-slate-300 cursor-pointer mt-1">
+                  <input type="checkbox" checked={liveSync} onChange={(e) => setLiveSync(e.target.checked)} />
+                  Live sync
+                </label>
+              </div>
+              <div>
+                <div className="text-[10px] text-slate-500 mb-1">WEATHER</div>
+                <div className="grid grid-cols-3 gap-1">
+                  {(['clear', 'clouds', 'monsoon'] as const).map((w) => (
+                    <button
+                      type="button"
+                      key={w}
+                      onClick={() => setWeather(w)}
+                      className={`text-[10px] py-1 rounded uppercase tracking-wider ${weather === w ? 'bg-emerald-500/20 text-emerald-300 border border-emerald-400/40' : 'bg-white/5 text-slate-400 border border-transparent hover:text-white'}`}
+                    >
+                      {w}
+                    </button>
+                  ))}
+                </div>
+              </div>
+              <div>
+                <div className="text-[10px] text-slate-500 mb-1">CAMERA VIEWS</div>
+                <div className="grid grid-cols-1 gap-1">
+                  {([
+                    ['orbit', 'Free Orbit'],
+                    ['bird', "Bird's Eye"],
+                    ['plan', 'Cadastral Plan'],
+                    ['cutaway', 'Underground Cutaway'],
+                    ['street', 'Street Walk · 1.7m'],
+                  ] as const).map(([v, label]) => (
+                    <button
+                      type="button"
+                      key={v}
+                      onClick={() => { setViewPreset(v); if (v === 'street' || v !== 'orbit') setInteriorTour(false); }}
+                      className={`text-left text-[10px] py-1 px-2 rounded uppercase tracking-wider ${viewPreset === v ? 'bg-emerald-500/20 text-emerald-300 border border-emerald-400/40' : 'bg-white/5 text-slate-400 border border-transparent hover:text-white'}`}
+                    >
+                      {label}
+                    </button>
+                  ))}
+                </div>
+              </div>
+              <div>
+                <div className="text-[10px] text-slate-500 mb-1">LAYERS</div>
+                <div className="space-y-1">
+                  {([
+                    [showGrid, setShowGrid, 'Reference grid'],
+                    [showParcel, setShowParcel, 'Parcel boundary'],
+                    [showFloors, setShowFloors, 'Floor slabs'],
+                    [showUnits, setShowUnits, 'Property units'],
+                  ] as const).map(([val, setVal, label]) => (
+                    <label key={label} className="flex items-center gap-2 text-xs text-slate-300 cursor-pointer">
+                      <input type="checkbox" checked={val} onChange={(e) => setVal(e.target.checked)} />
+                      {label}
+                    </label>
+                  ))}
+                </div>
+              </div>
+            </div>
+          )}
         </div>
 
         <div className="absolute top-3 right-3 glass rounded-lg p-3 w-56">
@@ -386,18 +550,31 @@ export default function Explorer3D() {
 
 // ─── 3D Components ─────────────────────────────────────────────
 
-function TourControls({ interiorTour }: { interiorTour: boolean }) {
-  const { camera } = useThree();
+function ViewRig({ preset, interiorTour }: { preset: 'orbit' | 'bird' | 'plan' | 'cutaway' | 'street'; interiorTour: boolean }) {
+  const camera = useThree((s) => s.camera);
+  const controls = useThree((s) => s.controls) as unknown as { target: THREE.Vector3; update: () => void } | null;
+  const goal = useRef<{ pos: [number, number, number]; tgt: [number, number, number] } | null>(null);
 
   useEffect(() => {
-    if (interiorTour) {
-      camera.position.set(14, 8, 14);
-    } else {
-      camera.position.set(70, 60, 70);
+    if (interiorTour) goal.current = { pos: [14, 8, 14], tgt: [0, 3, 0] };
+    else if (preset === 'bird') goal.current = { pos: [85, 95, 85], tgt: [0, 0, 0] };
+    else if (preset === 'plan') goal.current = { pos: [0.5, 150, 0.5], tgt: [0, 0, 0] };
+    else if (preset === 'cutaway') goal.current = { pos: [58, 16, 58], tgt: [0, -1, 0] };
+    else if (preset === 'street') goal.current = { pos: [20, 1.7, 30], tgt: [0, 5, 0] };
+    else goal.current = null;
+  }, [preset, interiorTour]);
+
+  useFrame((_, dt) => {
+    const g = goal.current;
+    if (!g) return;
+    const k = 1 - Math.exp(-Math.min(dt, 0.1) * 3);
+    camera.position.lerp(new THREE.Vector3(g.pos[0], g.pos[1], g.pos[2]), k);
+    if (controls) {
+      controls.target.lerp(new THREE.Vector3(g.tgt[0], g.tgt[1], g.tgt[2]), k);
+      controls.update();
     }
-    camera.lookAt(0, 3, 0);
-    camera.updateProjectionMatrix();
-  }, [camera, interiorTour]);
+    if (camera.position.distanceTo(new THREE.Vector3(g.pos[0], g.pos[1], g.pos[2])) < 0.15) goal.current = null;
+  });
 
   return (
     <OrbitControls
@@ -405,7 +582,7 @@ function TourControls({ interiorTour }: { interiorTour: boolean }) {
       enableDamping
       dampingFactor={0.05}
       enableZoom
-      minDistance={interiorTour ? 2.5 : 15}
+      minDistance={preset === 'street' || interiorTour ? 1 : 15}
       maxDistance={250}
       maxPolarAngle={Math.PI / 2 - 0.05}
       target={[0, 3, 0]}
@@ -413,11 +590,48 @@ function TourControls({ interiorTour }: { interiorTour: boolean }) {
   );
 }
 
-function Ground() {
+function MonsoonRain({ active }: { active: boolean }) {
+  const ref = useRef<THREE.InstancedMesh>(null);
+  const drops = useMemo(() => {
+    const arr: Array<{ x: number; y: number; z: number; speed: number }> = [];
+    for (let i = 0; i < 350; i++) {
+      arr.push({ x: (Math.random() - 0.5) * 130, y: Math.random() * 60, z: (Math.random() - 0.5) * 130, speed: 22 + Math.random() * 14 });
+    }
+    return arr;
+  }, []);
+  const dummy = useMemo(() => new THREE.Object3D(), []);
+  useFrame((_, dt) => {
+    const mesh = ref.current;
+    if (!mesh) return;
+    const step = Math.min(dt, 0.05);
+    for (let i = 0; i < drops.length; i++) {
+      const d = drops[i];
+      d.y -= d.speed * step;
+      if (d.y < 0) {
+        d.y = 55 + Math.random() * 5;
+        d.x = (Math.random() - 0.5) * 130;
+        d.z = (Math.random() - 0.5) * 130;
+      }
+      dummy.position.set(d.x, d.y, d.z);
+      dummy.updateMatrix();
+      mesh.setMatrixAt(i, dummy.matrix);
+    }
+    mesh.instanceMatrix.needsUpdate = true;
+  });
+  if (!active) return null;
+  return (
+    <instancedMesh ref={ref} args={[undefined, undefined, 350] as unknown as [undefined, undefined, number]} frustumCulled={false}>
+      <boxGeometry args={[0.07, 1.3, 0.07]} />
+      <meshBasicMaterial color="#7dd3fc" transparent opacity={0.45} />
+    </instancedMesh>
+  );
+}
+
+function Ground({ seeThrough }: { seeThrough?: boolean }) {
   return (
     <mesh rotation={[-Math.PI / 2, 0, 0]} position={[0, -0.1, 0]} receiveShadow>
       <planeGeometry args={[200, 200]} />
-      <meshStandardMaterial color="#0f1629" />
+      <meshStandardMaterial color="#0f1629" transparent={!!seeThrough} opacity={seeThrough ? 0.22 : 1} depthWrite={!seeThrough} />
     </mesh>
   );
 }
