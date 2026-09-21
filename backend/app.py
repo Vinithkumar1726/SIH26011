@@ -1543,32 +1543,34 @@ async def get_statistics():
     """Get dashboard statistics"""
     async with async_session() as session:
         from sqlalchemy import select, func
-        
-        parcels = await session.execute(select(func.count(LandParcel.id)))
-        buildings = await session.execute(select(func.count(Building.id)))
-        floors = await session.execute(select(func.count(Floor.id)))
-        units = await session.execute(select(func.count(PropertyUnit.id)))
-        
+
+        # Consume each result immediately (see get_stats): re-reading one
+        # Result raises ResourceClosedError because scalar() hard-closes it.
+        parcels = (await session.execute(select(func.count(LandParcel.id)))).scalar() or 0
+        buildings = (await session.execute(select(func.count(Building.id)))).scalar() or 0
+        floors = (await session.execute(select(func.count(Floor.id)))).scalar() or 0
+        units = (await session.execute(select(func.count(PropertyUnit.id)))).scalar() or 0
+
         # Get validation stats
         validation_result = await session.execute(
             select(ValidationRun).order_by(ValidationRun.started_at.desc()).limit(1)
         )
         latest_validation = validation_result.scalar_one_or_none()
-        
+
         # Get AI proposals pending
-        ai_pending = await session.execute(
+        ai_pending = (await session.execute(
             select(func.count(AIProposal.id)).where(AIProposal.status == "REVIEW_REQUIRED")
-        )
-        
+        )).scalar() or 0
+
         return {
-            "total_parcels": parcels.scalar() or 0,
-            "total_buildings": buildings.scalar() or 0,
-            "total_floors": floors.scalar() or 0,
-            "total_units": units.scalar() or 0,
-            "total_3d_units": units.scalar() or 0,
-            "validated_units": units.scalar() or 0,
+            "total_parcels": parcels,
+            "total_buildings": buildings,
+            "total_floors": floors,
+            "total_units": units,
+            "total_3d_units": units,
+            "validated_units": units,
             "conflicts": 0,
-            "ai_proposals_pending": ai_pending.scalar() or 0,
+            "ai_proposals_pending": ai_pending,
             "last_validation": {
                 "status": latest_validation.status if latest_validation else "NOT_RUN",
                 "timestamp": latest_validation.started_at.isoformat() if latest_validation else None
