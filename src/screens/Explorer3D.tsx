@@ -117,18 +117,18 @@ export default function Explorer3D() {
           camera={{ position: [70, 60, 70], fov: 50 }}
           shadows
           gl={{ antialias: true, alpha: false }}
-          style={{ background: isNight ? 'var(--color-explorer-bg-night)' : 'var(--color-explorer-bg-day)' }}
+          style={{ background: isNight ? '#02040a' : '#07090f' }}
         >
-          <color attach="background" args={[isNight ? 'var(--color-explorer-bg-night)' : 'var(--color-explorer-bg-day)']} />
+          <color attach="background" args={[isNight ? '#02040a' : '#07090f']} />
           <fog attach="fog" args={[
-            isNight ? 'var(--color-explorer-fog-night)' : 'var(--color-explorer-fog-day)',
-            isNight ? 'var(--color-explorer-fog-near-night)' : 'var(--color-explorer-fog-near-day)',
-            isNight ? 'var(--color-explorer-fog-far-night)' : 'var(--color-explorer-fog-far-day)'
+            isNight ? '#02040a' : '#07090f',
+            isNight ? 90 : 150,
+            isNight ? 260 : 400
           ]} />
-          <ambientLight intensity={isNight ? 'var(--color-explorer-ambient-night)' : 'var(--color-explorer-ambient-day)'} />
-          <directionalLight position={[50, 80, 30]} intensity={isNight ? 'var(--color-explorer-dir-night)' : 'var(--color-explorer-dir-day)'} color={isNight ? 'var(--color-explorer-dir-color-night)' : 'var(--color-explorer-dir-color-day)'} castShadow shadow-mapSize={[2048, 2048]} />
-          <directionalLight position={[-30, 40, -20]} intensity={isNight ? 'var(--color-explorer-ambient-night)' : 'var(--color-explorer-ambient-day)'} color={isNight ? 'var(--color-explorer-dir-color-night)' : 'var(--color-explorer-dir-color-day)'} />
-          <hemisphereLight args={[isNight ? 'var(--color-explorer-hemisphere-sky-night)' : 'var(--color-explorer-hemisphere-sky-day)', isNight ? 'var(--color-explorer-hemisphere-ground-night)' : 'var(--color-explorer-hemisphere-ground-day)', isNight ? 'var(--color-explorer-ambient-night)' : 'var(--color-explorer-ambient-day)'}] />
+          <ambientLight intensity={isNight ? 0.16 : 0.4} />
+          <directionalLight position={[50, 80, 30]} intensity={isNight ? 0.18 : 1.2} color={isNight ? '#6d86c9' : '#ffffff'} castShadow shadow-mapSize={[2048, 2048]} />
+          <directionalLight position={[-30, 40, -20]} intensity={isNight ? 0.16 : 0.4} color={isNight ? '#6d86c9' : '#ffffff'} />
+          <hemisphereLight args={[isNight ? '#101a42' : '#1a2340', isNight ? '#02040a' : '#07090f', isNight ? 0.16 : 0.4]} />
           <Ground />
           <GridFloor />
           <ParcelOutline />
@@ -417,13 +417,13 @@ function Ground() {
   return (
     <mesh rotation={[-Math.PI / 2, 0, 0]} position={[0, -0.1, 0]} receiveShadow>
       <planeGeometry args={[200, 200]} />
-      <meshStandardMaterial color="var(--color-explorer-ground)" />
+      <meshStandardMaterial color="#0f1629" />
     </mesh>
   );
 }
 
 function GridFloor() {
-  return <gridHelper args={[200, 40, 'var(--color-explorer-grid)', 'var(--color-explorer-grid)' ]} position={[0, 0, 0]} />;
+  return <gridHelper args={[200, 40, '#1a2340', '#1a2340' ]} position={[0, 0, 0]} />;
 }
 
 function ParcelOutline() {
@@ -436,7 +436,7 @@ function ParcelOutline() {
   ], []);
   const lineObj = useMemo(() => {
     const geom = new THREE.BufferGeometry().setFromPoints(points);
-    const mat = new THREE.LineBasicMaterial({ color: 'var(--color-explorer-parcel)', linewidth: 2, transparent: true, opacity: 0.6 });
+    const mat = new THREE.LineBasicMaterial({ color: '#10b981', linewidth: 2, transparent: true, opacity: 0.6 });
     return new THREE.Line(geom, mat);
   }, [points]);
   return <primitive object={lineObj} />;
@@ -455,14 +455,14 @@ function FloorSlab({ floor, index, visible, exploded, zMax, highlighted, onClick
   floor: typeof floors[0]; index: number; visible: boolean; exploded: boolean; zMax: number; highlighted: boolean; onClick: () => void;
 }) {
   if (!visible || floor.z_max > zMax) return null;
-  const floorColors = ['var(--color-explorer-floor-0)', 'var(--color-explorer-floor-1)', 'var(--color-explorer-floor-2)', 'var(--color-explorer-floor-3)', 'var(--color-explorer-floor-3)', 'var(--color-explorer-floor-4)', 'var(--color-explorer-floor-5)', 'var(--color-explorer-floor-6)'];
+  const floorColors = ['#64748b', '#22c55e', '#f59e0b', '#3b82f6', '#3b82f6', '#ec4899', '#84cc16', '#a855f7'];
   const yOffset = exploded ? index * 2 : 0;
   const height = floor.z_max - floor.z_min;
   const y = floor.z_min + height / 2 + yOffset;
   return (
     <mesh position={[0, y, 0]} castShadow receiveShadow onClick={(e) => { e.stopPropagation(); onClick(); }}>
       <boxGeometry args={[42, height - 0.2, 30]} />
-      <meshStandardMaterial color={highlighted ? 'var(--color-explorer-highlight)' : floorColors[index % floorColors.length]} transparent opacity={highlighted ? 0.34 : 0.06} side={THREE.DoubleSide} />
+      <meshStandardMaterial color={highlighted ? '#fbbf24' : floorColors[index % floorColors.length]} transparent opacity={highlighted ? 0.34 : 0.06} side={THREE.DoubleSide} />
     </mesh>
   );
 }
@@ -485,13 +485,13 @@ function UnitMesh({ unit, floor, visible, exploded, selected, conflict, onClick 
   const floorIndex = floors.findIndex(f => f.id === floor.id);
   const yOffset = exploded ? floorIndex * 2 : 0;
 
-  let color = 'var(--color-explorer-unit-default)';
-  if (conflict) color = 'var(--color-explorer-conflict)';
-  else if (selected) color = 'var(--color-explorer-selected)';
-  else if (hovered) color = 'var(--color-explorer-hover)';
+  let color = '#6366f1';
+  if (conflict) color = '#ef4444';
+  else if (selected) color = '#fbbf24';
+  else if (hovered) color = '#ffffff';
   else {
-    const colors: Record<string, string> = { apartment: 'var(--color-explorer-unit-apartment)', parking: 'var(--color-explorer-unit-parking)', commercial: 'var(--color-explorer-unit-commercial)', lobby: 'var(--color-explorer-unit-lobby)', common: 'var(--color-explorer-unit-common)' };
-    color = colors[unit.type] || 'var(--color-explorer-unit-default)';
+    const colors: Record<string, string> = { apartment: '#10b981', parking: '#64748b', commercial: '#f97316', lobby: '#3b82f6', common: '#8b5cf6' };
+    color = colors[unit.type] || '#6366f1';
   }
 
   return (
@@ -508,8 +508,8 @@ function UnitMesh({ unit, floor, visible, exploded, selected, conflict, onClick 
         color={color}
         transparent
         opacity={selected ? 0.95 : hovered ? 0.85 : 0.7}
-        emissive={conflict ? 'var(--color-explorer-emissive-conflict)' : selected ? 'var(--color-explorer-emissive-selected)' : color}
-        emissiveIntensity={conflict ? 'var(--color-explorer-emissive-conflict-int)' : selected ? 'var(--color-explorer-emissive-selected-int)' : hovered ? 'var(--color-explorer-emissive-hover-int)' : 'var(--color-explorer-emissive-default)'}
+        emissive={conflict ? '#ef4444' : selected ? '#fbbf24' : color}
+        emissiveIntensity={conflict ? 0.4 : selected ? 0.3 : hovered ? 0.15 : 0.05}
         side={THREE.DoubleSide}
       />
     </mesh>
