@@ -2,8 +2,9 @@ import { useEffect, useMemo, useRef, useState } from 'react';
 import { Canvas, useFrame, useThree } from '@react-three/fiber';
 import { AdaptiveDpr, OrbitControls } from '@react-three/drei';
 import * as THREE from 'three';
-import type { Unit } from '../workspace3d/types';
-import { building, floors, footprintToLocal, parcel, spatialIDs, units } from '../workspace3d/data';
+import type { Building, Floor, Unit } from '../workspace3d/types';
+import { building as demoBuilding, floors as demoFloors, footprintToLocal, parcel as demoParcel, spatialIDs as demoSpatialIDs, units as demoUnits } from '../workspace3d/data';
+import { loadLiveHierarchy, type LiveHierarchy } from '../workspace3d/api';
 import { generatePolyhedralSolid, type Solid3D, validateTopology } from '../workspace3d/geo';
 
 const CENTER_LON = 77.209;
@@ -13,11 +14,15 @@ function formatReportCurrency(value: number, currency: string) {
   return new Intl.NumberFormat('en-IN', { style: 'currency', currency, maximumFractionDigits: 0 }).format(value);
 }
 
-function downloadCsv() {
+function downloadCsv(bldg: Building, flrs: Floor[]) {
+  const dash = '—';
+  const own = (o?: { ownerName: string; ownershipType: string }) => o ? [o.ownerName, o.ownershipType] : [dash, dash];
+  const val = (v?: { marketValue: number; assessedValue: number; currency: string; valuationYear: number; method: string; confidence: number }) =>
+    v ? [v.marketValue, v.assessedValue, v.currency, v.valuationYear, v.method, v.confidence] : [dash, dash, dash, dash, dash, dash];
   const rows = [
     ['REPORT_TYPE', 'IDENTIFIER', 'OWNER', 'OWNERSHIP_TYPE', 'MARKET_VALUE', 'ASSESSED_VALUE', 'CURRENCY', 'VALUATION_YEAR', 'METHOD', 'CONFIDENCE'],
-    ['BUILDING', building.id, building.ownership.ownerName, building.ownership.ownershipType, building.valuation.marketValue, building.valuation.assessedValue, building.valuation.currency, building.valuation.valuationYear, building.valuation.method, building.valuation.confidence],
-    ...floors.map((floor) => ['FLOOR', floor.code, floor.ownership.ownerName, floor.ownership.ownershipType, floor.valuation.marketValue, floor.valuation.assessedValue, floor.valuation.currency, floor.valuation.valuationYear, floor.valuation.method, floor.valuation.confidence]),
+    ['BUILDING', bldg.id, ...own(bldg.ownership), ...val(bldg.valuation)],
+    ...flrs.map((floor) => ['FLOOR', floor.code, ...own(floor.ownership), ...val(floor.valuation)]),
   ];
   const csv = rows.map((row) => row.map((value) => `"${String(value).replace(/"/g, '""')}"`).join(',')).join('\n');
   const url = URL.createObjectURL(new Blob([csv], { type: 'text/csv;charset=utf-8' }));
@@ -28,12 +33,19 @@ function downloadCsv() {
   URL.revokeObjectURL(url);
 }
 
-function printPdfReport() {
+function printPdfReport(bldg: Building, flrs: Floor[]) {
+  const dash = '—';
+  const money = (v?: { marketValue: number; assessedValue: number; currency: string }) =>
+    v ? [formatReportCurrency(v.marketValue, v.currency), formatReportCurrency(v.assessedValue, v.currency)] : [dash, dash];
+  const [bMarket, bAssessed] = money(bldg.valuation);
   const rows = [
     `<h1>SIH26011 Valuation & Ownership Report</h1><p>Generated ${new Date().toLocaleDateString('en-IN')}</p>`,
-    `<h2>Building · ${building.name}</h2><p><b>Owner:</b> ${building.ownership.ownerName}<br><b>Ownership:</b> ${building.ownership.ownershipType}<br><b>Market value:</b> ${formatReportCurrency(building.valuation.marketValue, building.valuation.currency)}<br><b>Assessed value:</b> ${formatReportCurrency(building.valuation.assessedValue, building.valuation.currency)}</p>`,
+    `<h2>Building · ${bldg.name}</h2><p><b>Owner:</b> ${bldg.ownership?.ownerName ?? dash}<br><b>Ownership:</b> ${bldg.ownership?.ownershipType ?? dash}<br><b>Market value:</b> ${bMarket}<br><b>Assessed value:</b> ${bAssessed}</p>`,
     '<h2>Floor valuation schedule</h2><table><thead><tr><th>Floor</th><th>Owner</th><th>Ownership</th><th>Market value</th><th>Assessed value</th><th>Year</th></tr></thead><tbody>',
-    ...floors.map((floor) => `<tr><td>${floor.code} · ${floor.label}</td><td>${floor.ownership.ownerName}</td><td>${floor.ownership.ownershipType}</td><td>${formatReportCurrency(floor.valuation.marketValue, floor.valuation.currency)}</td><td>${formatReportCurrency(floor.valuation.assessedValue, floor.valuation.currency)}</td><td>${floor.valuation.valuationYear}</td></tr>`),
+    ...flrs.map((floor) => {
+      const [fMarket, fAssessed] = money(floor.valuation);
+      return `<tr><td>${floor.code} · ${floor.label}</td><td>${floor.ownership?.ownerName ?? dash}</td><td>${floor.ownership?.ownershipType ?? dash}</td><td>${fMarket}</td><td>${fAssessed}</td><td>${floor.valuation?.valuationYear ?? dash}</td></tr>`;
+    }),
     '</tbody></table>',
   ];
   const printWindow = window.open('', '_blank', 'noopener,noreferrer');
@@ -97,7 +109,33 @@ export default function Explorer3D() {
   const [reportSearch, setReportSearch] = useState('');
   const [ownershipFilter, setOwnershipFilter] = useState('ALL');
   const [minimumMarketValue, setMinimumMarketValue] = useState(0);
+  const [liveData, setLiveData] = useState<LiveHierarchy | null>(null);
+  const [source, setSource] = useState<'loading' | 'live' | 'demo'>('loading');
+  const data = liveData ?? { parcel: demoParcel, building: demoBuilding, floors: demoFloors, units: demoUnits, spatialIDs: demoSpatialIDs };
+  const { parcel, building, floors, units, spatialIDs } = data;
   const isNight = hourOfDay < 6 || hourOfDay >= 18;
+
+  useEffect(() => {
+    let cancelled = false;
+    loadLiveHierarchy()
+      .then((d) => {
+        if (cancelled) return;
+        setLiveData(d);
+        setSource('live');
+        setSelected(null);
+        setSelectedFloorId(null);
+        setSelectedScope(null);
+        setReportSearch('');
+        setOwnershipFilter('ALL');
+        setMinimumMarketValue(0);
+      })
+      .catch(() => {
+        if (!cancelled) setSource('demo');
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, []);
 
   useEffect(() => {
     if (!liveSync) return;
@@ -136,15 +174,23 @@ export default function Explorer3D() {
     };
   }, [hourOfDay, weather]);
   const selectedFloor = selectedFloorId ? floors.find((fl) => fl.id === selectedFloorId) : null;
-  const ownershipOptions = useMemo(() => ['ALL', ...Array.from(new Set(floors.map((floor) => floor.ownership.ownershipType)))], []);
+  const ownershipOptions = useMemo(
+    () => source === 'live'
+      ? ['ALL']
+      : ['ALL', ...Array.from(new Set(floors.flatMap((floor) => floor.ownership ? [floor.ownership.ownershipType] : [])))],
+    [floors, source],
+  );
   const matchingFloorIds = useMemo(() => {
     const query = reportSearch.trim().toLowerCase();
     return new Set(floors.filter((floor) => {
-      const matchesSearch = !query || `${floor.code} ${floor.label} ${floor.ownership.ownerName}`.toLowerCase().includes(query);
-      const matchesOwner = ownershipFilter === 'ALL' || floor.ownership.ownershipType === ownershipFilter;
-      return matchesSearch && matchesOwner && floor.valuation.marketValue >= minimumMarketValue;
+      const matchesSearch = source === 'live'
+        ? !query || `${floor.code} ${floor.label}`.toLowerCase().includes(query)
+        : !query || `${floor.code} ${floor.label} ${floor.ownership?.ownerName ?? ''}`.toLowerCase().includes(query);
+      if (source === 'live') return matchesSearch;
+      const matchesOwner = ownershipFilter === 'ALL' || floor.ownership?.ownershipType === ownershipFilter;
+      return matchesSearch && matchesOwner && (floor.valuation?.marketValue ?? 0) >= minimumMarketValue;
     }).map((floor) => floor.id));
-  }, [minimumMarketValue, ownershipFilter, reportSearch]);
+  }, [floors, minimumMarketValue, ownershipFilter, reportSearch, source]);
   const reportFilterActive = Boolean(reportSearch.trim() || ownershipFilter !== 'ALL' || minimumMarketValue > 0);
   const inspectorVisible = selectedScope === 'building' || selectedFloorId !== null || selected !== null;
   const inspectorFloor = selectedFloorId
@@ -198,7 +244,7 @@ export default function Explorer3D() {
     
     setConflicts(conflictIds);
     (window as any).__overlapDetails = overlapDetails;
-  }, []);
+  }, [floors, units]);
 
   return (
     <div className="h-full flex">
@@ -432,11 +478,11 @@ export default function Explorer3D() {
           <select value={ownershipFilter} onChange={(e) => setOwnershipFilter(e.target.value)} className="w-full bg-deep text-[10px] text-slate-300 rounded-md px-2 py-1.5 border border-line outline-none mb-2">
             {ownershipOptions.map((option) => <option key={option} value={option}>{option === 'ALL' ? 'All ownership types' : option}</option>)}
           </select>
-          <label className="text-[9px] text-slate-500 block mb-1">Minimum market value · ₹{minimumMarketValue.toLocaleString('en-IN')}</label>
-          <input type="range" min={0} max={60000000} step={1000000} value={minimumMarketValue} onChange={(e) => setMinimumMarketValue(Number(e.target.value))} className="w-full" />
+          <label className="text-[9px] text-slate-500 block mb-1">{source === 'live' ? 'Minimum market value · — (no backend source)' : `Minimum market value · ₹${minimumMarketValue.toLocaleString('en-IN')}`}</label>
+          <input type="range" min={0} max={60000000} step={1000000} value={minimumMarketValue} disabled={source === 'live'} onChange={(e) => setMinimumMarketValue(Number(e.target.value))} className="w-full" />
           <div className="grid grid-cols-2 gap-1 mt-2">
-            <button type="button" onClick={downloadCsv} className="text-[9px] py-1.5 rounded bg-emerald-500/15 text-emerald-300 border border-emerald-400/20 hover:bg-emerald-500/25">CSV REPORT</button>
-            <button type="button" onClick={printPdfReport} className="text-[9px] py-1.5 rounded bg-white/5 text-slate-300 border border-white/10 hover:bg-white/10">PDF / PRINT</button>
+            <button type="button" onClick={() => downloadCsv(building, floors)} className="text-[9px] py-1.5 rounded bg-emerald-500/15 text-emerald-300 border border-emerald-400/20 hover:bg-emerald-500/25">CSV REPORT</button>
+            <button type="button" onClick={() => printPdfReport(building, floors)} className="text-[9px] py-1.5 rounded bg-white/5 text-slate-300 border border-white/10 hover:bg-white/10">PDF / PRINT</button>
           </div>
           {reportFilterActive && matchingFloorIds.size === 0 && <div className="text-[9px] text-danger mt-2">No floors match this filter.</div>}
         </div>
@@ -453,7 +499,7 @@ export default function Explorer3D() {
             </button>
             {inspOpen && (
               <div className="px-3 pb-3 space-y-3 overflow-y-auto">
-                <div className="text-[9px] text-slate-500">Demo data — not live backend</div>
+                {source === 'demo' && <div className="text-[9px] text-slate-500">Demo data — not live backend</div>}
                 <div className="space-y-1 text-[11px]">
                   <div className="flex items-center justify-between gap-2">
                     <span className="text-slate-500">Name</span>
@@ -564,6 +610,16 @@ export default function Explorer3D() {
             <div className="flex items-center gap-1"><div className="w-2 h-2 rounded-sm bg-orange-500"></div><span className="text-slate-400">Commercial</span></div>
             {conflicts.size > 0 && <div className="flex items-center gap-1"><div className="w-2 h-2 rounded-sm bg-danger"></div><span className="text-slate-400">Conflict</span></div>}
           </div>
+        </div>
+
+        <div className="absolute top-3 left-1/2 -translate-x-1/2 glass rounded-full px-3 py-1">
+          {source === 'live' ? (
+            <span className="text-[10px] text-emerald-300">● Live backend</span>
+          ) : source === 'loading' ? (
+            <span className="text-[10px] text-slate-400">Loading…</span>
+          ) : (
+            <span className="text-[10px] text-amber-300">● Demo data</span>
+          )}
         </div>
 
         {conflicts.size > 0 && (
@@ -975,10 +1031,11 @@ function InspectorEntityPanel({ kind, title, subtitle, ownership, valuation }: {
   kind: string;
   title: string;
   subtitle: string;
-  ownership: { ownerName: string; ownershipType: string; tenure: string; share: string; lastVerified: string };
-  valuation: { marketValue: number; assessedValue: number; currency: string; valuationYear: number; method: string; confidence: number };
+  ownership?: { ownerName: string; ownershipType: string; tenure: string; share: string; lastVerified: string };
+  valuation?: { marketValue: number; assessedValue: number; currency: string; valuationYear: number; method: string; confidence: number };
 }) {
-  const currency = new Intl.NumberFormat('en-IN', { style: 'currency', currency: valuation.currency, maximumFractionDigits: 0 });
+  const dash = '—';
+  const currency = new Intl.NumberFormat('en-IN', { style: 'currency', currency: valuation?.currency ?? 'INR', maximumFractionDigits: 0 });
   return (
     <div className="space-y-3 animate-fade-in">
       <div className="bg-deep rounded-lg p-3">
@@ -988,26 +1045,26 @@ function InspectorEntityPanel({ kind, title, subtitle, ownership, valuation }: {
       </div>
       <div className="bg-deep rounded-lg p-3">
         <div className="text-[9px] text-slate-500 uppercase tracking-wider mb-2">Ownership</div>
-        <div className="text-xs text-white font-medium mb-2">{ownership.ownerName}</div>
+        <div className="text-xs text-white font-medium mb-2">{ownership?.ownerName ?? dash}</div>
         <div className="grid grid-cols-2 gap-2">
-          <InfoCell label="Title" value={ownership.ownershipType} />
-          <InfoCell label="Tenure" value={ownership.tenure} />
-          <InfoCell label="Share" value={ownership.share} />
-          <InfoCell label="Verified" value={ownership.lastVerified} />
+          <InfoCell label="Title" value={ownership?.ownershipType ?? dash} />
+          <InfoCell label="Tenure" value={ownership?.tenure ?? dash} />
+          <InfoCell label="Share" value={ownership?.share ?? dash} />
+          <InfoCell label="Verified" value={ownership?.lastVerified ?? dash} />
         </div>
       </div>
       <div className="bg-deep rounded-lg p-3">
         <div className="flex items-center justify-between mb-2">
           <div className="text-[9px] text-slate-500 uppercase tracking-wider">Property Valuation</div>
-          <span className="text-[9px] text-emerald-300 mono">{valuation.valuationYear}</span>
+          <span className="text-[9px] text-emerald-300 mono">{valuation?.valuationYear ?? dash}</span>
         </div>
         <div className="grid grid-cols-2 gap-2 mb-2">
-          <InfoCell label="Market Value" value={currency.format(valuation.marketValue)} />
-          <InfoCell label="Assessed Value" value={currency.format(valuation.assessedValue)} />
+          <InfoCell label="Market Value" value={valuation ? currency.format(valuation.marketValue) : dash} />
+          <InfoCell label="Assessed Value" value={valuation ? currency.format(valuation.assessedValue) : dash} />
         </div>
         <div className="flex items-center justify-between text-[10px] text-slate-500">
-          <span>{valuation.method}</span>
-          <span className="text-emerald-300">{Math.round(valuation.confidence * 100)}% confidence</span>
+          <span>{valuation?.method ?? dash}</span>
+          <span className="text-emerald-300">{valuation ? `${Math.round(valuation.confidence * 100)}% confidence` : dash}</span>
         </div>
       </div>
     </div>

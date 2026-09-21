@@ -29,8 +29,8 @@ export interface Building {
   height_source: HeightSource;
   floors_count: number;
   footprint: number[][]; // [[lon,lat], ...]
-  ownership: OwnershipDetails;
-  valuation: ValuationDetails;
+  ownership?: OwnershipDetails;
+  valuation?: ValuationDetails;
 }
 
 export interface OwnershipDetails {
@@ -58,8 +58,8 @@ export interface Floor {
   z_min: number;
   z_max: number;
   area_sqm: number;
-  ownership: OwnershipDetails;
-  valuation: ValuationDetails;
+  ownership?: OwnershipDetails;
+  valuation?: ValuationDetails;
 }
 
 export interface Unit {
