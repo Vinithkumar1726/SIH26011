@@ -1222,6 +1222,27 @@ export default function Explorer3D() {
                   {cityOffset ? `${Math.hypot(cityOffset[0] + osmRecord.cx, -cityOffset[1] + osmRecord.cz).toFixed(0)} m` : '—'}
                 </span>
               </div>
+              {(() => {
+                const sf = osmModel?.floors.find((f) => f.id === osmFloorId) ?? null;
+                const su = osmModel?.units.find((u) => u.id === osmUnitId) ?? null;
+                if (!sf && !su) return null;
+                return (
+                  <>
+                    {sf && (
+                      <div className="flex items-center justify-between gap-2">
+                        <span className="text-slate-500">Floor</span>
+                        <span className="text-slate-200">{sf.code} · {sf.z_min.toFixed(1)}–{sf.z_max.toFixed(1)}m</span>
+                      </div>
+                    )}
+                    {su && (
+                      <div className="flex items-center justify-between gap-2">
+                        <span className="text-slate-500">Unit</span>
+                        <span className="text-slate-200">{su.label} · {su.area_sqm.toFixed(1)} m²</span>
+                      </div>
+                    )}
+                  </>
+                );
+              })()}
               <div className="text-[9px] text-slate-500 pt-1">Context data — not a cadastral record. Heights are assumed unless tagged.</div>
               <div className="text-[9px] text-slate-500">Synthetic subdivision of an OSM footprint — not cadastral records.</div>
             </div>
