@@ -560,6 +560,24 @@ export default function Explorer3D() {
       tgt: [cx, osmRecord.height / 2, cz] as [number, number, number],
     };
   }, [cityVisible, cityOffset, osmRecord]);
+  const pipeFocus = useMemo(() => {
+    if (buildingPipes.length === 0 || !cityVisible || !cityOffset) return null;
+    const gx = cityOffset[0], gz = -cityOffset[1];
+    let sx = 0, sz = 0, n = 0;
+    for (const p of buildingPipes) {
+      for (const [px, pz] of [p.a, p.b]) {
+        sx += gx + px;
+        sz += gz + pz;
+        n++;
+      }
+    }
+    const mx = sx / n, mz = sz / n;
+    return {
+      pos: [mx + 40, 32, mz + 40] as [number, number, number],
+      tgt: [mx, -2, mz] as [number, number, number],
+    };
+  }, [buildingPipes, cityVisible, cityOffset]);
+
   const cityViews = useMemo(() => {
     if (!cityVisible || !cityOffset || !cityMeta) return null;
     const R = cityMeta.radiusM;
@@ -809,7 +827,7 @@ export default function Explorer3D() {
               />
             );
           })}
-          <ViewRig preset={viewPreset} interiorTour={interiorTour} buildingId={building.id} cam={cam} cityViews={cityViews} cityVisible={cityVisible} maxDistance={viewPreset === 'freeroam' && cityVisible && cityMeta ? 4 * cityMeta.radiusM : cityVisible && cityMeta ? 2.5 * cityMeta.radiusM : 250} focusPose={focusPose} camNonce={camNonce} />
+          <ViewRig preset={viewPreset} interiorTour={interiorTour} buildingId={building.id} cam={cam} cityViews={cityViews} cityVisible={cityVisible} maxDistance={viewPreset === 'freeroam' && cityVisible && cityMeta ? 4 * cityMeta.radiusM : cityVisible && cityMeta ? 2.5 * cityMeta.radiusM : 250} focusPose={focusPose} pipeFocus={pipeFocus} camNonce={camNonce} />
         </Canvas>
 
         <div className={`absolute top-3 left-3 bottom-28 ${compact ? 'w-44' : narrow ? 'w-52' : 'w-64'} flex flex-col gap-2 overflow-y-auto pointer-events-none`}>
@@ -1454,7 +1472,7 @@ type ViewPreset = 'orbit' | 'bird' | 'plan' | 'cutaway' | 'street' | 'city' | 'f
 type CamPose = { pos: [number, number, number]; tgt: [number, number, number] };
 type CamPoses = { home: CamPose; bird: CamPose; plan: CamPose; cutaway: CamPose; street: CamPose; interior: CamPose };
 
-function ViewRig({ preset, interiorTour, buildingId, cam, cityViews, cityVisible, maxDistance, focusPose, camNonce }: { preset: ViewPreset; interiorTour: boolean; buildingId: string; cam: CamPoses; cityViews: { city: CamPose; plan: CamPose; freeroam: CamPose } | null; cityVisible: boolean; maxDistance: number; focusPose: CamPose | null; camNonce: number }) {
+function ViewRig({ preset, interiorTour, buildingId, cam, cityViews, cityVisible, maxDistance, focusPose, pipeFocus, camNonce }: { preset: ViewPreset; interiorTour: boolean; buildingId: string; cam: CamPoses; cityViews: { city: CamPose; plan: CamPose; freeroam: CamPose } | null; cityVisible: boolean; maxDistance: number; focusPose: CamPose | null; pipeFocus: CamPose | null; camNonce: number }) {
   const camera = useThree((s) => s.camera);
   const controls = useThree((s) => s.controls) as unknown as { target: THREE.Vector3; update: () => void } | null;
   const invalidate = useThree((s) => s.invalidate);
@@ -1467,14 +1485,14 @@ function ViewRig({ preset, interiorTour, buildingId, cam, cityViews, cityVisible
     if (interiorTour) goal.current = focusPose ?? cam.interior;
     else if (preset === 'bird') goal.current = cam.bird;
     else if (preset === 'plan') goal.current = cityViews?.plan ?? cam.plan;
-    else if (preset === 'cutaway') goal.current = cam.cutaway;
+    else if (preset === 'cutaway') goal.current = pipeFocus ?? cam.cutaway;
     else if (preset === 'street') goal.current = cam.street;
     else if (preset === 'city') goal.current = cityViews?.city ?? cam.home;
     else if (preset === 'freeroam') goal.current = cityViews?.freeroam ?? cam.home;
     else if (preset === 'focus') goal.current = focusPose ?? cam.home;
     else goal.current = first ? null : (focusPose ?? cam.home);
     invalidate();
-  }, [preset, interiorTour, buildingId, cam, cityViews, focusPose, camNonce, invalidate]);
+  }, [preset, interiorTour, buildingId, cam, cityViews, focusPose, pipeFocus, camNonce, invalidate]);
 
   useEffect(() => {
     const c = camera as THREE.PerspectiveCamera;
