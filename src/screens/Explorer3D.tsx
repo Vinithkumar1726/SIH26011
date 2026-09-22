@@ -562,6 +562,7 @@ export default function Explorer3D() {
     return {
       city: { pos: [C[0] + 0.9 * R, 0.75 * R, C[2] + 0.9 * R] as [number, number, number], tgt: C },
       plan: { pos: [C[0], 1.6 * R, C[2]] as [number, number, number], tgt: C },
+      freeroam: { pos: [C[0] + 0.6 * R, 1.0 * R, C[2] + 0.6 * R] as [number, number, number], tgt: C },
     };
   }, [cityVisible, cityOffset, cityMeta]);
 
@@ -803,7 +804,7 @@ export default function Explorer3D() {
               />
             );
           })}
-          <ViewRig preset={viewPreset} interiorTour={interiorTour} buildingId={building.id} cam={cam} cityViews={cityViews} cityVisible={cityVisible} maxDistance={cityVisible && cityMeta ? 2.5 * cityMeta.radiusM : 250} focusPose={focusPose} camNonce={camNonce} />
+          <ViewRig preset={viewPreset} interiorTour={interiorTour} buildingId={building.id} cam={cam} cityViews={cityViews} cityVisible={cityVisible} maxDistance={viewPreset === 'freeroam' && cityVisible && cityMeta ? 4 * cityMeta.radiusM : cityVisible && cityMeta ? 2.5 * cityMeta.radiusM : 250} focusPose={focusPose} camNonce={camNonce} />
         </Canvas>
 
         <div className={`absolute top-3 left-3 bottom-28 ${compact ? 'w-44' : narrow ? 'w-52' : 'w-64'} flex flex-col gap-2 overflow-y-auto pointer-events-none`}>
@@ -897,7 +898,7 @@ export default function Explorer3D() {
                 <div className="text-[10px] text-slate-500 mb-1">CAMERA VIEWS</div>
                 <div className="grid grid-cols-1 gap-1">
                   {((cityVisible
-                    ? [['city', 'City Overview'], ['orbit', 'Free Orbit'], ['bird', "Bird's Eye"], ['plan', 'Cadastral Plan'], ['cutaway', 'Underground Cutaway'], ['street', 'Street Walk · 1.7m']]
+                    ? [['freeroam', 'Free Roam'], ['city', 'City Overview'], ['orbit', 'Free Orbit'], ['bird', "Bird's Eye"], ['plan', 'Cadastral Plan'], ['cutaway', 'Underground Cutaway'], ['street', 'Street Walk · 1.7m']]
                     : [['orbit', 'Free Orbit'], ['bird', "Bird's Eye"], ['plan', 'Cadastral Plan'], ['cutaway', 'Underground Cutaway'], ['street', 'Street Walk · 1.7m']]) as [ViewPreset, string][]).map(([v, label]) => (
                     <div key={v}>
                       <button
@@ -1429,11 +1430,11 @@ export default function Explorer3D() {
 
 // ─── 3D Components ─────────────────────────────────────────────
 
-type ViewPreset = 'orbit' | 'bird' | 'plan' | 'cutaway' | 'street' | 'city' | 'focus';
+type ViewPreset = 'orbit' | 'bird' | 'plan' | 'cutaway' | 'street' | 'city' | 'focus' | 'freeroam';
 type CamPose = { pos: [number, number, number]; tgt: [number, number, number] };
 type CamPoses = { home: CamPose; bird: CamPose; plan: CamPose; cutaway: CamPose; street: CamPose; interior: CamPose };
 
-function ViewRig({ preset, interiorTour, buildingId, cam, cityViews, cityVisible, maxDistance, focusPose, camNonce }: { preset: ViewPreset; interiorTour: boolean; buildingId: string; cam: CamPoses; cityViews: { city: CamPose; plan: CamPose } | null; cityVisible: boolean; maxDistance: number; focusPose: CamPose | null; camNonce: number }) {
+function ViewRig({ preset, interiorTour, buildingId, cam, cityViews, cityVisible, maxDistance, focusPose, camNonce }: { preset: ViewPreset; interiorTour: boolean; buildingId: string; cam: CamPoses; cityViews: { city: CamPose; plan: CamPose; freeroam: CamPose } | null; cityVisible: boolean; maxDistance: number; focusPose: CamPose | null; camNonce: number }) {
   const camera = useThree((s) => s.camera);
   const controls = useThree((s) => s.controls) as unknown as { target: THREE.Vector3; update: () => void } | null;
   const invalidate = useThree((s) => s.invalidate);
@@ -1449,6 +1450,7 @@ function ViewRig({ preset, interiorTour, buildingId, cam, cityViews, cityVisible
     else if (preset === 'cutaway') goal.current = cam.cutaway;
     else if (preset === 'street') goal.current = cam.street;
     else if (preset === 'city') goal.current = cityViews?.city ?? cam.home;
+    else if (preset === 'freeroam') goal.current = cityViews?.freeroam ?? cam.home;
     else if (preset === 'focus') goal.current = focusPose ?? cam.home;
     else goal.current = first ? null : cam.home;
     invalidate();
