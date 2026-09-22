@@ -17,7 +17,7 @@ from contextlib import asynccontextmanager
 from dotenv import load_dotenv
 load_dotenv()
 
-from fastapi import FastAPI, HTTPException, UploadFile, File, Depends, status
+from fastapi import FastAPI, HTTPException, UploadFile, File, Depends, status, BackgroundTasks
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse
 from pydantic import BaseModel, Field
@@ -1635,6 +1635,67 @@ async def get_validation_state():
             "not_validated": 0,
             "total": total
         }
+
+# ============================================================================
+# AI BACKGROUND JOB QUEUE (non-blocking, in-memory)
+# ============================================================================
+
+AI_JOBS: dict = {}
+
+
+class AIJobRequest(BaseModel):
+    job_type: str = Field(description="Job type, e.g. 'lidar_elevation'")
+    target_id: str = Field(description="Target building or parcel id")
+
+
+def _ai_job_set(job_id: str, **fields):
+    job = AI_JOBS.get(job_id)
+    if job is None:
+        return
+    job.update(fields)
+
+
+async def _ai_job_worker(job_id: str, job_type: str, target_id: str):
+    """Background worker: never blocks the event loop's response path."""
+    _ai_job_set(job_id, status="PROCESSING")
+    try:
+        result = None
+        if job_type == "lidar_elevation":
+            from lidar_engine import extract_building_elevation
+
+            file_path = os.path.join("test-data", f"{target_id}.ply")
+            result = extract_building_elevation(file_path)
+        else:
+            raise ValueError(f"Unknown job_type: {job_type}")
+        _ai_job_set(job_id, status="COMPLETED", result=result)
+    except Exception as e:
+        _ai_job_set(job_id, status="FAILED", error=str(e))
+
+
+@app.post("/api/ai/jobs")
+async def create_ai_job(payload: AIJobRequest, background_tasks: BackgroundTasks):
+    """Queue a background AI job; returns immediately with a job id."""
+    job_id = uuid.uuid4().hex
+    AI_JOBS[job_id] = {
+        "job_id": job_id,
+        "job_type": payload.job_type,
+        "target_id": payload.target_id,
+        "status": "PENDING",
+        "result": None,
+        "error": None,
+    }
+    background_tasks.add_task(_ai_job_worker, job_id, payload.job_type, payload.target_id)
+    return {"job_id": job_id, "status": "PENDING"}
+
+
+@app.get("/api/ai/jobs/{job_id}")
+async def get_ai_job(job_id: str):
+    """Poll status/result of a background AI job."""
+    job = AI_JOBS.get(job_id)
+    if job is None:
+        raise HTTPException(status_code=404, detail="Job not found")
+    return job
+
 
 @app.get("/api/ai/candidates")
 async def get_ai_candidates():
