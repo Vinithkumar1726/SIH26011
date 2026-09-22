@@ -1458,7 +1458,7 @@ function ViewRig({ preset, interiorTour, buildingId, cam, cityViews, cityVisible
   useEffect(() => {
     const first = !mounted.current;
     mounted.current = true;
-    if (interiorTour) goal.current = cam.interior;
+    if (interiorTour) goal.current = focusPose ?? cam.interior;
     else if (preset === 'bird') goal.current = cam.bird;
     else if (preset === 'plan') goal.current = cityViews?.plan ?? cam.plan;
     else if (preset === 'cutaway') goal.current = cam.cutaway;
@@ -1466,7 +1466,7 @@ function ViewRig({ preset, interiorTour, buildingId, cam, cityViews, cityVisible
     else if (preset === 'city') goal.current = cityViews?.city ?? cam.home;
     else if (preset === 'freeroam') goal.current = cityViews?.freeroam ?? cam.home;
     else if (preset === 'focus') goal.current = focusPose ?? cam.home;
-    else goal.current = first ? null : cam.home;
+    else goal.current = first ? null : (focusPose ?? cam.home);
     invalidate();
   }, [preset, interiorTour, buildingId, cam, cityViews, focusPose, camNonce, invalidate]);
 
