@@ -1517,16 +1517,16 @@ function ViewRig({ preset, interiorTour, buildingId, cam, cityViews, cityVisible
 
   useEffect(() => {
     const c = camera as THREE.PerspectiveCamera;
-    if (cityVisible) {
+    if (cityVisible && cityMeta) {
       c.near = 1;
-      c.far = 4000;
+      c.far = Math.max(4000, 6 * cityMeta.radiusM);
     } else {
       c.near = 0.1;
       c.far = 1000;
     }
     c.updateProjectionMatrix();
     invalidate();
-  }, [cityVisible, camera, invalidate]);
+  }, [cityVisible, cityMeta, camera, invalidate]);
 
   useFrame((_, dt) => {
     const g = goal.current;
