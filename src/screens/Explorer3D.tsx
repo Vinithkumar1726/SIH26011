@@ -96,7 +96,7 @@ async function printPdfReport(bldg: Building, flrs: Floor[], units: Unit[], sids
     return `<tr><td>${u.label} (${u.code})</td><td>${sid?.full ?? dash}</td><td>${hash ? hash.slice(0, 32) + '…' : dash}</td><td>${ver}</td><td>${qr}</td></tr>`;
   }));
   const rows = [
-    `<h1>SIH26011 Valuation & Ownership Report</h1><p>Generated ${new Date().toLocaleDateString('en-IN')}</p>`,
+    `<h1>3D Bhu-Aadhaar</h1><p>Generated ${new Date().toLocaleDateString('en-IN')}</p>`,
     `<h2>Building · ${bldg.name}</h2><p><b>Owner:</b> ${bldg.ownership?.ownerName ?? dash}<br><b>Ownership:</b> ${bldg.ownership?.ownershipType ?? dash}<br><b>Market value:</b> ${bMarket}<br><b>Assessed value:</b> ${bAssessed}</p>`,
     '<h2>Floor valuation schedule</h2><table><thead><tr><th>Floor</th><th>Owner</th><th>Ownership</th><th>Market value</th><th>Assessed value</th><th>Year</th></tr></thead><tbody>',
     ...flrs.map((floor) => {
@@ -109,7 +109,7 @@ async function printPdfReport(bldg: Building, flrs: Floor[], units: Unit[], sids
     '</tbody></table>',
     '<footer style="margin-top:24px;font-size:11px;color:#5A6B8A;border-top:1px solid #C8D0DB;padding-top:8px">Prototype 3D Property Record — not a legal document</footer>',
   ];
-  printWindow.document.write(`<html><head><title>SIH26011 Valuation Report</title><style>body{font-family:Arial,sans-serif;color:#17202a;padding:32px}h1{color:#087f73}table{border-collapse:collapse;width:100%;font-size:12px}th,td{border:1px solid #cbd5e1;padding:8px;text-align:left}th{background:#e2e8f0}</style></head><body>${rows.join('')}</body></html>`);
+  printWindow.document.write(`<html><head><title>3D Bhu-Aadhaar Report</title><style>body{font-family:Arial,sans-serif;color:#17202a;padding:32px}h1{color:#087f73}table{border-collapse:collapse;width:100%;font-size:12px}th,td{border:1px solid #cbd5e1;padding:8px;text-align:left}th{background:#e2e8f0}</style></head><body>${rows.join('')}</body></html>`);
   printWindow.document.close();
   printWindow.focus();
   printWindow.print();
@@ -1035,7 +1035,7 @@ export default function Explorer3D() {
           <input type="range" min={0} max={60000000} step={1000000} value={minimumMarketValue} disabled={source === 'live'} onChange={(e) => setMinimumMarketValue(Number(e.target.value))} className="w-full" />
           <div className="grid grid-cols-2 gap-1 mt-2">
             <button type="button" onClick={() => downloadCsv(building, floors)} className="text-[9px] py-1.5 rounded bg-emerald-500/15 text-emerald-300 border border-emerald-400/20 hover:bg-emerald-500/25">CSV REPORT</button>
-            <button type="button" onClick={() => printPdfReport(building, floors, units, spatialIDs)} className="text-[9px] py-1.5 rounded bg-white/5 text-slate-300 border border-white/10 hover:bg-white/10">PDF / PRINT</button>
+            <button type="button" onClick={() => printPdfReport(building, floors, units, spatialIDs)} className="text-[9px] py-1.5 rounded bg-white/5 text-slate-300 border border-white/10 hover:bg-white/10">Generate 3D Bhu-Aadhaar</button>
           </div>
           {reportFilterActive && matchingFloorIds.size === 0 && <div className="text-[9px] text-danger mt-2">No floors match this filter.</div>}
           </CollapsePanel>
