@@ -480,11 +480,6 @@ def solid_to_wkb(solid, srid=4326):
     from sqlalchemy import func
     return func.ST_GeomFromEWKT(ewkt, type_=Geometry('POLYHEDRALSURFACEZ', dimension=3, srid=srid))
 
-# Separation tolerance for 3D overlap decisions, in metres.
-# Two solids whose penetration depth is at most this value only touch
-# (shared face, edge or corner) and must NOT be reported as overlapping.
-TOUCH_EPS_M = 0.001
-
 METERS_PER_DEG_LAT = 111320.0
 
 def lonlat_to_local(lon, lat, lon0, lat0):
@@ -499,18 +494,6 @@ def dedupe_ring(coords):
     if len(coords) > 1 and coords[0] == coords[-1]:
         return coords[:-1]
     return coords
-
-def overlap_origin(entries):
-    """Shared local-metre origin (centroid of all footprint points) for one comparison set."""
-    xs = []
-    ys = []
-    for e in entries:
-        for x, y in dedupe_ring(e["ring"]):
-            xs.append(x)
-            ys.append(y)
-    if not xs:
-        raise ValueError("No footprint points for overlap origin")
-    return [sum(xs) / len(xs), sum(ys) / len(ys)]
 
 def footprint_area_m2(ring_lonlat, origin=None):
     """Shoelace area in m² of a lon/lat ring, projected with lonlat_to_local
@@ -529,236 +512,132 @@ def footprint_area_m2(ring_lonlat, origin=None):
         area += x0 * y1 - x1 * y0
     return abs(area) / 2
 
-def build_overlap_solids(entries, origin=None):
-    """Build local-metre solids for overlap testing.
-    entries: dicts with id, floor_id, ring (lon/lat), z_min, z_max.
-    All solids share one origin (given, else the set centroid) and z stays
-    in metres. Nothing here changes what is stored in the database.
-    """
-    if origin is None:
-        if not entries:
-            return []
-        origin = overlap_origin(entries)
-    lon0, lat0 = origin
-    solids = []
-    for e in entries:
-        local = [lonlat_to_local(x, y, lon0, lat0) for x, y in dedupe_ring(e["ring"])]
-        solids.append({
-            "id": e["id"],
-            "floor_id": e.get("floor_id"),
-            "solid": generate_polyhedral_solid(local, e["z_min"], e["z_max"]),
-        })
-    return solids
+# Shared pair query for 3D overlap detection over stored solids.
+# A pair counts as overlapping only with genuine volumetric penetration:
+# axis-aligned boxes need more than 1 mm of overlap on every axis (the 1 mm
+# is expressed in metres via the set centroid latitude for x/y; z is
+# already metres), while anything else counts when its 3D intersection
+# has full dimension. Touching solids (shared face, edge or corner) are
+# excluded either way. Same issue shape as the former Python implementation.
+OVERLAP_PAIRS_SQL = """
+WITH params AS (
+    SELECT AVG(ST_X(ST_Centroid(footprint))) AS lon0,
+           AVG(ST_Y(ST_Centroid(footprint))) AS lat0
+    FROM property_unit
+    WHERE footprint IS NOT NULL AND (:floor_id IS NULL OR floor_id = :floor_id)
+),
+m AS (
+    SELECT id, floor_id, solid_geom,
+           ST_XMin(solid_geom) AS xmin, ST_XMax(solid_geom) AS xmax,
+           ST_YMin(solid_geom) AS ymin, ST_YMax(solid_geom) AS ymax,
+           ST_ZMin(solid_geom) AS zmin, ST_ZMax(solid_geom) AS zmax,
+           ST_Volume(solid_geom) AS vol
+    FROM property_unit
+    WHERE solid_geom IS NOT NULL AND (:floor_id IS NULL OR floor_id = :floor_id)
+)
+SELECT s.id_a, s.id_b, ST_Volume(s.inter) AS volume
+FROM (
+    SELECT a.id AS id_a, b.id AS id_b,
+           ST_3DIntersection(a.solid_geom, b.solid_geom) AS inter,
+           (ABS(a.vol - (a.xmax - a.xmin) * (a.ymax - a.ymin) * (a.zmax - a.zmin))
+                <= 1e-9 * (a.xmax - a.xmin) * (a.ymax - a.ymin) * (a.zmax - a.zmin)
+            AND ABS(b.vol - (b.xmax - b.xmin) * (b.ymax - b.ymin) * (b.zmax - b.zmin))
+                <= 1e-9 * (b.xmax - b.xmin) * (b.ymax - b.ymin) * (b.zmax - b.zmin)) AS bothbox,
+           LEAST(a.xmax, b.xmax) - GREATEST(a.xmin, b.xmin) AS ox,
+           LEAST(a.ymax, b.ymax) - GREATEST(a.ymin, b.ymin) AS oy,
+           LEAST(a.zmax, b.zmax) - GREATEST(a.zmin, b.zmin) AS oz
+    FROM m a
+    JOIN m b ON a.floor_id = b.floor_id AND a.id < b.id
+    CROSS JOIN params
+    WHERE ST_3DIntersects(a.solid_geom, b.solid_geom)
+) s
+CROSS JOIN params
+WHERE (s.bothbox
+       AND s.ox > 0.001 / (111320 * COS(RADIANS(params.lat0)))
+       AND s.oy > 0.001 / 111320
+       AND s.oz > 0.001)
+   OR ((NOT s.bothbox) AND ST_Dimension(s.inter) = 3)
+"""
 
-def check_overlap(solid1, solid2, epsilon=TOUCH_EPS_M):
-    """Check if two solids overlap"""
-    # Get bounding boxes
-    bbox1 = get_bounding_box(solid1)
-    bbox2 = get_bounding_box(solid2)
-    
-    # AABB check
-    if not aabb_overlap(bbox1, bbox2, epsilon):
-        return {"overlaps": False}
-    
-    # Z-range check
-    z_overlap = min(bbox1["max"][2], bbox2["max"][2]) - max(bbox1["min"][2], bbox2["min"][2])
-    if z_overlap <= epsilon:
-        return {"overlaps": False}
-    
-    # Exact box intersection
-    box1 = extract_box(solid1)
-    box2 = extract_box(solid2)
-    
-    if box1 and box2:
-        return check_box_overlap(box1, box2, epsilon)
-    
-    # SAT for general polyhedra
-    return check_sat_overlap(solid1, solid2)
+# Candidate pair query for one proposed (not yet stored) solid, with the
+# same volumetric-penetration rule as OVERLAP_PAIRS_SQL.
+NEW_SOLID_PAIRS_SQL = """
+WITH params AS (
+    SELECT AVG(ST_X(ST_Centroid(footprint))) AS lon0,
+           AVG(ST_Y(ST_Centroid(footprint))) AS lat0
+    FROM property_unit
+    WHERE floor_id = :floor_id AND footprint IS NOT NULL
+),
+cand AS (
+    SELECT id, floor_id, solid_geom FROM property_unit
+    WHERE floor_id = :floor_id AND id != :unit_id AND solid_geom IS NOT NULL
+    UNION ALL
+    SELECT CAST(:unit_id AS VARCHAR), CAST(:floor_id AS VARCHAR),
+           ST_Translate(
+               ST_Extrude(ST_Force3D(ST_GeomFromText(:wkt, 4326)), 0, 0, :dz),
+               0, 0, :zmin)
+),
+m AS (
+    SELECT id, floor_id, solid_geom,
+           ST_XMin(solid_geom) AS xmin, ST_XMax(solid_geom) AS xmax,
+           ST_YMin(solid_geom) AS ymin, ST_YMax(solid_geom) AS ymax,
+           ST_ZMin(solid_geom) AS zmin, ST_ZMax(solid_geom) AS zmax,
+           ST_Volume(solid_geom) AS vol
+    FROM cand
+)
+SELECT s.id_a, s.id_b, ST_Volume(s.inter) AS volume
+FROM (
+    SELECT a.id AS id_a, b.id AS id_b,
+           ST_3DIntersection(a.solid_geom, b.solid_geom) AS inter,
+           (ABS(a.vol - (a.xmax - a.xmin) * (a.ymax - a.ymin) * (a.zmax - a.zmin))
+                <= 1e-9 * (a.xmax - a.xmin) * (a.ymax - a.ymin) * (a.zmax - a.zmin)
+            AND ABS(b.vol - (b.xmax - b.xmin) * (b.ymax - b.ymin) * (b.zmax - b.zmin))
+                <= 1e-9 * (b.xmax - b.xmin) * (b.ymax - b.ymin) * (b.zmax - b.zmin)) AS bothbox,
+           LEAST(a.xmax, b.xmax) - GREATEST(a.xmin, b.xmin) AS ox,
+           LEAST(a.ymax, b.ymax) - GREATEST(a.ymin, b.ymin) AS oy,
+           LEAST(a.zmax, b.zmax) - GREATEST(a.zmin, b.zmin) AS oz
+    FROM m a
+    JOIN m b ON a.id < b.id
+    WHERE ST_3DIntersects(a.solid_geom, b.solid_geom)
+) s
+CROSS JOIN params
+WHERE (s.bothbox
+       AND s.ox > 0.001 / (111320 * COS(RADIANS(params.lat0)))
+       AND s.oy > 0.001 / 111320
+       AND s.oz > 0.001)
+   OR ((NOT s.bothbox) AND ST_Dimension(s.inter) = 3)
+"""
 
-def get_bounding_box(solid):
-    """Get axis-aligned bounding box"""
-    min_coords = [float('inf')] * 3
-    max_coords = [float('-inf')] * 3
-    
-    for v in solid["vertices"]:
-        for i in range(3):
-            min_coords[i] = min(min_coords[i], v[i])
-            max_coords[i] = max(max_coords[i], v[i])
-    
-    return {"min": min_coords, "max": max_coords}
-
-def aabb_overlap(box1, box2, epsilon):
-    """Check AABB overlap"""
-    for i in range(3):
-        if box1["min"][i] > box2["max"][i] + epsilon:
-            return False
-        if box1["max"][i] < box2["min"][i] - epsilon:
-            return False
-    return True
-
-def extract_box(solid):
-    """Extract axis-aligned box if solid is one"""
-    if len(solid["vertices"]) != 8:
-        return None
-    
-    for face in solid["faces"]:
-        normal = face["normal"]
-        max_component = max(abs(n) for n in normal)
-        if max_component < 0.99:
-            return None
-    
-    return get_bounding_box(solid)
-
-def check_box_overlap(box1, box2, epsilon):
-    """Check exact box overlap"""
-    overlap = [0, 0, 0]
-    for i in range(3):
-        overlap[i] = min(box1["max"][i], box2["max"][i]) - max(box1["min"][i], box2["min"][i])
-    
-    if all(o > epsilon for o in overlap):
-        volume = overlap[0] * overlap[1] * overlap[2]
-        return {"overlaps": True, "volume": volume}
-    
-    return {"overlaps": False}
-
-def check_sat_overlap(solid1, solid2):
-    """
-    Separating Axis Theorem for convex polyhedra.
-    
-    Tests all potential separating axes:
-    1. Face normals from both polyhedra
-    2. Cross products of all edge pairs
-    
-    If ANY axis separates the polyhedra, they don't overlap.
-    If ALL axes show overlap, the polyhedra intersect.
-    
-    This is mathematically correct for convex polyhedra.
-    """
-    import numpy as np
-    
-    def get_face_normals(solid):
-        """Extract unique face normals from solid"""
-        normals = []
-        for face in solid["faces"]:
-            normal = np.array(face["normal"])
-            # Normalize
-            length = np.linalg.norm(normal)
-            if length > 1e-9:
-                normal = normal / length
-                normals.append(normal)
-        return normals
-    
-    def get_edges(solid):
-        """Extract all edges as vectors"""
-        edges = []
-        vertices = [np.array(v) for v in solid["vertices"]]
-        
-        for face in solid["faces"]:
-            face_verts = face["vertices"]
-            for i in range(len(face_verts)):
-                v1 = vertices[face_verts[i]]
-                v2 = vertices[face_verts[(i + 1) % len(face_verts)]]
-                edge = v2 - v1
-                length = np.linalg.norm(edge)
-                if length > 1e-9:
-                    edges.append(edge / length)
-        return edges
-    
-    def project_onto_axis(vertices, axis):
-        """Project all vertices onto an axis, return min/max"""
-        projections = [np.dot(np.array(v), axis) for v in vertices]
-        return min(projections), max(projections)
-    
-    def axes_overlap(min1, max1, min2, max2, epsilon=TOUCH_EPS_M):
-        """Check if two 1D projections overlap; penetration within epsilon counts as touching"""
-        return not (max1 < min2 + epsilon or max2 < min1 + epsilon)
-    
-    # Get vertices as numpy arrays
-    verts1 = [np.array(v) for v in solid1["vertices"]]
-    verts2 = [np.array(v) for v in solid2["vertices"]]
-    
-    # Collect all potential separating axes
-    axes = []
-    
-    # 1. Face normals from both solids
-    axes.extend(get_face_normals(solid1))
-    axes.extend(get_face_normals(solid2))
-    
-    # 2. Cross products of all edge pairs
-    edges1 = get_edges(solid1)
-    edges2 = get_edges(solid2)
-    
-    for e1 in edges1:
-        for e2 in edges2:
-            cross = np.cross(e1, e2)
-            length = np.linalg.norm(cross)
-            if length > 1e-10:
-                axes.append(cross / length)
-    
-    # Remove duplicate/parallel axes
-    unique_axes = []
-    for axis in axes:
-        is_duplicate = False
-        for existing in unique_axes:
-            # Check if axes are parallel (dot product ≈ ±1)
-            dot = abs(np.dot(axis, existing))
-            if dot > 0.999:
-                is_duplicate = True
-                break
-        if not is_duplicate:
-            unique_axes.append(axis)
-    
-    # Test each axis
-    for axis in unique_axes:
-        min1, max1 = project_onto_axis(verts1, axis)
-        min2, max2 = project_onto_axis(verts2, axis)
-        
-        # If this axis separates the polyhedra, they don't overlap
-        if not axes_overlap(min1, max1, min2, max2):
-            return {"overlaps": False}
-    
-    # All axes show overlap - polyhedra intersect
-    # Calculate approximate overlap volume using intersection of bounding boxes
-    bbox1_min = np.min(verts1, axis=0)
-    bbox1_max = np.max(verts1, axis=0)
-    bbox2_min = np.min(verts2, axis=0)
-    bbox2_max = np.max(verts2, axis=0)
-    
-    overlap_min = np.maximum(bbox1_min, bbox2_min)
-    overlap_max = np.minimum(bbox1_max, bbox2_max)
-    
-    if np.all(overlap_max > overlap_min):
-        overlap_dims = overlap_max - overlap_min
-        volume = float(np.prod(overlap_dims))
-        return {"overlaps": True, "volume": volume}
-    
-    return {"overlaps": True}
-
-def validate_topology(solids):
-    """Validate topology for overlaps"""
+async def db_validate_topology(session, floor_id=None):
+    """Validate topology for overlaps using native PostGIS 3D operators."""
+    from sqlalchemy import text
+    rows = (await session.execute(text(OVERLAP_PAIRS_SQL), {"floor_id": floor_id})).all()
     issues = []
-    
-    for i in range(len(solids)):
-        for j in range(i + 1, len(solids)):
-            if solids[i].get("floor_id") and solids[j].get("floor_id"):
-                if solids[i]["floor_id"] != solids[j]["floor_id"]:
-                    continue
-            
-            result = check_overlap(solids[i]["solid"], solids[j]["solid"])
-            if result["overlaps"]:
-                volume_str = f" (overlap volume: {result.get('volume', 0):.2f} m³)" if result.get('volume') else ""
-                issues.append({
-                    "severity": "HIGH",
-                    "code": "OVERLAP_DETECTED",
-                    "message": f"Units {solids[i]['id']} and {solids[j]['id']} overlap in 3D{volume_str}",
-                    "entity_id": f"{solids[i]['id']},{solids[j]['id']}",
-                    "overlap_volume": result.get("volume")
-                })
-    
+    for ida, idb, volume in rows:
+        volume_str = f" (overlap volume: {volume:.2f} m³)" if volume else ""
+        issues.append({
+            "severity": "HIGH",
+            "code": "OVERLAP_DETECTED",
+            "message": f"Units {ida} and {idb} overlap in 3D{volume_str}",
+            "entity_id": f"{ida},{idb}",
+            "overlap_volume": float(volume) if volume is not None else None,
+        })
     return {
         "valid": len([i for i in issues if i["severity"] == "HIGH"]) == 0,
-        "issues": issues
+        "issues": issues,
     }
+
+async def db_new_solid_conflicts(session, unit_id, floor_id, wkt, z_min, z_max):
+    """Overlap pairs involving one proposed solid (used by the PUT gate)."""
+    from sqlalchemy import text
+    rows = (await session.execute(text(NEW_SOLID_PAIRS_SQL), {
+        "unit_id": unit_id,
+        "floor_id": floor_id,
+        "wkt": wkt,
+        "dz": z_max - z_min,
+        "zmin": z_min,
+    })).all()
+    return [(ida, idb) for ida, idb, _ in rows]
 
 # ============================================================================
 # FASTAPI APPLICATION
@@ -1206,6 +1085,13 @@ async def persist_import(
                                     session.add(identifier)
                                     identifiers_generated += 1
             
+            # (Re)build stored 3D solids for native validation
+            from sqlalchemy import text as _sa_text
+            await session.execute(_sa_text(
+                "UPDATE property_unit SET solid_geom = ST_Translate("
+                "ST_Extrude(ST_Force3D(footprint), 0, 0, z_max - z_min), 0, 0, z_min) "
+                "WHERE solid_geom IS NULL AND footprint IS NOT NULL AND z_max > z_min"))
+
             await session.commit()
             
             # Run validation
@@ -1322,61 +1208,38 @@ async def run_validation():
     logger = logging.getLogger(__name__)
     
     async with async_session() as session:
-        from sqlalchemy import select
-        
+        from sqlalchemy import select, func
+
         try:
-            # Get all units
-            result = await session.execute(select(PropertyUnit))
-            units = result.scalars().all()
-            logger.info(f"Found {len(units)} units for validation")
-            
-            # Generate solids for validation, in local metres around one
-            # shared origin (z stays in metres; stored data is untouched)
-            entries = []
-            for unit in units:
-                floor_result = await session.execute(
-                    select(Floor).where(Floor.id == unit.floor_id)
-                )
-                floor = floor_result.scalar_one_or_none()
-                
-                if floor and unit.footprint:
-                    # Extract coordinates from the geometry
-                    geojson_geom = geom_to_geojson(unit.footprint)
-                    logger.debug(f"Unit {unit.id} footprint: {geojson_geom}")
-                    if geojson_geom and geojson_geom.get("coordinates"):
-                        entries.append({
-                            "id": unit.id,
-                            "floor_id": unit.floor_id,
-                            "ring": geojson_geom["coordinates"][0],
-                            "z_min": unit.z_min,
-                            "z_max": unit.z_max,
-                        })
-            solids = build_overlap_solids(entries)
-            
-            logger.info(f"Generated {len(solids)} solids for validation")
-            
-            # Run validation
-            validation_result = validate_topology(solids)
+            # Count units under validation (solids live in PostGIS now)
+            unit_count = await session.execute(
+                select(func.count(PropertyUnit.id))
+            )
+            total = unit_count.scalar() or 0
+            logger.info(f"Validating {total} stored solids")
+
+            # Run validation natively in PostGIS
+            validation_result = await db_validate_topology(session)
             logger.info(f"Validation result: valid={validation_result['valid']}, issues={len(validation_result['issues'])}")
-            
+
             # Save validation run
             validation_run = ValidationRun(
                 id=f"vrun-{datetime.utcnow().timestamp()}",
                 started_at=datetime.utcnow(),
                 completed_at=datetime.utcnow(),
                 status="PASSED" if validation_result["valid"] else "FAILED",
-                total_checks=len(solids),
-                passed_checks=len(solids) - len([i for i in validation_result["issues"] if i["severity"] == "HIGH"]),
+                total_checks=total,
+                passed_checks=total - len([i for i in validation_result["issues"] if i["severity"] == "HIGH"]),
                 failed_checks=len([i for i in validation_result["issues"] if i["severity"] == "HIGH"]),
                 issues=validation_result["issues"]
             )
-            
+
             session.add(validation_run)
             await session.commit()
-            
+
             return {
                 "passed": validation_result["valid"],
-                "total_checks": len(solids),
+                "total_checks": total,
                 "passed_checks": validation_run.passed_checks,
                 "failed_checks": validation_run.failed_checks,
                 "issues": validation_result["issues"]
@@ -1952,67 +1815,9 @@ async def update_unit_geometry(unit_id: str, request: UnitGeometryUpdateRequest)
             new_solid = generate_polyhedral_solid(coords_to_use, z_min_to_use, z_max_to_use)
             new_geom_hash = hash_geometry(new_solid)
             
-            # 4. Check for conflicts with other units on the same floor
-            # First, check CURRENT conflicts (before update) for the unit being updated
-            units_result = await session.execute(
-                select(PropertyUnit).where(PropertyUnit.floor_id == unit.floor_id)
-            )
-            other_units = units_result.scalars().all()
-            
-            # Build solids for CURRENT state (before update), in local metres
-            # around one origin shared with the NEW set below
-            current_entries = []
-            for other_unit in other_units:
-                other_unit_geom = to_shape(other_unit.footprint)
-                if other_unit.id == unit_id:
-                    # Current unit (before update) - use its own z_min/z_max
-                    current_entries.append({
-                        "id": other_unit.id,
-                        "floor_id": other_unit.floor_id,
-                        "ring": list(other_unit_geom.exterior.coords),
-                        "z_min": other_unit.z_min,
-                        "z_max": other_unit.z_max,
-                    })
-                else:
-                    # Use each unit's own z_min/z_max (per-unit Z-range)
-                    current_entries.append({
-                        "id": other_unit.id,
-                        "floor_id": other_unit.floor_id,
-                        "ring": list(other_unit_geom.exterior.coords),
-                        "z_min": other_unit.z_min,
-                        "z_max": other_unit.z_max,
-                    })
-
-            # Entries for the NEW state (after update)
-            new_entries = []
-            for other_unit in other_units:
-                if other_unit.id == unit_id:
-                    continue
-                other_unit_geom = to_shape(other_unit.footprint)
-                # Use each unit's own z_min/z_max
-                new_entries.append({
-                    "id": other_unit.id,
-                    "floor_id": other_unit.floor_id,
-                    "ring": list(other_unit_geom.exterior.coords),
-                    "z_min": other_unit.z_min,
-                    "z_max": other_unit.z_max,
-                })
-
-            # Add the NEW solid for the updated unit
-            new_entries.append({
-                "id": unit_id,
-                "floor_id": unit.floor_id,
-                "ring": coords_to_use,
-                "z_min": z_min_to_use,
-                "z_max": z_max_to_use,
-            })
-
-            gate_origin = overlap_origin(current_entries + new_entries)
-            current_solids = build_overlap_solids(current_entries, gate_origin)
-            new_solids = build_overlap_solids(new_entries, gate_origin)
-            
-            # Check current conflicts involving the target unit
-            current_validation = validate_topology(current_solids)
+            # 4. Check for conflicts with other units on the same floor,
+            # natively in PostGIS against stored solids
+            current_validation = await db_validate_topology(session, floor_id=unit.floor_id)
             current_conflicts = set()
             for issue in current_validation["issues"]:
                 if issue["entity_id"] and unit_id in issue["entity_id"]:
@@ -2020,18 +1825,19 @@ async def update_unit_geometry(unit_id: str, request: UnitGeometryUpdateRequest)
                     ids = issue["entity_id"].split(',')
                     other_id = ids[1] if ids[0] == unit_id else ids[0]
                     current_conflicts.add(other_id)
-            
-            # Check for conflicts with NEW solid for the updated unit
-            # (new_solids built above from new_entries)
-            
+
+            # Check the proposed solid against current neighbours, natively
+            # in PostGIS via a candidate CTE (the new solid is not stored yet)
+            new_ring = coords_to_use + [coords_to_use[0]]
+            new_wkt = "POLYGON((%s))" % ", ".join(f"{x} {y}" for x, y in new_ring)
+            new_pairs = await db_new_solid_conflicts(
+                session, unit_id, unit.floor_id, new_wkt, z_min_to_use, z_max_to_use)
+
             # Check new conflicts
-            new_validation = validate_topology(new_solids)
             new_conflicts = set()
-            for issue in new_validation["issues"]:
-                if issue["entity_id"] and unit_id in issue["entity_id"]:
-                    ids = issue["entity_id"].split(',')
-                    other_id = ids[1] if ids[0] == unit_id else ids[0]
-                    new_conflicts.add(other_id)
+            for ida, idb in new_pairs:
+                if unit_id in (ida, idb):
+                    new_conflicts.add(idb if ida == unit_id else ida)
             
             # Only reject if there are NEW conflicts (conflicts that didn't exist before)
             new_conflicts_only = new_conflicts - current_conflicts
@@ -2105,6 +1911,16 @@ async def update_unit_geometry(unit_id: str, request: UnitGeometryUpdateRequest)
             unit.geometry_version = new_version
             vol_ring = new_coords if new_coords else list(to_shape(unit.footprint).exterior.coords)
             unit.volume_cum = footprint_area_m2(vol_ring) * max(z_max_to_use - z_min_to_use, 0)
+
+            # Refresh the stored 3D solid for native validation (flush first
+            # so the UPDATE below sees the new footprint/z range)
+            await session.flush()
+            from sqlalchemy import text as _sa_text2
+            await session.execute(_sa_text2(
+                "UPDATE property_unit SET solid_geom = ST_Translate("
+                "ST_Extrude(ST_Force3D(footprint), 0, 0, z_max - z_min), 0, 0, z_min) "
+                "WHERE id = :i AND footprint IS NOT NULL AND z_max > z_min"),
+                {"i": unit_id})
             
             # Update unit's own z_min/z_max if changed (NOT floor's)
             if request.z_min_m is not None:
