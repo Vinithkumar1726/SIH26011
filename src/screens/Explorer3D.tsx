@@ -1506,7 +1506,6 @@ function ViewRig({ preset, interiorTour, buildingId, cam, cityViews, cityVisible
       minDistance={preset === 'street' || interiorTour ? 1 : 15}
       maxDistance={maxDistance}
       maxPolarAngle={Math.PI / 2 - 0.05}
-      target={[0, 3, 0]}
     />
   );
 }
