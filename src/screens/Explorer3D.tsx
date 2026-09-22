@@ -9,6 +9,7 @@ import QRCode from 'qrcode';
 import CollapsePanel from '../components/CollapsePanel';
 import CadastralHierarchy from '../components/CadastralHierarchy';
 import { loadLiveHierarchy, fetchCityBuildings, isCadastralBuilding, type BuildingSummary, type CityBuilding, type LiveHierarchy } from '../workspace3d/api';
+import { startAiJob, pollAiJob } from '../workspace3d/aiAnalysisService';
 import { SYNTHETIC_PIPES, segBoxDist, classifyClearance, type Box3, type Vec3 } from '../workspace3d/underground';
 import { generatePolyhedralSolid, type Solid3D, validateTopology } from '../workspace3d/geo';
 
@@ -211,6 +212,14 @@ export default function Explorer3D() {
   const [hoverBlock, setHoverBlock] = useState<string | null>(null);
   const [showCity, setShowCity] = useState(true);
   const [showPipes, setShowPipes] = useState(true);
+  const [lidarTarget, setLidarTarget] = useState('');
+  const [lidarRunning, setLidarRunning] = useState(false);
+  const [lidarJob, setLidarJob] = useState<{
+    status: string;
+    result?: Record<string, unknown> | null;
+    error?: string | null;
+  } | null>(null);
+  const lidarRun = useRef(0);
   const [cityMeta, setCityMeta] = useState<{ origin: { lon: number; lat: number }; radiusM: number } | null>(null);
   const [osmCatalog, setOsmCatalog] = useState<OsmBuilding[] | null>(null);
   const [osmSelected, setOsmSelected] = useState<string | null>(null);
@@ -256,6 +265,31 @@ export default function Explorer3D() {
   };
 
   const skipCityOnce = useRef(false);
+  const runLidar = async () => {
+    const target = lidarTarget.trim() || building.id;
+    const runId = ++lidarRun.current;
+    setLidarRunning(true);
+    try {
+      const jobId = await startAiJob('lidar_elevation', target);
+      const done = await pollAiJob(jobId, {
+        intervalMs: 1000,
+        isCancelled: () => lidarRun.current !== runId,
+      });
+      if (lidarRun.current !== runId) return;
+      setLidarJob(done);
+    } catch (e) {
+      if (lidarRun.current === runId) {
+        setLidarJob({ status: 'FAILED', error: e instanceof Error ? e.message : 'Job failed' });
+      }
+    } finally {
+      if (lidarRun.current === runId) setLidarRunning(false);
+    }
+  };
+
+  useEffect(() => () => {
+    lidarRun.current += 1;
+  }, []);
+
   const switchBuilding = (id: string, preset?: ViewPreset) => {
     if (id === building.id || source !== 'live') return;
     setHoverBlock(null);
@@ -980,6 +1014,39 @@ export default function Explorer3D() {
                     </button>
                   ))}
                 </div>
+              </div>
+              <div>
+                <div className="text-[10px] text-slate-500 mb-1">AI LIDAR</div>
+                <div className="flex gap-1 mb-1">
+                  <input
+                    value={lidarTarget}
+                    onChange={(e) => setLidarTarget(e.target.value)}
+                    placeholder={building.id}
+                    aria-label="LIDAR target id"
+                    className="flex-1 min-w-0 bg-deep text-[10px] text-slate-200 rounded-md px-2 py-1 border border-line outline-none focus:border-emerald-500/30"
+                  />
+                  <button
+                    type="button"
+                    onClick={() => void runLidar()}
+                    disabled={lidarRunning}
+                    className="text-[10px] px-2 py-1 rounded uppercase tracking-wider bg-emerald-500/15 text-emerald-300 border border-emerald-400/20 hover:bg-emerald-500/25 disabled:opacity-50 shrink-0"
+                  >
+                    Run
+                  </button>
+                </div>
+                {lidarRunning && (
+                  <div className="text-[10px] text-slate-400">Processing LIDAR…</div>
+                )}
+                {!lidarRunning && lidarJob?.status === 'COMPLETED' && lidarJob.result && (
+                  <div className="text-[10px] text-emerald-300">
+                    z {Number(lidarJob.result.z_min).toFixed(1)}–{Number(lidarJob.result.z_max).toFixed(1)} m · {String(lidarJob.result.point_count_clean ?? '?')} pts
+                  </div>
+                )}
+                {!lidarRunning && lidarJob?.status === 'FAILED' && (
+                  <div className="text-[10px] text-danger">
+                    {(typeof lidarJob.error === 'string' && lidarJob.error) || 'Job failed'}
+                  </div>
+                )}
               </div>
             </div>
           </CollapsePanel>
