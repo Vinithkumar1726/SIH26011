@@ -534,9 +534,12 @@ export default function Explorer3D() {
       });
     }
     const shape = new THREE.Shape();
-    const corners: Array<[number, number]> = [[qx0, qz0], [qx1, qz0], [qx1, qz1], [qx0, qz1]];
-    corners.forEach(([wx, wz], ci) => {
+    // True footprint polygon (GLB-local [x, z] shifted into world frame),
+    // same mapping pattern as footprintShape — not the bounding box.
+    const poly = osmRecord.footprint;
+    poly.forEach(([x, z], ci) => {
       // local frame: (east, north) = (wx, -wz)
+      const wx = gx + x, wz = gz + z;
       if (ci === 0) shape.moveTo(wx, -wz);
       else shape.lineTo(wx, -wz);
     });
