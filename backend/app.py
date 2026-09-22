@@ -1663,7 +1663,8 @@ async def _ai_job_worker(job_id: str, job_type: str, target_id: str):
         if job_type == "lidar_elevation":
             from lidar_engine import extract_building_elevation
 
-            file_path = os.path.join("test-data", f"{target_id}.ply")
+            here = os.path.dirname(os.path.abspath(__file__))
+            file_path = os.path.join(here, "..", "test-data", f"{target_id}.ply")
             result = extract_building_elevation(file_path)
         else:
             raise ValueError(f"Unknown job_type: {job_type}")
