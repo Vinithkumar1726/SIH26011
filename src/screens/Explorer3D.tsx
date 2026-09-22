@@ -77,7 +77,7 @@ function downloadCsv(bldg: Building, flrs: Floor[]) {
 async function printPdfReport(bldg: Building, flrs: Floor[], units: Unit[], sids: SpatialID[]) {
   const dash = '—';
   const printWindow = window.open('', '_blank', 'noopener,noreferrer');
-  if (!printWindow) return;
+  if (!printWindow) return false;
   const money = (v?: { marketValue: number; assessedValue: number; currency: string }) =>
     v ? [formatReportCurrency(v.marketValue, v.currency), formatReportCurrency(v.assessedValue, v.currency)] : [dash, dash];
   const [bMarket, bAssessed] = money(bldg.valuation);
@@ -113,6 +113,7 @@ async function printPdfReport(bldg: Building, flrs: Floor[], units: Unit[], sids
   printWindow.document.close();
   printWindow.focus();
   printWindow.print();
+  return true;
 }
 
 function clamp01(v: number) {
@@ -202,6 +203,7 @@ export default function Explorer3D() {
   const [reportSearch, setReportSearch] = useState('');
   const [ownershipFilter, setOwnershipFilter] = useState('ALL');
   const [minimumMarketValue, setMinimumMarketValue] = useState(0);
+  const [popupBlocked, setPopupBlocked] = useState(false);
   const [liveData, setLiveData] = useState<LiveHierarchy | null>(null);
   const [source, setSource] = useState<'loading' | 'live' | 'demo'>('loading');
   const [summaries, setSummaries] = useState<BuildingSummary[]>([]);
@@ -1038,8 +1040,9 @@ export default function Explorer3D() {
           <input type="range" min={0} max={60000000} step={1000000} value={minimumMarketValue} disabled={source === 'live'} onChange={(e) => setMinimumMarketValue(Number(e.target.value))} className="w-full" />
           <div className="grid grid-cols-2 gap-1 mt-2">
             <button type="button" onClick={() => downloadCsv(building, floors)} className="text-[9px] py-1.5 rounded bg-emerald-500/15 text-emerald-300 border border-emerald-400/20 hover:bg-emerald-500/25">CSV REPORT</button>
-            <button type="button" onClick={() => printPdfReport(building, floors, units, spatialIDs)} className="text-[9px] py-1.5 rounded bg-white/5 text-slate-300 border border-white/10 hover:bg-white/10">Generate 3D Bhu-Aadhaar</button>
+            <button type="button" onClick={async () => { setPopupBlocked(false); setPopupBlocked(!(await printPdfReport(building, floors, units, spatialIDs))); }} className="text-[9px] py-1.5 rounded bg-white/5 text-slate-300 border border-white/10 hover:bg-white/10">Generate 3D Bhu-Aadhaar</button>
           </div>
+          {popupBlocked && <div className="text-[9px] text-amber-300 mt-2">Pop-up blocked — allow pop-ups for this site to generate the record.</div>}
           {reportFilterActive && matchingFloorIds.size === 0 && <div className="text-[9px] text-danger mt-2">No floors match this filter.</div>}
           </CollapsePanel>
         </div>
