@@ -1243,6 +1243,20 @@ export default function Explorer3D() {
           <div className="text-center"><div className="text-sm font-bold text-white">{floors.length}</div><div className="text-[9px] text-slate-500">Floors</div></div>
           <div className="w-px h-6 bg-white/10"></div>
           <div className="text-center"><div className="text-sm font-bold text-white">{building.height_m}m</div><div className="text-[9px] text-slate-500">Height</div></div>
+          <div className="w-px h-6 bg-white/10"></div>
+          <div className="flex items-center gap-1" role="group" aria-label="Graphics quality">
+            {(['low', 'medium', 'high'] as const).map((q) => (
+              <button
+                key={q}
+                type="button"
+                title={`Graphics quality: ${q}`}
+                onClick={() => setQuality(q)}
+                className={`text-[9px] font-semibold uppercase tracking-wider px-1.5 py-0.5 rounded ${quality === q ? 'bg-emerald-500/20 text-emerald-300' : 'text-slate-500 hover:text-slate-300'}`}
+              >
+                {q === 'medium' ? 'Med' : q === 'high' ? 'High' : 'Low'}
+              </button>
+            ))}
+          </div>
           {conflicts.size > 0 && (
             <>
               <div className="w-px h-6 bg-white/10"></div>
