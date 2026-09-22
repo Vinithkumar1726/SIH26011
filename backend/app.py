@@ -1261,55 +1261,108 @@ async def list_parcels():
 
 @app.get("/api/parcels/{parcel_id}")
 async def get_parcel(parcel_id: str):
-    """Get parcel detail with full hierarchy"""
-    async with async_session() as session:
-        from sqlalchemy import select
-        
-        # Get parcel
-        parcel_result = await session.execute(
-            select(LandParcel).where(LandParcel.id == parcel_id)
-        )
-        parcel = parcel_result.scalar_one_or_none()
-        
-        if not parcel:
-            raise HTTPException(status_code=404, detail="Parcel not found")
-        
-        # Get buildings in this parcel
-        buildings_result = await session.execute(
-            select(Building).where(Building.parcel_id == parcel_id)
-        )
-        buildings = buildings_result.scalars().all()
-        
-        # Build hierarchy
-        hierarchy = serialize_parcel(parcel)
-        hierarchy["buildings"] = []
-        
-        for building in buildings:
-            bldg_data = serialize_building(building)
-            
-            # Get floors in this building
-            floors_result = await session.execute(
-                select(Floor).where(Floor.building_id == building.id)
-            )
-            floors = floors_result.scalars().all()
+    """Parcel detail with full hierarchy as an RFC 7946 FeatureCollection.
 
+    One feature per parcel, building, floor and unit. Floors carry a null
+    geometry (they have no footprint); ULPIN identifiers, z-ranges and
+    parent links live in properties. Geometries come from ST_AsGeoJSON.
+    """
+    import json as _json
+    async with async_session() as session:
+        from sqlalchemy import select, func
+
+        def _geom(g):
+            return _json.loads(g) if g else None
+
+        # Get parcel
+        parcel_row = (await session.execute(
+            select(LandParcel, func.ST_AsGeoJSON(LandParcel.geometry).label("geom"))
+            .where(LandParcel.id == parcel_id)
+        )).first()
+
+        if not parcel_row:
+            raise HTTPException(status_code=404, detail="Parcel not found")
+        parcel, parcel_geom = parcel_row
+
+        features = [{
+            "type": "Feature",
+            "geometry": _geom(parcel_geom),
+            "properties": {
+                "kind": "parcel",
+                "id": parcel.id,
+                "ulpin": parcel.ulpin,
+                "name": parcel.name,
+                "area_sqm": parcel.area_sqm,
+                "srid": parcel.srid,
+            },
+        }]
+
+        # Get buildings in this parcel
+        buildings = (await session.execute(
+            select(Building, func.ST_AsGeoJSON(Building.footprint).label("geom"))
+            .where(Building.parcel_id == parcel_id)
+        )).all()
+
+        for building, building_geom in buildings:
+            # Get floors in this building
+            floors = (await session.execute(
+                select(Floor).where(Floor.building_id == building.id)
+            )).scalars().all()
+
+            bldg_data = serialize_building(building)
+            bldg_data.pop("footprint", None)
+            bldg_data.pop("solid_geom", None)
+            bldg_data["kind"] = "building"
             bldg_data["floors_count"] = len(floors)
-            bldg_data["floors"] = []
+            features.append({
+                "type": "Feature",
+                "geometry": _geom(building_geom),
+                "properties": bldg_data,
+            })
+
             for floor in floors:
                 floor_data = serialize_floor(floor)
-                
+                floor_data["kind"] = "floor"
+                features.append({
+                    "type": "Feature",
+                    "geometry": None,
+                    "properties": floor_data,
+                })
+
                 # Get units in this floor
-                units_result = await session.execute(
-                    select(PropertyUnit).where(PropertyUnit.floor_id == floor.id)
-                )
-                units = units_result.scalars().all()
-                
-                floor_data["units"] = [serialize_unit(u) for u in units]
-                bldg_data["floors"].append(floor_data)
-            
-            hierarchy["buildings"].append(bldg_data)
-        
-        return hierarchy
+                units = (await session.execute(
+                    select(PropertyUnit,
+                           func.ST_AsGeoJSON(PropertyUnit.footprint).label("geom"))
+                    .where(PropertyUnit.floor_id == floor.id)
+                )).all()
+
+                for unit, unit_geom in units:
+                    unit_data = serialize_unit(unit)
+                    unit_data.pop("footprint", None)
+                    unit_data.pop("solid_geom", None)
+                    unit_data["kind"] = "unit"
+                    sid = (await session.execute(
+                        select(SpatialIdentifier)
+                        .where(SpatialIdentifier.property_unit_id == unit.id)
+                    )).scalar_one_or_none()
+                    unit_data["spatial_id"] = {
+                        "id": sid.id,
+                        "full": sid.identifier_string,
+                        "ulpin": sid.ulpin,
+                        "bldg": sid.building_code,
+                        "floor": sid.floor_code,
+                        "unit": sid.unit_code,
+                        "version": sid.version,
+                        "hash": sid.geometry_hash,
+                        "unit_id": sid.property_unit_id,
+                    } if sid else None
+                    features.append({
+                        "type": "Feature",
+                        "geometry": _geom(unit_geom),
+                        "properties": unit_data,
+                    })
+
+        return {"type": "FeatureCollection", "features": features}
 
 @app.get("/api/buildings/{building_id}")
 async def get_building(building_id: str):

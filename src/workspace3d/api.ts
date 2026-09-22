@@ -149,18 +149,16 @@ export function pickDefaultBuilding(sums: BuildingSummary[]): BuildingSummary {
 }
 
 export async function loadLiveHierarchy(buildingId?: string): Promise<LiveHierarchy> {
-  const [bRes, fRes, uRes, pRes, sRes] = await Promise.all([
+  const [bRes, fRes, uRes, sRes] = await Promise.all([
     api.getBuildings(),
     api.getFloors(),
     api.getUnits(),
-    api.getParcels(),
     api.getSpatialIdentifiers(),
   ]);
   const named = [
     ['buildings', bRes],
     ['floors', fRes],
     ['units', uRes],
-    ['parcels', pRes],
     ['spatial-identifiers', sRes],
   ] as const;
   for (const [name, r] of named) {
@@ -169,7 +167,6 @@ export async function loadLiveHierarchy(buildingId?: string): Promise<LiveHierar
   const rawBuildings = bRes.data as unknown[];
   const rawFloors = fRes.data as unknown[];
   const rawUnits = uRes.data as unknown[];
-  const rawParcels = pRes.data as unknown[];
   const rawSids = sRes.data as unknown[];
   if (rawBuildings.length === 0) throw new Error('no buildings');
   const summaries = summarize(
@@ -183,56 +180,102 @@ export async function loadLiveHierarchy(buildingId?: string): Promise<LiveHierar
     | Record<string, unknown>
     | undefined;
   if (!rb) throw new Error(`building not found: ${wantId}`);
-  const building: Building = {
-    id: reqStr(rb.id, 'building.id'),
-    parcel_id: reqStr(rb.parcel_id, 'building.parcel_id'),
-    name: reqStr(rb.name, 'building.name'),
-    height_m: reqNum(rb.height_m, 'building.height_m'),
-    height_source: reqStr(rb.height_source, 'building.height_source') as Building['height_source'],
-    floors_count: reqNum(rb.floors_count, 'building.floors_count'),
-    footprint: ringOf(rb.footprint, 'building.footprint'),
+  const parcelId = reqStr(rb.parcel_id, 'building.parcel_id');
+
+  // Hierarchy comes from the GeoJSON parcel endpoint (RFC 7946).
+  const hRes = await api.getParcel(parcelId);
+  if (!hRes.success) throw new Error('live parcel hierarchy unavailable');
+  const fc = hRes.data as unknown;
+  if (!fc || typeof fc !== 'object' || (fc as { type?: unknown }).type !== 'FeatureCollection') {
+    throw new Error('bad parcel FeatureCollection');
+  }
+  const features = (fc as { features?: unknown }).features;
+  if (!Array.isArray(features)) throw new Error('bad parcel features');
+  const byKind = (kind: string) => features.filter(
+    (f): f is Record<string, unknown> & { properties: Record<string, unknown> } =>
+      !!f && typeof f === 'object'
+      && (f as { type?: unknown }).type === 'Feature'
+      && !!((f as { properties?: unknown }).properties)
+      && typeof (f as { properties?: unknown }).properties === 'object'
+      && ((f as { properties: { kind?: unknown } }).properties.kind === kind),
+  );
+  const polyGeom = (f: Record<string, unknown>, field: string) => {
+    const g = (f as { geometry?: unknown }).geometry as {
+      type?: unknown; coordinates?: unknown;
+    } | null;
+    if (g === null) return null;
+    if (!g || typeof g !== 'object' || (g.type !== 'Polygon' && g.type !== 'MultiPolygon')) {
+      throw new Error(`bad ${field} geometry`);
+    }
+    if (!Array.isArray(g.coordinates)) throw new Error(`bad ${field} coordinates`);
+    return g;
   };
 
-  const parcelRaw = (rawParcels as Record<string, unknown>[]).find((p) => p.id === building.parcel_id);
-  if (!parcelRaw) throw new Error(`parcel mismatch for building ${building.id}`);
+  const parcelFeat = byKind('parcel')[0];
+  if (!parcelFeat) throw new Error('parcel feature missing');
+  const pp = parcelFeat.properties;
   const parcel: Parcel = {
-    id: reqStr(parcelRaw.id, 'parcel.id'),
-    ulpin: reqStr(parcelRaw.ulpin, 'parcel.ulpin'),
-    name: reqStr(parcelRaw.name, 'parcel.name'),
-    area_sqm: reqNum(parcelRaw.area_sqm, 'parcel.area_sqm'),
-    srid: reqNum(parcelRaw.srid, 'parcel.srid'),
-    footprint: parcelOuterRing(parcelRaw.geometry),
+    id: reqStr(pp.id, 'parcel.id'),
+    ulpin: reqStr(pp.ulpin, 'parcel.ulpin'),
+    name: reqStr(pp.name, 'parcel.name'),
+    area_sqm: reqNum(pp.area_sqm, 'parcel.area_sqm'),
+    srid: reqNum(pp.srid, 'parcel.srid'),
+    footprint: parcelOuterRing(polyGeom(parcelFeat, 'parcel.geometry')),
+  };
+  if (parcel.id !== parcelId) throw new Error('parcel mismatch');
+
+  const bFeat = byKind('building').find((f) => f.properties.id === wantId);
+  if (!bFeat) throw new Error(`building feature missing: ${wantId}`);
+  const bp = bFeat.properties;
+  const bGeom = polyGeom(bFeat, 'building.geometry');
+  if (!bGeom) throw new Error('building geometry missing');
+  const building: Building = {
+    id: reqStr(bp.id, 'building.id'),
+    parcel_id: reqStr(bp.parcel_id, 'building.parcel_id'),
+    name: reqStr(bp.name, 'building.name'),
+    height_m: reqNum(bp.height_m, 'building.height_m'),
+    height_source: reqStr(bp.height_source, 'building.height_source') as Building['height_source'],
+    floors_count: reqNum(bp.floors_count, 'building.floors_count'),
+    footprint: ringOf(bGeom, 'building.footprint'),
   };
 
-  const floors: Floor[] = (rawFloors as Record<string, unknown>[])
-    .filter((f) => f.building_id === building.id)
-    .map((f) => ({
-      id: reqStr(f.id, 'floor.id'),
-      building_id: reqStr(f.building_id, 'floor.building_id'),
-      code: reqStr(f.floor_code, 'floor.code'),
-      label: reqStr(f.floor_label, 'floor.label'),
-      z_min: reqNum(f.z_min, 'floor.z_min'),
-      z_max: reqNum(f.z_max, 'floor.z_max'),
-      area_sqm: reqNum(f.area_sqm, 'floor.area_sqm'),
-    }))
+  const floors: Floor[] = byKind('floor')
+    .filter((f) => f.properties.building_id === building.id)
+    .map((f) => {
+      const fp = f.properties;
+      return {
+        id: reqStr(fp.id, 'floor.id'),
+        building_id: reqStr(fp.building_id, 'floor.building_id'),
+        code: reqStr(fp.floor_code, 'floor.code'),
+        label: reqStr(fp.floor_label, 'floor.label'),
+        z_min: reqNum(fp.z_min, 'floor.z_min'),
+        z_max: reqNum(fp.z_max, 'floor.z_max'),
+        area_sqm: reqNum(fp.area_sqm, 'floor.area_sqm'),
+      };
+    })
     .sort((a, b) => a.z_min - b.z_min);
   if (floors.length === 0) throw new Error('no floors for building');
 
   const floorIds = new Set(floors.map((f) => f.id));
-  const units: Unit[] = (rawUnits as Record<string, unknown>[])
-    .filter((u) => typeof u.floor_id === 'string' && floorIds.has(u.floor_id))
-    .map((u) => ({
-      id: reqStr(u.id, 'unit.id'),
-      floor_id: reqStr(u.floor_id, 'unit.floor_id'),
-      code: reqStr(u.unit_code, 'unit.code'),
-      type: mapUnitType(u.unit_type),
-      label: reqStr(u.label, 'unit.label'),
-      area_sqm: reqNum(u.area_sqm, 'unit.area_sqm'),
-      volume_cum: reqNum(u.volume_cum, 'unit.volume_cum'),
-      footprint: ringOf(u.footprint, 'unit.footprint'),
-      hash: reqStr(u.geometry_hash, 'unit.hash'),
-      version: Math.trunc(reqNum(u.geometry_version, 'unit.version')),
-    }));
+  const units: Unit[] = byKind('unit')
+    .filter((f) => typeof f.properties.floor_id === 'string' && floorIds.has(f.properties.floor_id as string))
+    .map((f) => {
+      const up = f.properties;
+      const ug = polyGeom(f, 'unit.geometry');
+      if (!ug) throw new Error('unit geometry missing');
+      return {
+        id: reqStr(up.id, 'unit.id'),
+        floor_id: reqStr(up.floor_id, 'unit.floor_id'),
+        code: reqStr(up.unit_code, 'unit.code'),
+        type: mapUnitType(up.unit_type),
+        label: reqStr(up.label, 'unit.label'),
+        area_sqm: reqNum(up.area_sqm, 'unit.area_sqm'),
+        volume_cum: reqNum(up.volume_cum, 'unit.volume_cum'),
+        footprint: ringOf(ug, 'unit.footprint'),
+        hash: reqStr(up.geometry_hash, 'unit.hash'),
+        version: Math.trunc(reqNum(up.geometry_version, 'unit.version')),
+      };
+    });
   if (units.length === 0) throw new Error('no units for building');
 
   const unitIds = new Set(units.map((u) => u.id));
