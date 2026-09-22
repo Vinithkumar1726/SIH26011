@@ -113,6 +113,15 @@ export async function fetchBuildingSummaries(): Promise<BuildingSummary[]> {
   );
 }
 
+/** Synthetic OSM tile imports are not cadastral records: anything on the
+ * tile parcel, or with an OSM way-style id, is excluded from cadastral
+ * listings (dropdowns, trees, neighbour blocks). The OSM city-layer
+ * click-select feature reads the static catalog directly and is unaffected. */
+export function isCadastralBuilding(b: { id?: unknown; parcel_id?: unknown }): boolean {
+  return b.parcel_id !== 'parcel-osm-coimbatore'
+    && !(typeof b.id === 'string' && b.id.startsWith('w'));
+}
+
 function summarize(
   rawBuildings: Record<string, unknown>[],
   rawFloors: Record<string, unknown>[],
@@ -128,7 +137,9 @@ function summarize(
     }
     set.add(f.id);
   }
-  return rawBuildings.map((b) => {
+  return rawBuildings
+    .filter((b) => isCadastralBuilding(b as { id?: unknown; parcel_id?: unknown }))
+    .map((b) => {
     const id = reqStr(b.id, 'building.id');
     const floorIds = floorIdsByBuilding.get(id) ?? new Set<string>();
     const unitCount = rawUnits.filter((u) => typeof u.floor_id === 'string' && floorIds.has(u.floor_id)).length;

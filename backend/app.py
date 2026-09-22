@@ -776,8 +776,16 @@ async def get_stats():
         # .scalar() twice) raises ResourceClosedError because scalar()
         # hard-closes the result after the first read, and a later execute
         # on the same session can invalidate an earlier unconsumed result.
-        parcels = (await session.execute(select(func.count(LandParcel.id)))).scalar() or 0
-        buildings = (await session.execute(select(func.count(Building.id)))).scalar() or 0
+        # Synthetic OSM tile data is excluded so stats stay cadastral-only.
+        parcels = (await session.execute(
+            select(func.count(LandParcel.id)).where(LandParcel.id != 'parcel-osm-coimbatore')
+        )).scalar() or 0
+        buildings = (await session.execute(
+            select(func.count(Building.id)).where(
+                Building.parcel_id != 'parcel-osm-coimbatore',
+                ~Building.id.like('w%'),
+            )
+        )).scalar() or 0
         floors = (await session.execute(select(func.count(Floor.id)))).scalar() or 0
         units = (await session.execute(select(func.count(PropertyUnit.id)))).scalar() or 0
 
@@ -1513,8 +1521,15 @@ async def get_statistics():
 
         # Consume each result immediately (see get_stats): re-reading one
         # Result raises ResourceClosedError because scalar() hard-closes it.
-        parcels = (await session.execute(select(func.count(LandParcel.id)))).scalar() or 0
-        buildings = (await session.execute(select(func.count(Building.id)))).scalar() or 0
+        parcels = (await session.execute(
+            select(func.count(LandParcel.id)).where(LandParcel.id != 'parcel-osm-coimbatore')
+        )).scalar() or 0
+        buildings = (await session.execute(
+            select(func.count(Building.id)).where(
+                Building.parcel_id != 'parcel-osm-coimbatore',
+                ~Building.id.like('w%'),
+            )
+        )).scalar() or 0
         floors = (await session.execute(select(func.count(Floor.id)))).scalar() or 0
         units = (await session.execute(select(func.count(PropertyUnit.id)))).scalar() or 0
 

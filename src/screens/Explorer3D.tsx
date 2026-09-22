@@ -8,7 +8,7 @@ import { building as demoBuilding, floors as demoFloors, footprintToLocal, parce
 import QRCode from 'qrcode';
 import CollapsePanel from '../components/CollapsePanel';
 import CadastralHierarchy from '../components/CadastralHierarchy';
-import { loadLiveHierarchy, fetchCityBuildings, type BuildingSummary, type CityBuilding, type LiveHierarchy } from '../workspace3d/api';
+import { loadLiveHierarchy, fetchCityBuildings, isCadastralBuilding, type BuildingSummary, type CityBuilding, type LiveHierarchy } from '../workspace3d/api';
 import { SYNTHETIC_PIPES, segBoxDist, classifyClearance, type Box3, type Vec3 } from '../workspace3d/underground';
 import { generatePolyhedralSolid, type Solid3D, validateTopology } from '../workspace3d/geo';
 
@@ -308,7 +308,7 @@ export default function Explorer3D() {
   const neighbours = useMemo(() => {
     if (source !== 'live') return [];
     return cityBuildings
-      .filter((b) => b.id !== building.id)
+      .filter((b) => b.id !== building.id && isCadastralBuilding(b))
       .map((b) => {
         const o = ringOrigin(b.footprint);
         const off = footprintToLocal([[o[0], o[1]]], origin[0], origin[1])[0];

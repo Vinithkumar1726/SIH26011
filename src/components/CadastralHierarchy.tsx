@@ -35,6 +35,7 @@ export default function CadastralHierarchy({ className = 'hidden md:flex w-72' }
   };
 
   const filteredParcels = parcels.filter((parcel) => {
+    if (parcel.id === 'parcel-osm-coimbatore') return false;
     if (!search) return true;
     const query = search.toLowerCase();
     return (
