@@ -1737,7 +1737,8 @@ async def extract_live_building(payload: LiveExtractionRequest):
         await session.execute(text(
             "INSERT INTO cadastral_parcels (parcel_id, footprint, solid_geom, height_m) "
             "VALUES (:ulpin, ST_GeomFromText(:wkt, 4326), "
-            "ST_Extrude(ST_Force3D(ST_GeomFromText(:wkt, 4326)), 0, 0, :height), :height)"
+            "ST_Extrude(ST_Force3D(ST_GeomFromText(:wkt, 4326)), 0, 0, :height), :height) "
+            "ON CONFLICT (parcel_id) DO NOTHING"
         ), {"ulpin": ulpin, "wkt": wkt, "height": height})
         await session.commit()
     return {"status": "SUCCESS", "ulpin": ulpin, "height_m": height}
