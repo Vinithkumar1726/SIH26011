@@ -861,7 +861,7 @@ export default function Explorer3D() {
               />
             );
           })}
-          <ViewRig preset={viewPreset} interiorTour={interiorTour} buildingId={building.id} cam={cam} cityViews={cityViews} cityVisible={cityVisible} maxDistance={viewPreset === 'freeroam' && cityVisible && cityMeta ? 4 * cityMeta.radiusM : cityVisible && cityMeta ? 2.5 * cityMeta.radiusM : 250} focusPose={focusPose} pipeFocus={pipeFocus} camNonce={camNonce} />
+          <ViewRig preset={viewPreset} interiorTour={interiorTour} buildingId={building.id} cam={cam} cityViews={cityViews} cityVisible={cityVisible} cityMeta={cityMeta} maxDistance={viewPreset === 'freeroam' && cityVisible && cityMeta ? 4 * cityMeta.radiusM : cityVisible && cityMeta ? 2.5 * cityMeta.radiusM : 250} focusPose={focusPose} pipeFocus={pipeFocus} camNonce={camNonce} />
         </Canvas>
 
         <div className={`absolute top-3 left-3 bottom-28 ${compact ? 'w-44' : narrow ? 'w-52' : 'w-64'} flex flex-col gap-2 overflow-y-auto pointer-events-none`}>
@@ -1560,7 +1560,7 @@ type ViewPreset = 'orbit' | 'bird' | 'plan' | 'cutaway' | 'street' | 'city' | 'f
 type CamPose = { pos: [number, number, number]; tgt: [number, number, number] };
 type CamPoses = { home: CamPose; bird: CamPose; plan: CamPose; cutaway: CamPose; street: CamPose; interior: CamPose };
 
-function ViewRig({ preset, interiorTour, buildingId, cam, cityViews, cityVisible, maxDistance, focusPose, pipeFocus, camNonce }: { preset: ViewPreset; interiorTour: boolean; buildingId: string; cam: CamPoses; cityViews: { city: CamPose; plan: CamPose; freeroam: CamPose } | null; cityVisible: boolean; maxDistance: number; focusPose: CamPose | null; pipeFocus: CamPose | null; camNonce: number }) {
+function ViewRig({ preset, interiorTour, buildingId, cam, cityViews, cityVisible, cityMeta, maxDistance, focusPose, pipeFocus, camNonce }: { preset: ViewPreset; interiorTour: boolean; buildingId: string; cam: CamPoses; cityViews: { city: CamPose; plan: CamPose; freeroam: CamPose } | null; cityVisible: boolean; cityMeta: { origin: { lon: number; lat: number }; radiusM: number } | null; maxDistance: number; focusPose: CamPose | null; pipeFocus: CamPose | null; camNonce: number }) {
   const camera = useThree((s) => s.camera);
   const controls = useThree((s) => s.controls) as unknown as { target: THREE.Vector3; update: () => void } | null;
   const invalidate = useThree((s) => s.invalidate);
