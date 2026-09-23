@@ -333,7 +333,11 @@ export default function Explorer3D() {
       if (data?.status !== 'PENDING_REVIEW' || typeof data?.proposal_id !== 'string') {
         throw new Error('Unexpected review-gate response');
       }
-      const src = data.source === 'vision' ? 'vision-detected footprint' : 'synthetic fallback footprint';
+      const src = data.source === 'vision'
+        ? 'vision-detected footprint'
+        : data.source === 'osm'
+          ? 'live-map OSM building footprint'
+          : 'synthetic fallback footprint';
       setLiveCaptureNotice(
         `Capture staged for human review — proposal ${String(data.proposal_id).slice(0, 8)}… (${src}). Nothing was added to the registry yet.`,
       );
@@ -470,19 +474,25 @@ export default function Explorer3D() {
     if (!cityVisible) return;
     let cancelled = false;
     const base = (import.meta.env.VITE_API_URL || 'http://127.0.0.1:8000').replace(/\/$/, '');
-    fetch(`${base}/api/cadastral-parcels`)
-      .then((r) => {
-        if (!r.ok) throw new Error('no live parcels');
-        return r.json();
-      })
-      .then((list) => {
-        if (!cancelled && Array.isArray(list)) setLiveParcels(list);
-      })
-      .catch(() => {
-        /* live-captured layer stays empty */
-      });
+    const load = () => {
+      fetch(`${base}/api/cadastral-parcels`)
+        .then((r) => {
+          if (!r.ok) throw new Error('no live parcels');
+          return r.json();
+        })
+        .then((list) => {
+          if (!cancelled && Array.isArray(list)) setLiveParcels(list);
+        })
+        .catch(() => {
+          /* live-captured layer stays empty */
+        });
+    };
+    load();
+    // Re-poll so newly approved captures appear without a manual reload.
+    const timer = setInterval(load, 15000);
     return () => {
       cancelled = true;
+      clearInterval(timer);
     };
   }, [cityVisible]);
 

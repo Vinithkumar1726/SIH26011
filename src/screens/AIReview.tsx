@@ -1,5 +1,6 @@
-import { useState } from 'react';
+import { useCallback, useEffect, useState } from 'react';
 import { Sparkles, CheckCircle, X, Edit2, ArrowRight } from 'lucide-react';
+import { api } from '../api';
 
 const PROPOSALS = [
   {
@@ -31,7 +32,37 @@ const PROPOSALS = [
 
 type Status = 'pending' | 'accepted' | 'rejected' | 'editing';
 
+interface LiveProposal {
+  id: string;
+  status: string;
+  source: string | null;
+  ulpin: string | null;
+  created_at: string | null;
+}
+
 export default function AIReview() {
+  const [live, setLive] = useState<LiveProposal[]>([]);
+  const [liveLoading, setLiveLoading] = useState(true);
+  const [liveError, setLiveError] = useState<string | null>(null);
+
+  const refreshLive = useCallback(async () => {
+    setLiveLoading(true);
+    setLiveError(null);
+    const res = await api.getAICandidates();
+    if (res.success && res.data) setLive(res.data.proposals ?? []);
+    else setLiveError(res.error || 'Failed to load live captures');
+    setLiveLoading(false);
+  }, []);
+
+  useEffect(() => {
+    void refreshLive();
+  }, [refreshLive]);
+
+  const decide = async (id: string, decision: 'APPROVED' | 'REJECTED') => {
+    const res = await api.reviewAIProposal(id, decision);
+    if (res.success) await refreshLive();
+    else setLiveError(res.error || 'Review failed');
+  };
   const [statuses, setStatuses] = useState<Record<string, Status>>(
     Object.fromEntries(PROPOSALS.map((p) => [p.id, 'pending']))
   );
@@ -71,6 +102,78 @@ export default function AIReview() {
 
       <div className="flex-1 overflow-y-auto p-5">
         <div className="flex flex-col gap-3" style={{ maxWidth: 720 }}>
+          <div style={{ fontSize: 11, color: '#6E7783', letterSpacing: '0.08em' }}>
+            LIVE-CAPTURED BUILDINGS (FROM 3D GROUND CLICKS)
+          </div>
+          {liveLoading && (
+            <div style={{ fontSize: 11, color: '#6E7783' }}>Loading live captures…</div>
+          )}
+          {liveError && (
+            <div style={{ fontSize: 11, color: '#C85C5C' }}>{liveError}</div>
+          )}
+          {!liveLoading && !liveError && live.length === 0 && (
+            <div style={{ fontSize: 11, color: '#6E7783' }}>
+              No pending captures. Click ground in the 3D Explorer with Live Capture Mode on.
+            </div>
+          )}
+          {live.map((p) => (
+            <div
+              key={p.id}
+              style={{
+                background: '#10151C',
+                border: '1px solid #28313C',
+                borderRadius: 3,
+                padding: 16,
+              }}
+            >
+              <div className="flex items-center gap-2 mb-2">
+                <span className="font-mono" style={{ fontSize: 9, color: '#C99A45', letterSpacing: '0.1em' }}>
+                  LIVE CAPTURE {p.id.slice(0, 8)}…
+                </span>
+                <span
+                  style={{
+                    fontSize: 8,
+                    color: p.source === 'synthetic_fallback' ? '#D6A84F' : '#6E7783',
+                    border: '1px solid #28313C',
+                    padding: '1px 6px',
+                    borderRadius: 2,
+                    letterSpacing: '0.08em',
+                    fontWeight: 600,
+                  }}
+                >
+                  {(p.source ?? 'unknown').toUpperCase()}
+                </span>
+              </div>
+              <p style={{ fontSize: 11, color: '#A8B0BA', margin: '0 0 4px 0', lineHeight: 1.5 }}>
+                Bhu-Aadhaar {p.ulpin ?? '—'} · captured{' '}
+                {p.created_at ? new Date(p.created_at).toLocaleString('en-IN') : '—'}
+              </p>
+              {p.source === 'synthetic_fallback' && (
+                <p style={{ fontSize: 11, color: '#D6A84F', margin: '0 0 4px 0' }}>
+                  Synthetic 10 m box — NOT a detected building.
+                </p>
+              )}
+              <div className="flex gap-2 mt-3 pt-3" style={{ borderTop: '1px solid #1B222C' }}>
+                <button
+                  className="btn-secondary"
+                  style={{ fontSize: 10, padding: '5px 14px' }}
+                  onClick={() => void decide(p.id, 'REJECTED')}
+                >
+                  REJECT
+                </button>
+                <button
+                  className="btn-primary"
+                  style={{ fontSize: 10, padding: '5px 14px' }}
+                  onClick={() => void decide(p.id, 'APPROVED')}
+                >
+                  APPROVE → ADD 3D BUILDING
+                </button>
+              </div>
+            </div>
+          ))}
+          <div style={{ fontSize: 11, color: '#6E7783', letterSpacing: '0.08em', marginTop: 8 }}>
+            FIELD-MAPPING PROPOSALS (STATIC DEMO)
+          </div>
           {PROPOSALS.map((p) => {
             const st = statuses[p.id];
             return (
