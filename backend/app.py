@@ -615,8 +615,12 @@ WHERE (s.bothbox
 
 async def db_validate_topology(session, floor_id=None):
     """Validate topology for overlaps using native PostGIS 3D operators."""
-    from sqlalchemy import text
-    rows = (await session.execute(text(OVERLAP_PAIRS_SQL), {"floor_id": floor_id})).all()
+    from sqlalchemy import String, bindparam, text
+    # Explicit bind type: with floor_id=None, asyncpg cannot infer the
+    # parameter type for ":floor_id IS NULL" and raises
+    # AmbiguousParameterError. The SQL text itself is unchanged.
+    stmt = text(OVERLAP_PAIRS_SQL).bindparams(bindparam("floor_id", type_=String))
+    rows = (await session.execute(stmt, {"floor_id": floor_id})).all()
     issues = []
     for ida, idb, volume in rows:
         volume_str = f" (overlap volume: {volume:.2f} m³)" if volume else ""
