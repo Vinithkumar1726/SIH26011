@@ -689,7 +689,10 @@ def geom_to_geojson(geom):
         shape = to_shape(geom)
         return shape.__geo_interface__
     except Exception as e:
-        print(f"Geometry conversion error: {e}")
+        # PolyhedralSurface (WKB type 15) is unreadable by shapely by design;
+        # stored solids serialize as null while footprints carry the geometry.
+        if "Unknown WKB type" not in str(e):
+            print(f"Geometry conversion error: {e}")
         return None
 
 def serialize_parcel(p):
