@@ -11,6 +11,8 @@ import os
 import cv2
 import numpy as np
 import onnxruntime as ort
+from shapely.geometry import Polygon
+from shapely.validation import make_valid
 
 TILE_PX = 640
 TILE_HALF_M = 25.0
@@ -58,7 +60,14 @@ def extract_building_wkt(
         if cv2.contourArea(contour) < 4:
             return None
 
-        pts = contour.squeeze(1).astype(np.float64)  # (N, 2) pixel xy
+        # Simplify the raw detector boundary: jagged pixel zigzags become
+        # self-intersecting rings that PostGIS rejects at ST_Extrude time.
+        perimeter = cv2.arcLength(contour, True)
+        approx = cv2.approxPolyDP(contour, 0.01 * perimeter, True)
+        if len(approx) < 3:
+            return None
+
+        pts = approx.squeeze(1).astype(np.float64)  # (N, 2) pixel xy
         span_lon = max_lon - min_lon
         span_lat = max_lat - min_lat
         coords = [
@@ -68,10 +77,18 @@ def extract_building_wkt(
             )
             for x, y in pts
         ]
-        if coords[0] != coords[-1]:
-            coords.append(coords[0])
-        if len(coords) < 4:
+        poly = Polygon(coords)
+        if not poly.is_valid:
+            poly = make_valid(poly)
+            if poly.geom_type == "MultiPolygon":
+                poly = max(poly.geoms, key=lambda g: g.area)
+            if poly.geom_type != "Polygon":
+                return None
+        if poly.is_empty or poly.area == 0:
             return None
-        return "POLYGON((%s))" % ", ".join(f"{x} {y}" for x, y in coords)
+        ring = list(poly.exterior.coords)
+        if len(ring) < 4:
+            return None
+        return "POLYGON((%s))" % ", ".join(f"{x} {y}" for x, y in ring)
     except Exception:
         return None
