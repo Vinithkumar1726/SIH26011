@@ -8,8 +8,8 @@
     "build": "vite build",
     "preview": "vite preview",
     "format": "oxfmt",
-    "verify:topology": "node scripts/verify-topology.mts",
-    "generate:underground": "node scripts/generate-underground-pipes.mts"
+    "verify:topology": "node --experimental-strip-types scripts/verify-topology.mts",
+    "generate:underground": "node --experimental-strip-types scripts/generate-underground-pipes.mts"
   },
   "dependencies": {
     "@react-three/drei": "^10.7.8",
