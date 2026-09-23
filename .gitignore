@@ -25,3 +25,6 @@ __pycache__/
 # ML Models
 *.pt
 backend/test-data/*.onnx
+
+# Tile comparison output (never commit fetched imagery)
+tile_compare_out/
