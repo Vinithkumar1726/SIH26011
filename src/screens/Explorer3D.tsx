@@ -220,6 +220,7 @@ export default function Explorer3D() {
   const [popupBlocked, setPopupBlocked] = useState(false);
   const [liveCaptureMode, setLiveCaptureMode] = useState(false);
   const [liveCaptureLoading, setLiveCaptureLoading] = useState(false);
+  const [liveCaptureNotice, setLiveCaptureNotice] = useState<string | null>(null);
   const [liveData, setLiveData] = useState<LiveHierarchy | null>(null);
   const [source, setSource] = useState<'loading' | 'live' | 'demo'>('loading');
   const [summaries, setSummaries] = useState<BuildingSummary[]>([]);
@@ -324,12 +325,13 @@ export default function Explorer3D() {
       });
       if (!res.ok) throw new Error(`HTTP ${res.status}`);
       const data = await res.json();
-      await printPdfReport(building, floors, units, spatialIDs, {
-        ulpin: String(data.ulpin),
-        height_m: Number(data.height_m),
-        lat,
-        lon,
-      });
+      if (data?.status !== 'PENDING_REVIEW' || typeof data?.proposal_id !== 'string') {
+        throw new Error('Unexpected review-gate response');
+      }
+      const src = data.source === 'vision' ? 'vision-detected footprint' : 'synthetic fallback footprint';
+      setLiveCaptureNotice(
+        `Capture staged for human review — proposal ${String(data.proposal_id).slice(0, 8)}… (${src}). Nothing was added to the registry yet.`,
+      );
     } catch {
       // Leave the report closed; exit capture mode so the user isn't stuck.
     } finally {
@@ -943,6 +945,11 @@ export default function Explorer3D() {
           >
             {liveCaptureMode ? '◉ Live Capture: ON' : '◎ Live Capture Mode'}
           </button>
+          {liveCaptureNotice && (
+            <div className="text-[10px] text-amber-300 bg-amber-500/10 border border-amber-400/20 rounded px-2 py-1 mb-2">
+              {liveCaptureNotice}
+            </div>
+          )}
           <div>
             <label className="text-[10px] text-slate-500 block mb-1">Z-Range: −3.5m — {zMax}m</label>
             <input type="range" min={-3.5} max={36} step={0.5} value={zMax} onChange={(e) => setZMax(parseFloat(e.target.value))} className="w-full" />
@@ -1193,7 +1200,7 @@ export default function Explorer3D() {
 
         {liveCaptureLoading && (
           <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 glass rounded-lg px-5 py-3 pointer-events-none">
-            <span className="text-[11px] text-slate-200">Extracting 3D geometry & generating Bhu-Aadhaar…</span>
+            <span className="text-[11px] text-slate-200">Extracting 3D geometry & staging for review…</span>
           </div>
         )}
 

@@ -185,9 +185,9 @@ class ApiClient {
     return this.request('/api/spatial-identifiers');
   }
 
-  // AI: Get building extraction proposal
-  async getAIProposal(): Promise<ApiResponse<any>> {
-    return this.request('/api/ai/proposal');
+  // AI: Get one real building-extraction proposal by id
+  async getAIProposal(proposalId: string): Promise<ApiResponse<any>> {
+    return this.request(`/api/ai/proposal/${proposalId}`);
   }
 
   // AI: Review proposal

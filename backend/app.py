@@ -172,6 +172,9 @@ class AIProposal(Base):
         nullable=False, default="REVIEW_REQUIRED"
     )
     created_at = Column(DateTime, default=datetime.utcnow)
+    # Live-capture payload: {wkt, height_m, ulpin, lat, lon, source}
+    # with source exactly "vision" or "synthetic_fallback".
+    proposal_data = Column(JSONB, nullable=True)
 
 class ImportSession(Base):
     __tablename__ = "import_session"
@@ -1717,10 +1720,12 @@ async def get_ai_job(job_id: str):
 
 @app.post("/api/ai/extract-live-building")
 async def extract_live_building(payload: LiveExtractionRequest):
-    """Live-capture a building at a clicked map point.
+    """Stage a live-captured building for human review.
 
-    Builds a small footprint around (lat, lon), extrudes it to a 3D solid
-    in PostGIS, and mints a synthetic Bhu-Aadhaar parcel id for it.
+    Never writes geometry directly: stores everything needed to
+    materialize the parcel later on a single AIProposal row with
+    status REVIEW_REQUIRED. The row reaches cadastral_parcels only
+    via POST /api/ai/review/{proposal_id} with an APPROVED decision.
     """
     from sqlalchemy import text
 
@@ -1738,16 +1743,35 @@ async def extract_live_building(payload: LiveExtractionRequest):
             (lon - delta, lat - delta),
         ]
         wkt = "POLYGON((%s))" % ", ".join(f"{x} {y}" for x, y in corners)
+        source = "synthetic_fallback"
+        model_primary = "synthetic 10m box"
+    else:
+        source = "vision"
+        model_primary = "YOLO11n-seg ONNX"
     ulpin = generate_3d_ulpin(lat, lon, height)
+    proposal_id = uuid.uuid4().hex
     async with async_session() as session:
-        await session.execute(text(
-            "INSERT INTO cadastral_parcels (parcel_id, footprint, solid_geom, height_m) "
-            "VALUES (:ulpin, ST_GeomFromText(:wkt, 4326), "
-            "ST_Multi(ST_CollectionExtract(ST_Extrude(ST_Force3D(ST_GeomFromText(:wkt, 4326)), 0, 0, :height), 3)), :height) "
-            "ON CONFLICT (parcel_id) DO NOTHING"
-        ), {"ulpin": ulpin, "wkt": wkt, "height": height})
+        session.add(AIProposal(
+            id=proposal_id,
+            building_id=None,
+            model_primary=model_primary,
+            model_verifier="human-reviewer",
+            footprint_proposed=None,
+            footprint_verified=None,
+            iou_score=None,
+            agreement_score=None,
+            status="REVIEW_REQUIRED",
+            proposal_data={
+                "wkt": wkt,
+                "height_m": height,
+                "ulpin": ulpin,
+                "lat": lat,
+                "lon": lon,
+                "source": source,
+            },
+        ))
         await session.commit()
-    return {"status": "SUCCESS", "ulpin": ulpin, "height_m": height}
+    return {"status": "PENDING_REVIEW", "proposal_id": proposal_id, "source": source}
 
 
 @app.get("/api/ai/candidates")
@@ -1792,6 +1816,8 @@ async def get_ai_candidates():
                     "iou_score": p.iou_score,
                     "agreement_score": p.agreement_score,
                     "status": p.status,
+                    "source": (p.proposal_data or {}).get("source"),
+                    "ulpin": (p.proposal_data or {}).get("ulpin"),
                     "created_at": p.created_at.isoformat() if p.created_at else None
                 }
                 for p in proposals
@@ -1884,43 +1910,80 @@ async def get_audit_trail(limit: int = 100):
             for log in logs
         ]
 
-@app.get("/api/ai/proposal")
-async def get_ai_proposal():
-    """Get AI building extraction proposal"""
-    # Return mock AI proposal for demo
-    # In production, this would run SegFormer/DeepLabV3 inference
-    return {
-        "id": "aip-001",
-        "building_id": "bldg-001",
-        "model_primary": "SegFormer / MiT-B0",
-        "model_verifier": "DeepLabV3 / ResNet-50",
-        "footprint_proposed": {
-            "type": "Polygon",
-            "coordinates": [[[77.2085, 28.6125], [77.2095, 28.6125], 
-                           [77.2095, 28.6135], [77.2085, 28.6135], 
-                           [77.2085, 28.6125]]]
-        },
-        "footprint_verified": None,
-        "iou_score": 0.94,
-        "agreement_score": 0.91,
-        "status": "REVIEW_REQUIRED",
-        "created_at": datetime.utcnow().isoformat()
-    }
+@app.get("/api/ai/proposal/{proposal_id}")
+async def get_ai_proposal(proposal_id: str):
+    """Get one real AI proposal row, including its capture source."""
+    async with async_session() as session:
+        from sqlalchemy import select
+
+        proposal = (await session.execute(
+            select(AIProposal).where(AIProposal.id == proposal_id)
+        )).scalar_one_or_none()
+        if proposal is None:
+            raise HTTPException(status_code=404, detail="Proposal not found")
+        data = proposal.proposal_data or {}
+        source = data.get("source")
+        return {
+            "id": proposal.id,
+            "building_id": proposal.building_id,
+            "model_primary": proposal.model_primary,
+            "model_verifier": proposal.model_verifier,
+            "status": proposal.status,
+            "source": source,
+            "source_label": (
+                "Vision-detected footprint (YOLO11n-seg, live Esri tile)"
+                if source == "vision" else
+                "Synthetic fallback — 10m box, NOT vision-detected"
+                if source == "synthetic_fallback" else
+                "Unknown capture source"
+            ),
+            "ulpin": data.get("ulpin"),
+            "height_m": data.get("height_m"),
+            "lat": data.get("lat"),
+            "lon": data.get("lon"),
+            "wkt": data.get("wkt"),
+            "created_at": proposal.created_at.isoformat() if proposal.created_at else None,
+        }
 
 @app.post("/api/ai/review/{proposal_id}")
 async def review_ai_proposal(proposal_id: str, request: dict):
-    """Review AI proposal"""
+    """Review an AI proposal. APPROVED materializes the parcel; REJECTED does not."""
+    from sqlalchemy import select, text
+
     decision = request.get("decision")
     if decision not in ["APPROVED", "REJECTED"]:
         raise HTTPException(status_code=400, detail="Invalid decision. Must be APPROVED or REJECTED")
-    
-    # In production, update database with review decision
-    # For now, return success
-    return {
-        "status": decision,
-        "proposal_id": proposal_id,
-        "reviewed_at": datetime.utcnow().isoformat()
-    }
+
+    async with async_session() as session:
+        proposal = (await session.execute(
+            select(AIProposal).where(AIProposal.id == proposal_id)
+        )).scalar_one_or_none()
+        if proposal is None:
+            raise HTTPException(status_code=404, detail="Proposal not found")
+        if proposal.status != "REVIEW_REQUIRED":
+            raise HTTPException(status_code=409, detail=f"Proposal already {proposal.status}")
+
+        data = proposal.proposal_data or {}
+        if decision == "APPROVED":
+            if not data.get("wkt") or not data.get("ulpin") or data.get("height_m") is None:
+                raise HTTPException(status_code=422, detail="Proposal has no capturable geometry")
+            await session.execute(text(
+                "INSERT INTO cadastral_parcels (parcel_id, footprint, solid_geom, height_m) "
+                "VALUES (:ulpin, ST_GeomFromText(:wkt, 4326), "
+                "ST_Multi(ST_CollectionExtract(ST_Extrude(ST_Force3D(ST_GeomFromText(:wkt, 4326)), 0, 0, :height), 3)), :height) "
+                "ON CONFLICT (parcel_id) DO NOTHING"
+            ), {"ulpin": data["ulpin"], "wkt": data["wkt"], "height": data["height_m"]})
+            proposal.status = "APPROVED"
+        else:
+            proposal.status = "REJECTED"
+        await session.commit()
+
+        return {
+            "status": proposal.status,
+            "proposal_id": proposal.id,
+            "ulpin": data.get("ulpin"),
+            "reviewed_at": datetime.utcnow().isoformat()
+        }
 
 
 # ============================================================================
