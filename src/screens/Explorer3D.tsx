@@ -225,6 +225,11 @@ export default function Explorer3D() {
   const [source, setSource] = useState<'loading' | 'live' | 'demo'>('loading');
   const [summaries, setSummaries] = useState<BuildingSummary[]>([]);
   const [cityBuildings, setCityBuildings] = useState<CityBuilding[]>([]);
+  const [liveParcels, setLiveParcels] = useState<Array<{
+    parcel_id: string;
+    height_m: number;
+    footprint: { type: string; coordinates: number[][][] } | null;
+  }>>([]);
   const [hoverBlock, setHoverBlock] = useState<string | null>(null);
   const [showCity, setShowCity] = useState(true);
   const [showPipes, setShowPipes] = useState(true);
@@ -390,6 +395,26 @@ export default function Explorer3D() {
       cancelled = true;
     };
   }, []);
+
+  useEffect(() => {
+    if (!cityVisible) return;
+    let cancelled = false;
+    const base = (import.meta.env.VITE_API_URL || 'http://127.0.0.1:8000').replace(/\/$/, '');
+    fetch(`${base}/api/cadastral-parcels`)
+      .then((r) => {
+        if (!r.ok) throw new Error('no live parcels');
+        return r.json();
+      })
+      .then((list) => {
+        if (!cancelled && Array.isArray(list)) setLiveParcels(list);
+      })
+      .catch(() => {
+        /* live-captured layer stays empty */
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, [cityVisible]);
 
   const neighbours = useMemo(() => {
     if (source !== 'live') return [];
@@ -859,6 +884,14 @@ export default function Explorer3D() {
               nb={nb}
               origin={origin}
               onSelect={(id) => switchBuilding(id, 'bird')}
+              onHover={(name) => setHoverBlock(name)}
+            />
+          ))}
+          {cityVisible && liveParcels.map((p) => (
+            <LiveCapturedBlock
+              key={p.parcel_id}
+              parcel={p}
+              origin={origin}
               onHover={(name) => setHoverBlock(name)}
             />
           ))}
@@ -1491,7 +1524,7 @@ export default function Explorer3D() {
           </div>
           {hoverBlock && (
             <div className="glass rounded px-2 py-1 pointer-events-none">
-              <span className="text-[10px] text-slate-200">{hoverBlock} · simplified footprint</span>
+              <span className="text-[10px] text-slate-200">{hoverBlock.startsWith('Live-captured') ? hoverBlock : `${hoverBlock} · simplified footprint`}</span>
             </div>
           )}
           {conflicts.size > 0 && conflictOpen && (
@@ -2016,6 +2049,52 @@ function NeighbourBlock({ nb, origin, onSelect, onHover }: {
       <lineSegments>
         <primitive object={edges} attach="geometry" />
         <lineBasicMaterial color={hovered ? '#ffffff' : '#cbd5e1'} transparent opacity={0.6} />
+      </lineSegments>
+    </mesh>
+  );
+}
+
+function LiveCapturedBlock({ parcel, origin, onHover }: {
+  parcel: { parcel_id: string; height_m: number; footprint: { type: string; coordinates: number[][][] } | null };
+  origin: [number, number];
+  onHover: (label: string | null) => void;
+}) {
+  const [hovered, setHovered] = useState(false);
+  const label = `Live-captured (approved) · ${parcel.parcel_id}`;
+  const geom = useMemo(() => {
+    const ring0 = parcel.footprint?.coordinates?.[0] ?? [];
+    const pts = footprintToLocal(ring0, origin[0], origin[1]);
+    const closedDup = pts.length > 1 && pts[0][0] === pts[pts.length - 1][0] && pts[0][1] === pts[pts.length - 1][1];
+    const ring = closedDup ? pts.slice(0, -1) : pts;
+    const shape = new THREE.Shape();
+    ring.forEach(([x, y], i) => {
+      if (i === 0) shape.moveTo(x, y);
+      else shape.lineTo(x, y);
+    });
+    shape.closePath();
+    return new THREE.ExtrudeGeometry(shape, { depth: Math.max(parcel.height_m, 0.1), bevelEnabled: false, steps: 1 });
+  }, [parcel, origin]);
+  useEffect(() => () => {
+    geom.dispose();
+  }, [geom]);
+  const edges = useMemo(() => new THREE.EdgesGeometry(geom), [geom]);
+  useEffect(() => () => {
+    edges.dispose();
+  }, [edges]);
+  if (!parcel.footprint) return null;
+  return (
+    <mesh
+      position={[0, 0.02, 0]}
+      rotation={[-Math.PI / 2, 0, 0]}
+      onClick={(e) => { e.stopPropagation(); onHover(label); }}
+      onPointerOver={(e) => { e.stopPropagation(); setHovered(true); onHover(label); document.body.style.cursor = 'pointer'; }}
+      onPointerOut={() => { setHovered(false); onHover(null); document.body.style.cursor = 'default'; }}
+    >
+      <primitive object={geom} attach="geometry" />
+      <meshStandardMaterial color="#a855f7" transparent opacity={hovered ? 0.8 : 0.55} side={THREE.DoubleSide} />
+      <lineSegments>
+        <primitive object={edges} attach="geometry" />
+        <lineBasicMaterial color={hovered ? '#ffffff' : '#e9d5ff'} transparent opacity={0.6} />
       </lineSegments>
     </mesh>
   );

@@ -1988,6 +1988,31 @@ async def review_ai_proposal(proposal_id: str, request: dict):
         }
 
 
+@app.get("/api/cadastral-parcels")
+async def list_cadastral_parcels():
+    """Approved live-captured parcels as GeoJSON footprints for the 3D scene.
+
+    Read-only: rows land here exclusively via approved AIProposal reviews.
+    """
+    async with async_session() as session:
+        import json as _json
+
+        from sqlalchemy import text
+
+        rows = (await session.execute(text(
+            "SELECT parcel_id, height_m, ST_AsGeoJSON(footprint) AS geom "
+            "FROM cadastral_parcels ORDER BY parcel_id"
+        ))).all()
+        return [
+            {
+                "parcel_id": r[0],
+                "height_m": r[1],
+                "footprint": _json.loads(r[2]) if r[2] else None,
+            }
+            for r in rows
+        ]
+
+
 # ============================================================================
 # GEOMETRY VERSIONING & AUDIT TRAIL ENDPOINTS
 # ============================================================================
