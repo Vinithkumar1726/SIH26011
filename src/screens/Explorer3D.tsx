@@ -396,26 +396,6 @@ export default function Explorer3D() {
     };
   }, []);
 
-  useEffect(() => {
-    if (!cityVisible) return;
-    let cancelled = false;
-    const base = (import.meta.env.VITE_API_URL || 'http://127.0.0.1:8000').replace(/\/$/, '');
-    fetch(`${base}/api/cadastral-parcels`)
-      .then((r) => {
-        if (!r.ok) throw new Error('no live parcels');
-        return r.json();
-      })
-      .then((list) => {
-        if (!cancelled && Array.isArray(list)) setLiveParcels(list);
-      })
-      .catch(() => {
-        /* live-captured layer stays empty */
-      });
-    return () => {
-      cancelled = true;
-    };
-  }, [cityVisible]);
-
   const neighbours = useMemo(() => {
     if (source !== 'live') return [];
     return cityBuildings
@@ -485,6 +465,27 @@ export default function Explorer3D() {
     && cityAvailable
     && cityOffset !== null
     && Math.hypot(cityOffset[0], cityOffset[1]) <= (cityMeta?.radiusM ?? 0);
+
+  useEffect(() => {
+    if (!cityVisible) return;
+    let cancelled = false;
+    const base = (import.meta.env.VITE_API_URL || 'http://127.0.0.1:8000').replace(/\/$/, '');
+    fetch(`${base}/api/cadastral-parcels`)
+      .then((r) => {
+        if (!r.ok) throw new Error('no live parcels');
+        return r.json();
+      })
+      .then((list) => {
+        if (!cancelled && Array.isArray(list)) setLiveParcels(list);
+      })
+      .catch(() => {
+        /* live-captured layer stays empty */
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, [cityVisible]);
+
   const pipeStatus = useMemo(() => {
     if (!cityVisible || !cityOffset) return [];
     return buildingPipes.map((p) => {
