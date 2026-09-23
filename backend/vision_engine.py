@@ -6,7 +6,9 @@ inference errors) returns None so callers can fall back to the synthetic
 10m bounding-box footprint.
 """
 
+import math
 import os
+import urllib.request
 
 import cv2
 import numpy as np
@@ -26,6 +28,28 @@ def _mercator_bbox(lat: float, lon: float, half_m: float = TILE_HALF_M):
     return lon - d_lon, lat - d_lat, lon + d_lon, lat + d_lat
 
 
+def _fetch_satellite_tile(lat: float, lon: float, zoom: int = 19) -> np.ndarray | None:
+    """Fetches a live satellite tile from Esri World Imagery and resizes it for YOLO."""
+    try:
+        lat_rad = math.radians(lat)
+        n = 2.0 ** zoom
+        x = int((lon + 180.0) / 360.0 * n)
+        y = int((1.0 - math.asinh(math.tan(lat_rad)) / math.pi) / 2.0 * n)
+
+        url = f"https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{zoom}/{y}/{x}"
+        req = urllib.request.Request(url, headers={'User-Agent': 'CadastralAI-SIH26012/1.0'})
+
+        with urllib.request.urlopen(req, timeout=5) as resp:
+            arr = np.frombuffer(resp.read(), np.uint8)
+            img = cv2.imdecode(arr, cv2.IMREAD_COLOR)
+            if img is not None:
+                # Resize to the 640x640 resolution expected by YOLOv11
+                return cv2.resize(img, (TILE_PX, TILE_PX))
+    except Exception:
+        pass
+    return None
+
+
 def extract_building_wkt(
     lat: float, lon: float, model_path: str = "test-data/yolo-seg.onnx"
 ) -> str | None:
@@ -36,11 +60,14 @@ def extract_building_wkt(
 
         min_lon, min_lat, max_lon, max_lat = _mercator_bbox(lat, lon)
 
-        # Placeholder for a real WMS tile fetch (640x640 RGB).
-        tile = np.zeros((TILE_PX, TILE_PX, 3), dtype=np.uint8)
+        tile = _fetch_satellite_tile(lat, lon)
+        if tile is None:
+            return None
 
         session = ort.InferenceSession(model_path)
-        feed = {session.get_inputs()[0].name: tile.transpose(2, 0, 1)[None].astype(np.float32) / 255.0}
+        # Convert BGR to RGB, transpose to (C, H, W), and normalize
+        rgb_tile = cv2.cvtColor(tile, cv2.COLOR_BGR2RGB)
+        feed = {session.get_inputs()[0].name: rgb_tile.transpose(2, 0, 1)[None].astype(np.float32) / 255.0}
         outputs = session.run(None, feed)
 
         mask = np.asarray(outputs[0]).squeeze()
