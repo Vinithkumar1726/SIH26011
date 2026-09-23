@@ -31,6 +31,8 @@ import geojson
 import csv
 import io
 
+from vision_engine import extract_building_wkt
+
 # Database configuration
 DATABASE_URL = os.getenv("DATABASE_URL", "postgresql+asyncpg://postgres:postgres@localhost:5432/sih26011")
 DATABASE_URL_SYNC = os.getenv("DATABASE_URL_SYNC", "postgresql://postgres:postgres@localhost:5432/sih26011")
@@ -1722,16 +1724,20 @@ async def extract_live_building(payload: LiveExtractionRequest):
     """
     from sqlalchemy import text
 
-    delta = 0.0001
     lon, lat, height = payload.longitude, payload.latitude, payload.building_height_m
-    corners = [
-        (lon - delta, lat - delta),
-        (lon + delta, lat - delta),
-        (lon + delta, lat + delta),
-        (lon - delta, lat + delta),
-        (lon - delta, lat - delta),
-    ]
-    wkt = "POLYGON((%s))" % ", ".join(f"{x} {y}" for x, y in corners)
+    wkt = extract_building_wkt(lat, lon)
+    if wkt is None:
+        # Fallback to synthetic 10x10m square when the vision model is
+        # missing or inference fails.
+        delta = 0.0001
+        corners = [
+            (lon - delta, lat - delta),
+            (lon + delta, lat - delta),
+            (lon + delta, lat + delta),
+            (lon - delta, lat + delta),
+            (lon - delta, lat - delta),
+        ]
+        wkt = "POLYGON((%s))" % ", ".join(f"{x} {y}" for x, y in corners)
     ulpin = generate_3d_ulpin(lat, lon, height)
     async with async_session() as session:
         await session.execute(text(
