@@ -4,9 +4,11 @@
  *
  * Method (same as the original derivation): for each given building, take
  * road triangles whose centroid lies within 150 m of the building in
- * GLB-local metres, fit their long axis (PCA), walk it every 2 m keeping
- * samples within 4 m of real road surface, and emit the two longest
- * on-road runs (>= 25 m) as parallel pipes at 2 m depth.
+ * GLB-local metres, fit their long axis (PCA), walk it once at zero
+ * offset keeping samples within 4 m of real road surface, keep the
+ * longest on-road run (>= 25 m) as the single reference run, and emit
+ * both pipes as parallel copies of that run (±1.5 m lateral offset)
+ * at 2 m depth — so each pair is genuinely parallel by construction.
  *
  * Usage:
  *   npm run generate:underground -- [--city <glb>] [--meta <json>]
@@ -126,22 +128,35 @@ for (const bd of buildings) {
   const ux = Math.cos(ang), uz = Math.sin(ang);
   const px = -uz, pz = ux;
   const cands: Array<{ off: number; len: number; worst: number; A: [number, number]; Cc: [number, number] }> = [];
-  for (const off of [0, -1.5, 1.5]) {
-    const line: Array<[number, number]> = [];
-    for (let s = -150; s <= 150; s += 2) line.push([mx + ux * s + px * off, mz + uz * s + pz * off]);
-    const ok = line.map(([x, z]) => roadDist(x, z) <= ON_ROAD);
-    let b0 = 0, b1 = -1, c0 = 0;
-    for (let i = 0; i <= ok.length; i++) {
-      if (i < ok.length && ok[i]) {
-        if (i === 0 || !ok[i - 1]) c0 = i;
-      } else if (i > 0 && ok[i - 1] && i - c0 > b1 - b0) {
-        b0 = c0;
-        b1 = i;
+  // Reference run: enumerate every on-road stretch of the road axis walked
+  // once at zero offset, and keep the stretch whose ±1.5 m parallel copies
+  // stay closest to road surface overall. Both pipes are parallel copies
+  // of THIS single run, so the pair can never drift onto unrelated
+  // segments. (The longest stretch is NOT automatically the winner: a
+  // slightly shorter stretch both copies fit on beats a longer one where
+  // one copy hangs off the road ribbon.)
+  const ref: Array<[number, number]> = [];
+  for (let s = -150; s <= 150; s += 2) ref.push([mx + ux * s, mz + uz * s]);
+  const refOk = ref.map(([x, z]) => roadDist(x, z) <= ON_ROAD);
+  const runs: Array<{ s0: number; s1: number }> = [];
+  {
+    let i = 0;
+    while (i < refOk.length) {
+      if (!refOk[i]) {
+        i++;
+        continue;
       }
+      let j = i;
+      while (j < refOk.length && refOk[j]) j++;
+      if ((j - i) * 2 >= MIN_RUN) runs.push({ s0: i * 2 - 150, s1: (j - 1) * 2 - 150 });
+      i = j;
     }
-    const len = (b1 - b0) * 2;
-    if (len < MIN_RUN) continue;
-    const s0 = b0 * 2 - 150, s1 = (b1 - 1) * 2 - 150;
+  }
+  if (runs.length === 0) {
+    console.log(`${bd.id}: no on-road run >= ${MIN_RUN}m`);
+    continue;
+  }
+  const copyWorst = (s0: number, s1: number, off: number): number => {
     const A: [number, number] = [mx + ux * s0 + px * off, mz + uz * s0 + pz * off];
     const Cc: [number, number] = [mx + ux * s1 + px * off, mz + uz * s1 + pz * off];
     let worst = 0;
@@ -149,7 +164,43 @@ for (const bd of buildings) {
       const x = A[0] + ((Cc[0] - A[0]) * k) / 20, z = A[1] + ((Cc[1] - A[1]) * k) / 20;
       worst = Math.max(worst, roadDist(x, z));
     }
-    cands.push({ off, len, worst, A, Cc });
+    return worst;
+  };
+  runs.sort((r, q) => {
+    const score = (t: { s0: number; s1: number }) => Math.max(copyWorst(t.s0, t.s1, -1.5), copyWorst(t.s0, t.s1, 1.5));
+    const d = score(r) - score(q);
+    return d !== 0 ? d : (q.s1 - q.s0) - (r.s1 - r.s0);
+  });
+  // Both pipes derive from the single winning run. Prefer the symmetric
+  // ±1.5 m pair; if one side hangs off the road ribbon there, fall back
+  // to pairing the centerline copy with the fitting side — still two
+  // parallel copies of the same reference run, never unrelated segments.
+  const PAIRS: Array<[number, number]> = [[-1.5, 1.5], [0, -1.5], [0, 1.5]];
+  let win = runs[0];
+  let winPair: [number, number] = [-1.5, 1.5];
+  {
+    let best = Infinity;
+    let bestLen = -1;
+    for (const t of runs) {
+      for (const pr of PAIRS) {
+        const sc = Math.max(copyWorst(t.s0, t.s1, pr[0]), copyWorst(t.s0, t.s1, pr[1]));
+        const ln = t.s1 - t.s0;
+        if (sc < best || (sc === best && ln > bestLen)) {
+          best = sc;
+          bestLen = ln;
+          win = t;
+          winPair = pr;
+        }
+      }
+    }
+  }
+  const s0 = win.s0, s1 = win.s1;
+  const refLen = s1 - s0;
+  for (const off of winPair) {
+    const A: [number, number] = [mx + ux * s0 + px * off, mz + uz * s0 + pz * off];
+    const Cc: [number, number] = [mx + ux * s1 + px * off, mz + uz * s1 + pz * off];
+    const worst = copyWorst(s0, s1, off);
+    cands.push({ off, len: refLen, worst, A, Cc });
   }
   cands.sort((x, y) => x.worst - y.worst);
   const suffix = bd.id.slice(-3).toLowerCase();

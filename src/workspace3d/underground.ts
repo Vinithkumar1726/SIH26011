@@ -3,9 +3,10 @@
  *
  * DATA (generated, see derivation in commit history): for each building,
  * nearby road triangles (centroid within 150 m of the building in
- * GLB-local metres) were fitted to a long axis; each run below is the
- * longest contiguous stretch of that axis staying within 4 m of real
- * road surface (worst deviation 2.0–4.0 m), laid at 2 m depth.
+ * GLB-local metres) were fitted to a long axis; one on-road reference
+ * run of that axis was kept, and both pipes are parallel copies of that
+ * same run (worst deviation 0.8–4.8 m from real road surface),
+ * laid at 2 m depth.
  * Coordinates are GLB-local [x, z] (x east, z = -north). Regenerate the data section — do not hand-edit it.
  *
  * MATH (hand-written): segment-to-box clearance helpers below.
@@ -26,6 +27,19 @@ export const SYNTHETIC_PIPES: SyntheticPipe[] = [
     "id": "syn-pipe-101-1",
     "buildingId": "BLDG-101",
     "a": [
+      -50.63,
+      83.94
+    ],
+    "b": [
+      -26.8,
+      141.18
+    ],
+    "depthM": 2
+  },
+  {
+    "id": "syn-pipe-101-2",
+    "buildingId": "BLDG-101",
+    "a": [
       -52.02,
       84.52
     ],
@@ -36,28 +50,15 @@ export const SYNTHETIC_PIPES: SyntheticPipe[] = [
     "depthM": 2
   },
   {
-    "id": "syn-pipe-101-2",
-    "buildingId": "BLDG-101",
-    "a": [
-      -53.4,
-      85.1
-    ],
-    "b": [
-      -30.33,
-      140.49
-    ],
-    "depthM": 2
-  },
-  {
     "id": "syn-pipe-102-1",
     "buildingId": "BLDG-102",
     "a": [
-      68.18,
-      -45.08
+      17.93,
+      79.15
     ],
     "b": [
-      78.2,
-      -69.07
+      29.49,
+      51.46
     ],
     "depthM": 2
   },
@@ -65,12 +66,12 @@ export const SYNTHETIC_PIPES: SyntheticPipe[] = [
     "id": "syn-pipe-102-2",
     "buildingId": "BLDG-102",
     "a": [
-      20.08,
-      77.88
+      16.54,
+      78.57
     ],
     "b": [
-      30.1,
-      53.89
+      28.1,
+      50.89
     ],
     "depthM": 2
   }
