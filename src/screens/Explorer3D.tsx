@@ -1,6 +1,7 @@
 import { Component, Suspense, useEffect, useMemo, useRef, useState } from 'react';
 import type { ReactNode } from 'react';
 import { Canvas, useFrame, useThree } from '@react-three/fiber';
+import type { ThreeEvent } from '@react-three/fiber';
 import { AdaptiveDpr, OrbitControls, useGLTF } from '@react-three/drei';
 import * as THREE from 'three';
 import type { Building, Floor, SpatialID, Unit } from '../workspace3d/types';
@@ -75,7 +76,12 @@ function downloadCsv(bldg: Building, flrs: Floor[]) {
   URL.revokeObjectURL(url);
 }
 
-async function printPdfReport(bldg: Building, flrs: Floor[], units: Unit[], sids: SpatialID[]) {
+async function printPdfReport(bldg: Building, flrs: Floor[], units: Unit[], sids: SpatialID[], live?: {
+  ulpin: string;
+  height_m: number;
+  lat: number;
+  lon: number;
+} | null) {
   const dash = '—';
   const printWindow = window.open('', '_blank', 'noopener,noreferrer');
   if (!printWindow) return false;
@@ -99,6 +105,9 @@ async function printPdfReport(bldg: Building, flrs: Floor[], units: Unit[], sids
   const rows = [
     `<h1>3D Bhu-Aadhaar</h1><p>Generated ${new Date().toLocaleDateString('en-IN')}</p>`,
     `<h2>Building · ${bldg.name}</h2><p><b>Owner:</b> ${bldg.ownership?.ownerName ?? dash}<br><b>Ownership:</b> ${bldg.ownership?.ownershipType ?? dash}<br><b>Market value:</b> ${bMarket}<br><b>Assessed value:</b> ${bAssessed}</p>`,
+    ...(live
+      ? [`<h2>Live-captured structure</h2><p><b>Bhu-Aadhaar:</b> ${live.ulpin}<br><b>Height:</b> ${live.height_m}m<br><b>Location:</b> ${live.lat.toFixed(6)}, ${live.lon.toFixed(6)}</p>`]
+      : []),
     '<h2>Floor valuation schedule</h2><table><thead><tr><th>Floor</th><th>Owner</th><th>Ownership</th><th>Market value</th><th>Assessed value</th><th>Year</th></tr></thead><tbody>',
     ...flrs.map((floor) => {
       const [fMarket, fAssessed] = money(floor.valuation);
@@ -205,6 +214,8 @@ export default function Explorer3D() {
   const [ownershipFilter, setOwnershipFilter] = useState('ALL');
   const [minimumMarketValue, setMinimumMarketValue] = useState(0);
   const [popupBlocked, setPopupBlocked] = useState(false);
+  const [liveCaptureMode, setLiveCaptureMode] = useState(false);
+  const [liveCaptureLoading, setLiveCaptureLoading] = useState(false);
   const [liveData, setLiveData] = useState<LiveHierarchy | null>(null);
   const [source, setSource] = useState<'loading' | 'live' | 'demo'>('loading');
   const [summaries, setSummaries] = useState<BuildingSummary[]>([]);
@@ -289,6 +300,39 @@ export default function Explorer3D() {
   useEffect(() => () => {
     lidarRun.current += 1;
   }, []);
+
+  const handleGroundClick = async (e: ThreeEvent<MouseEvent>) => {
+    if (!liveCaptureMode || liveCaptureLoading) return;
+    e.stopPropagation();
+    // World (building-local metres, Y-up, north = -z) back to lon/lat.
+    const east = e.point.x;
+    const north = -e.point.z;
+    const cosLat = Math.cos((origin[1] * Math.PI) / 180);
+    const lon = origin[0] + east / (111320 * cosLat);
+    const lat = origin[1] + north / 111320;
+    setLiveCaptureLoading(true);
+    try {
+      const base = (import.meta.env.VITE_API_URL || 'http://127.0.0.1:8000').replace(/\/$/, '');
+      const res = await fetch(`${base}/api/ai/extract-live-building`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ latitude: lat, longitude: lon, building_height_m: 12.0 }),
+      });
+      if (!res.ok) throw new Error(`HTTP ${res.status}`);
+      const data = await res.json();
+      await printPdfReport(building, floors, units, spatialIDs, {
+        ulpin: String(data.ulpin),
+        height_m: Number(data.height_m),
+        lat,
+        lon,
+      });
+    } catch {
+      // Leave the report closed; exit capture mode so the user isn't stuck.
+    } finally {
+      setLiveCaptureLoading(false);
+      setLiveCaptureMode(false);
+    }
+  };
 
   const switchBuilding = (id: string, preset?: ViewPreset) => {
     if (id === building.id || source !== 'live') return;
@@ -754,7 +798,7 @@ export default function Explorer3D() {
           dpr={quality === 'low' ? 1 : quality === 'medium' ? [1, 1.5] : [1, 2]}
           shadows={quality !== 'low'}
           gl={{ antialias: true, alpha: false, powerPreference: quality === 'low' ? 'low-power' : 'default' }}
-          style={{ background: sky.bg }}
+          style={{ background: sky.bg, cursor: liveCaptureMode ? 'crosshair' : 'default' }}
         >
           {quality !== 'high' && <AdaptiveDpr pixelated />}
           <color attach="background" args={[sky.bg]} />
@@ -763,7 +807,11 @@ export default function Explorer3D() {
           <directionalLight position={[50, 80, 30]} intensity={sky.sun} color={sky.sunColor} castShadow={quality !== 'low'} shadow-mapSize={quality === 'high' ? [2048, 2048] : [1024, 1024]} />
           <directionalLight position={[-30, 40, -20]} intensity={sky.ambient} color={sky.sunColor} />
           <hemisphereLight args={[sky.hemiSky, sky.hemiGround, sky.ambient]} />
-          <Ground seeThrough={viewPreset === 'cutaway'} size={cityVisible && cityMeta ? 3 * cityMeta.radiusM : 200 * fh} />
+          <Ground
+            seeThrough={viewPreset === 'cutaway'}
+            size={cityVisible && cityMeta ? 3 * cityMeta.radiusM : 200 * fh}
+            onGroundClick={handleGroundClick}
+          />
           {showGrid && !cityVisible && <GridFloor size={200 * fh} />}
           {showParcel && (parcel.footprint || source === 'demo') && <ParcelOutline footprint={parcel.footprint} origin={origin} />}
           {cityVisible && cityOffset && (
@@ -884,6 +932,13 @@ export default function Explorer3D() {
             <input type="checkbox" checked={exploded} onChange={(e) => setExploded(e.target.checked)} />
             Explode Floors
           </label>
+          <button
+            type="button"
+            onClick={() => setLiveCaptureMode((v) => !v)}
+            className={`w-full text-[10px] py-1 rounded uppercase tracking-wider mb-2 ${liveCaptureMode ? 'bg-emerald-500/20 text-emerald-300 border border-emerald-400/40' : 'bg-white/5 text-slate-400 border border-transparent hover:text-white'}`}
+          >
+            {liveCaptureMode ? '◉ Live Capture: ON' : '◎ Live Capture Mode'}
+          </button>
           <div>
             <label className="text-[10px] text-slate-500 block mb-1">Z-Range: −3.5m — {zMax}m</label>
             <input type="range" min={-3.5} max={36} step={0.5} value={zMax} onChange={(e) => setZMax(parseFloat(e.target.value))} className="w-full" />
@@ -1131,6 +1186,12 @@ export default function Explorer3D() {
           {reportFilterActive && matchingFloorIds.size === 0 && <div className="text-[9px] text-danger mt-2">No floors match this filter.</div>}
           </CollapsePanel>
         </div>
+
+        {liveCaptureLoading && (
+          <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 glass rounded-lg px-5 py-3 pointer-events-none">
+            <span className="text-[11px] text-slate-200">Extracting 3D geometry & generating Bhu-Aadhaar…</span>
+          </div>
+        )}
 
         {inspectorVisible && (
           <div className={`absolute bottom-3 left-1/2 -translate-x-1/2 glass rounded-lg w-[400px] ${compact ? 'max-w-[calc(100%-2rem)]' : narrow ? 'max-w-full' : 'max-w-[calc(100%-34rem)]'} max-h-[48%] flex flex-col`}>
@@ -1856,9 +1917,18 @@ function UndergroundPipes({ pipes, groupPos, statuses }: {
   );
 }
 
-function Ground({ seeThrough, size = 200 }: { seeThrough?: boolean; size?: number }) {
+function Ground({ seeThrough, size = 200, onGroundClick }: {
+  seeThrough?: boolean;
+  size?: number;
+  onGroundClick?: (e: ThreeEvent<MouseEvent>) => void;
+}) {
   return (
-    <mesh rotation={[-Math.PI / 2, 0, 0]} position={[0, -0.1, 0]} receiveShadow>
+    <mesh
+      rotation={[-Math.PI / 2, 0, 0]}
+      position={[0, -0.1, 0]}
+      receiveShadow
+      onClick={(e) => onGroundClick?.(e)}
+    >
       <planeGeometry args={[size, size]} />
       <meshStandardMaterial color="#0f1629" transparent={!!seeThrough} opacity={seeThrough ? 0.22 : 1} depthWrite={!seeThrough} />
     </mesh>
