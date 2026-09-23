@@ -85,6 +85,10 @@ async function printPdfReport(bldg: Building, flrs: Floor[], units: Unit[], sids
   const dash = '—';
   const printWindow = window.open('', '_blank', 'noopener,noreferrer');
   if (!printWindow) return false;
+
+  // Write the document shell immediately to prevent about:blank white screen
+  printWindow.document.write('<!DOCTYPE html><html><head><title>3D Bhu-Aadhaar Report</title><style>body{font-family:sans-serif;padding:20px;color:#333}</style></head><body>Loading report...</body></html>');
+  printWindow.document.close();
   const money = (v?: { marketValue: number; assessedValue: number; currency: string }) =>
     v ? [formatReportCurrency(v.marketValue, v.currency), formatReportCurrency(v.assessedValue, v.currency)] : [dash, dash];
   const [bMarket, bAssessed] = money(bldg.valuation);
