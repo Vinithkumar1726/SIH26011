@@ -162,7 +162,7 @@ class AIProposal(Base):
     id = Column(String, primary_key=True)
     building_id = Column(String, nullable=True)
     model_primary = Column(String, nullable=False)
-    model_verifier = Column(String, nullable=False)
+    model_verifier = Column(String, nullable=True)
     footprint_proposed = Column(JSONB)
     footprint_verified = Column(JSONB)
     iou_score = Column(Float)
@@ -1755,7 +1755,7 @@ async def extract_live_building(payload: LiveExtractionRequest):
             id=proposal_id,
             building_id=None,
             model_primary=model_primary,
-            model_verifier="human-reviewer",
+            model_verifier=None,
             footprint_proposed=None,
             footprint_verified=None,
             iou_score=None,
@@ -1963,6 +1963,8 @@ async def review_ai_proposal(proposal_id: str, request: dict):
         if proposal.status != "REVIEW_REQUIRED":
             raise HTTPException(status_code=409, detail=f"Proposal already {proposal.status}")
 
+        # A decision is being recorded now — only now may a verifier be named.
+        proposal.model_verifier = "human-reviewer"
         data = proposal.proposal_data or {}
         if decision == "APPROVED":
             if not data.get("wkt") or not data.get("ulpin") or data.get("height_m") is None:
