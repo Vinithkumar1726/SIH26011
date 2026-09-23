@@ -1648,6 +1648,21 @@ class AIJobRequest(BaseModel):
     target_id: str = Field(description="Target building or parcel id")
 
 
+class LiveExtractionRequest(BaseModel):
+    latitude: float
+    longitude: float
+    building_height_m: float = 12.0
+
+
+def generate_3d_ulpin(lat: float, lon: float, z_max: float) -> str:
+    """Synthetic 14-char Bhu-Aadhaar-style parcel id (NOT an official ULPIN).
+
+    Format: 33-XXXX-XXXXXX from an uppercase SHA-256 hex digest.
+    """
+    digest = hashlib.sha256(f"{lat}:{lon}:{z_max}".encode()).hexdigest().upper()
+    return f"33-{digest[:4]}-{digest[4:10]}"
+
+
 def _ai_job_set(job_id: str, **fields):
     job = AI_JOBS.get(job_id)
     if job is None:
@@ -1696,6 +1711,36 @@ async def get_ai_job(job_id: str):
     if job is None:
         raise HTTPException(status_code=404, detail="Job not found")
     return job
+
+
+@app.post("/api/ai/extract-live-building")
+async def extract_live_building(payload: LiveExtractionRequest):
+    """Live-capture a building at a clicked map point.
+
+    Builds a small footprint around (lat, lon), extrudes it to a 3D solid
+    in PostGIS, and mints a synthetic Bhu-Aadhaar parcel id for it.
+    """
+    from sqlalchemy import text
+
+    delta = 0.0001
+    lon, lat, height = payload.longitude, payload.latitude, payload.building_height_m
+    corners = [
+        (lon - delta, lat - delta),
+        (lon + delta, lat - delta),
+        (lon + delta, lat + delta),
+        (lon - delta, lat + delta),
+        (lon - delta, lat - delta),
+    ]
+    wkt = "POLYGON((%s))" % ", ".join(f"{x} {y}" for x, y in corners)
+    ulpin = generate_3d_ulpin(lat, lon, height)
+    async with async_session() as session:
+        await session.execute(text(
+            "INSERT INTO cadastral_parcels (parcel_id, footprint, solid_geom, height_m) "
+            "VALUES (:ulpin, ST_GeomFromText(:wkt, 4326), "
+            "ST_Extrude(ST_Force3D(ST_GeomFromText(:wkt, 4326)), 0, 0, :height), :height)"
+        ), {"ulpin": ulpin, "wkt": wkt, "height": height})
+        await session.commit()
+    return {"status": "SUCCESS", "ulpin": ulpin, "height_m": height}
 
 
 @app.get("/api/ai/candidates")
