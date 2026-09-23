@@ -19,6 +19,93 @@ from shapely.validation import make_valid
 TILE_PX = 640
 TILE_HALF_M = 25.0
 
+_OSM_CATALOG = None
+
+
+def _osm_paths():
+    here = os.path.dirname(os.path.abspath(__file__))
+    base = os.path.join(here, "..", "public", "coimbatore")
+    return (
+        os.path.join(base, "buildings_catalog.json"),
+        os.path.join(base, "meta.json"),
+    )
+
+
+def _load_osm_catalog():
+    """Cached OSM live-map buildings + origin; None if files are missing."""
+    global _OSM_CATALOG
+    if _OSM_CATALOG is None:
+        try:
+            import json
+
+            cat_path, meta_path = _osm_paths()
+            meta = json.load(open(meta_path, encoding="utf-8"))
+            buildings = json.load(open(cat_path, encoding="utf-8"))
+            _OSM_CATALOG = (meta["origin"], buildings)
+        except Exception:
+            return None
+    return _OSM_CATALOG
+
+
+def _point_in_ring(x: float, z: float, ring) -> bool:
+    inside = False
+    n = len(ring)
+    for i in range(n):
+        x1, z1 = ring[i]
+        x2, z2 = ring[(i + 1) % n]
+        if (z1 > z) != (z2 > z):
+            if x < (x2 - x1) * (z - z1) / (z2 - z1) + x1:
+                inside = not inside
+    return inside
+
+
+def detect_osm_building(lat: float, lon: float):
+    """Find the live-map OSM building containing (lat, lon).
+
+    Returns (wkt, height_m_or_None, osm_id) for the smallest containing
+    footprint, or None when the click hits no mapped building.
+    """
+    try:
+        loaded = _load_osm_catalog()
+        if not loaded:
+            return None
+        origin, buildings = loaded
+        cos_lat = max(float(np.cos(np.radians(origin["lat"]))), 1e-6)
+        # lon/lat -> GLB-local metres (east, -north frame of the catalog).
+        x = (lon - origin["lon"]) * 111320.0 * cos_lat
+        z = -((lat - origin["lat"]) * 111320.0)
+        best = None
+        best_area = None
+        for b in buildings:
+            ring = b.get("footprint") or []
+            if len(ring) < 3:
+                continue
+            xs = [p[0] for p in ring]
+            zs = [p[1] for p in ring]
+            if not (min(xs) <= x <= max(xs) and min(zs) <= z <= max(zs)):
+                continue
+            if not _point_in_ring(x, z, ring):
+                continue
+            area = abs(b.get("area") or 0) or 1.0
+            if best is None or area < best_area:
+                best, best_area = b, area
+        if best is None:
+            return None
+        coords = [
+            (
+                origin["lon"] + (px / (111320.0 * cos_lat)),
+                origin["lat"] - (pz / 111320.0),
+            )
+            for px, pz in best["footprint"]
+        ]
+        coords.append(coords[0])
+        wkt = "POLYGON((%s))" % ", ".join(f"{a} {b}" for a, b in coords)
+        height = best.get("height")
+        height = float(height) if isinstance(height, (int, float)) and height > 0 else None
+        return wkt, height, best.get("id")
+    except Exception:
+        return None
+
 
 def _mercator_bbox(lat: float, lon: float, half_m: float = TILE_HALF_M):
     """~50m x 50m Web-Mercator-style box around (lat, lon), in degrees."""

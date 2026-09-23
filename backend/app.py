@@ -31,7 +31,7 @@ import geojson
 import csv
 import io
 
-from vision_engine import extract_building_wkt
+from vision_engine import detect_osm_building, extract_building_wkt
 
 # Database configuration
 DATABASE_URL = os.getenv("DATABASE_URL", "postgresql+asyncpg://postgres:postgres@localhost:5432/sih26011")
@@ -1734,8 +1734,18 @@ async def extract_live_building(payload: LiveExtractionRequest):
     from sqlalchemy import text
 
     lon, lat, height = payload.longitude, payload.latitude, payload.building_height_m
-    wkt = extract_building_wkt(lat, lon)
-    if wkt is None:
+    osm_hit = detect_osm_building(lat, lon)
+    if osm_hit is not None:
+        # A real mapped building sits under the click: use its footprint
+        # and surveyed height instead of segmenting pixels.
+        wkt, osm_height, osm_id = osm_hit
+        if osm_height is not None:
+            height = osm_height
+        source = "osm"
+        model_primary = f"OSM live map ({osm_id})"[:50]
+    else:
+        wkt = extract_building_wkt(lat, lon)
+    if osm_hit is None and wkt is None:
         # Fallback to synthetic 10x10m square when the vision model is
         # missing or inference fails.
         delta = 0.0001
@@ -1749,7 +1759,7 @@ async def extract_live_building(payload: LiveExtractionRequest):
         wkt = "POLYGON((%s))" % ", ".join(f"{x} {y}" for x, y in corners)
         source = "synthetic_fallback"
         model_primary = "synthetic 10m box"
-    else:
+    elif osm_hit is None:
         source = "vision"
         model_primary = "YOLO11n-seg ONNX"
     ulpin = generate_3d_ulpin(lat, lon, height)
@@ -1937,6 +1947,8 @@ async def get_ai_proposal(proposal_id: str):
             "source_label": (
                 "Vision-detected footprint (YOLO11n-seg, live Esri tile)"
                 if source == "vision" else
+                "Mapped OSM building footprint (live map catalogue)"
+                if source == "osm" else
                 "Synthetic fallback — 10m box, NOT vision-detected"
                 if source == "synthetic_fallback" else
                 "Unknown capture source"
