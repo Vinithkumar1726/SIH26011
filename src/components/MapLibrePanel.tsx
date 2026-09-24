@@ -1,0 +1,240 @@
+import { useEffect, useRef, useState } from 'react';
+import * as maplibregl from 'maplibre-gl';
+import 'maplibre-gl/dist/maplibre-gl.css';
+import type { LiveFootprint } from './LiveMapPanel';
+
+export interface MapTarget {
+  lon: number;
+  lat: number;
+  zoom?: number;
+}
+
+interface Props {
+  apiBase: string;
+  initial?: MapTarget;
+  target?: MapTarget | null;
+  footprints: LiveFootprint[];
+  selectedParcelId: string | null;
+  onSelectParcel: (id: string | null) => void;
+}
+
+const COIMBATORE = { lon: 76.9558, lat: 11.0168, zoom: 15 };
+const SRC_LIVE = 'sih-live-parcels';
+const SRC_REGISTRY = 'sih-registry-parcels';
+
+function toFeatureCollection(items: Array<{ id: string; footprint: any; encroachment?: boolean }>) {
+  return {
+    type: 'FeatureCollection' as const,
+    features: items
+      .filter((p) => p.footprint?.type && Array.isArray(p.footprint.coordinates))
+      .map((p) => ({
+        type: 'Feature' as const,
+        id: p.id,
+        properties: { parcel_id: p.id, encroachment: !!p.encroachment },
+        geometry: p.footprint,
+      })),
+  };
+}
+
+export default function MapLibrePanel({ apiBase, initial, target, footprints, selectedParcelId, onSelectParcel }: Props) {
+  const divRef = useRef<HTMLDivElement>(null);
+  const mapRef = useRef<maplibregl.Map | null>(null);
+  const [cursor, setCursor] = useState('');
+  const [error, setError] = useState<string | null>(null);
+  const [registryCount, setRegistryCount] = useState(0);
+
+  const key = import.meta.env.VITE_MAPTILER_API_KEY as string | undefined;
+  const center0 = initial ?? COIMBATORE;
+
+  // Create once; dispose on unmount (StrictMode-safe via ref guard).
+  useEffect(() => {
+    if (!divRef.current || mapRef.current) return;
+    if (!key) {
+      setError('VITE_MAPTILER_API_KEY is not set. Add it to .env.local (git-ignored) and restart the dev server.');
+      return;
+    }
+    let map: maplibregl.Map | null = null;
+    try {
+      map = new maplibregl.Map({
+        container: divRef.current,
+        style: `https://api.maptiler.com/maps/streets-v2/style.json?key=${key}`,
+        center: [center0.lon, center0.lat],
+        zoom: center0.zoom ?? 15,
+        attributionControl: { compact: true },
+      });
+      map.addControl(new maplibregl.NavigationControl({ visualizePitch: true }), 'top-right');
+      map.addControl(new maplibregl.ScaleControl({ unit: 'metric' }), 'bottom-left');
+      map.addControl(new maplibregl.FullscreenControl(), 'top-right');
+      map.on('mousemove', (e: maplibregl.MapMouseEvent) => {
+        setCursor(`${e.lngLat.lat.toFixed(6)}, ${e.lngLat.lng.toFixed(6)}`);
+      });
+      map.on('click', (e: maplibregl.MapMouseEvent) => {
+        const feats = map!.queryRenderedFeatures(e.point, { layers: ['sih-live-fill', 'sih-reg-fill'] });
+        const hit = feats.find((f: any) => f.properties && typeof f.properties.parcel_id === 'string');
+        onSelectParcel(hit ? String((hit.properties as any).parcel_id) : null);
+      });
+      map.on('error', () => setError('MapTiler request failed — check the API key and network connection.'));
+      mapRef.current = map;
+    } catch {
+      setError('Map initialization failed in this browser.');
+    }
+    return () => {
+      map?.remove();
+      mapRef.current = null;
+    };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
+  // Registry parcels overlay (PostGIS source, fetched once).
+  useEffect(() => {
+    const map = mapRef.current;
+    if (!map || !key) return;
+    let cancelled = false;
+    (async () => {
+      try {
+        const [parcelsRes, geomRes] = await Promise.all([
+          fetch(`${apiBase}/api/parcels`).then((r) => (r.ok ? r.json() : [])),
+          fetch(`${apiBase}/api/3d/geometry`).then((r) => (r.ok ? r.json() : null)),
+        ]);
+        if (cancelled) return;
+        const items: Array<{ id: string; footprint: any }> = [];
+        const push = (id: string, fp: any) => {
+          if (id && fp?.type && Array.isArray(fp.coordinates)) items.push({ id, footprint: fp });
+        };
+        if (Array.isArray(parcelsRes)) {
+          for (const p of parcelsRes) {
+            const fp = p.footprint ?? p.geometry ?? p.geojson ?? p.geom;
+            push(p.parcel_id ?? p.id, typeof fp === 'string' ? JSON.parse(fp) : fp);
+          }
+        }
+        const g = geomRes?.parcels ?? geomRes?.land_parcels ?? [];
+        if (Array.isArray(g)) {
+          for (const p of g) {
+            const fp = p.footprint ?? p.geometry;
+            push(p.parcel_id ?? p.id, typeof fp === 'string' ? JSON.parse(fp) : fp);
+          }
+        }
+        const fc = toFeatureCollection(items);
+        setRegistryCount(fc.features.length);
+        const addAll = () => {
+          if (cancelled || !mapRef.current) return;
+          const m = mapRef.current;
+          if (m.getSource(SRC_REGISTRY)) return;
+          m.addSource(SRC_REGISTRY, { type: 'geojson', data: fc });
+          m.addLayer({
+            id: 'sih-reg-fill', type: 'fill', source: SRC_REGISTRY,
+            paint: { 'fill-color': '#C99A45', 'fill-opacity': 0.08 },
+          });
+          m.addLayer({
+            id: 'sih-reg-line', type: 'line', source: SRC_REGISTRY,
+            paint: { 'line-color': '#C99A45', 'line-width': 1, 'line-opacity': 0.7 },
+          });
+          m.addLayer({
+            id: 'sih-reg-sel', type: 'line', source: SRC_REGISTRY,
+            paint: { 'line-color': '#fbbf24', 'line-width': 2.5 },
+            filter: ['==', ['get', 'parcel_id'], ''],
+          });
+        };
+        if (map.isStyleLoaded()) addAll();
+        else map.once('load', addAll);
+      } catch {
+        /* registry overlay stays empty; live layer unaffected */
+      }
+    })();
+    return () => { cancelled = true; };
+  }, [apiBase, key]);
+
+  // Live-captured footprints overlay (same parcel IDs as the R3F twin).
+  useEffect(() => {
+    const map = mapRef.current;
+    if (!map || !key) return;
+    const fc = toFeatureCollection(
+      footprints.map((p) => ({ id: p.parcel_id, footprint: p.footprint, encroachment: p.encroachment })),
+    );
+    const apply = () => {
+      const m = mapRef.current;
+      if (!m) return;
+      const src = m.getSource(SRC_LIVE) as maplibregl.GeoJSONSource | undefined;
+      if (src) {
+        src.setData(fc);
+        return;
+      }
+      m.addSource(SRC_LIVE, { type: 'geojson', data: fc });
+      m.addLayer({
+        id: 'sih-live-fill', type: 'fill', source: SRC_LIVE,
+        paint: { 'fill-color': '#4FB8AC', 'fill-opacity': 0.22 },
+      });
+      m.addLayer({
+        id: 'sih-live-line', type: 'line', source: SRC_LIVE,
+        paint: {
+          'line-color': ['case', ['get', 'encroachment'], '#ef4444', '#e2e8f0'],
+          'line-width': 1.2,
+        },
+      });
+    };
+    if (map.isStyleLoaded()) apply();
+    else map.once('load', apply);
+  }, [footprints, key]);
+
+  // Selection highlight + fly-to from the 3D twin / search.
+  useEffect(() => {
+    const m = mapRef.current;
+    if (!m) return;
+    const paint = () => {
+      const mm = mapRef.current;
+      if (!mm) return;
+      if (mm.getLayer('sih-reg-sel')) {
+        mm.setFilter('sih-reg-sel', ['==', ['get', 'parcel_id'], selectedParcelId ?? '']);
+      }
+      const src = mm.getSource(SRC_LIVE) as maplibregl.GeoJSONSource | undefined;
+      if (src) {
+        // Re-assert selection tint via filter-free repaint: swap selection layer.
+        if (!mm.getLayer('sih-live-sel')) {
+          mm.addLayer({
+            id: 'sih-live-sel', type: 'line', source: SRC_LIVE,
+            paint: { 'line-color': '#fbbf24', 'line-width': 3 },
+            filter: ['==', ['get', 'parcel_id'], ''],
+          });
+        }
+        mm.setFilter('sih-live-sel', ['==', ['get', 'parcel_id'], selectedParcelId ?? '']);
+      }
+    };
+    if (m.isStyleLoaded()) paint();
+    else m.once('load', paint);
+  }, [selectedParcelId]);
+
+  useEffect(() => {
+    if (target && mapRef.current) {
+      mapRef.current.flyTo({ center: [target.lon, target.lat], zoom: target.zoom ?? 17, essential: true });
+    }
+  }, [target]);
+
+  // Keep canvas sized to its container.
+  useEffect(() => {
+    if (!divRef.current) return;
+    const ro = new ResizeObserver(() => mapRef.current?.resize());
+    ro.observe(divRef.current);
+    return () => ro.disconnect();
+  }, []);
+
+  return (
+    <div className="flex flex-col h-full min-h-0">
+      <div className="flex items-center gap-2 px-3 py-2 shrink-0 border-b border-white/10">
+        <span className="font-mono text-[9px] tracking-[0.12em] text-slate-400">MAPTILER VECTOR</span>
+        <span className="chip" style={{ background: 'transparent', fontSize: 8 }}>{registryCount} REGISTRY</span>
+        <span className="chip" style={{ background: 'transparent', fontSize: 8 }}>{footprints.length} LIVE</span>
+      </div>
+      <div className="relative flex-1 min-h-0">
+        <div ref={divRef} className="absolute inset-0" />
+        <div className="absolute bottom-8 left-2 z-10 glass rounded px-2 py-0.5 font-mono text-[9px] text-slate-300 pointer-events-none">
+          {cursor || '—'}
+        </div>
+        {error && (
+          <div className="absolute top-2 left-1/2 -translate-x-1/2 z-10 rounded px-3 py-1.5 font-mono text-[10px] text-amber-200 max-w-[90%]" style={{ background: 'rgb(40 30 8 / 0.92)', border: '1px solid rgb(201 154 69 / 0.5)' }}>
+            {error}
+          </div>
+        )}
+      </div>
+    </div>
+  );
+}

@@ -23,6 +23,7 @@
     "framer-motion": "^13.4.0",
     "leaflet": "^1.9.4",
     "lucide-react": "^1.47.0",
+    "maplibre-gl": "^6.11.2",
     "qrcode": "^1.5.4",
     "react": "^19.0.0",
     "react-dom": "^19.0.0",

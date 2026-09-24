@@ -9,6 +9,7 @@ import { building as demoBuilding, floors as demoFloors, footprintToLocal, parce
 import QRCode from 'qrcode';
 import CollapsePanel from '../components/CollapsePanel';
 import LiveMapPanel from '../components/LiveMapPanel';
+import MapLibrePanel from '../components/MapLibrePanel';
 import { api } from '../api';
 import CadastralHierarchy from '../components/CadastralHierarchy';
 import { loadLiveHierarchy, fetchCityBuildings, isCadastralBuilding, type BuildingSummary, type CityBuilding, type LiveHierarchy } from '../workspace3d/api';
@@ -225,6 +226,7 @@ export default function Explorer3D() {
   const [liveCaptureMode, setLiveCaptureMode] = useState(false);
   const [lowPower, setLowPower] = useState(false);
   const [splitView, setSplitView] = useState(false);
+  const [map2DMode, setMap2DMode] = useState<'satellite' | 'vector'>('satellite');
   const [selectedLiveParcelId, setSelectedLiveParcelId] = useState<string | null>(null);  const [liveCaptureLoading, setLiveCaptureLoading] = useState(false);
   const [liveCaptureNotice, setLiveCaptureNotice] = useState<string | null>(null);
   const [liveData, setLiveData] = useState<LiveHierarchy | null>(null);
@@ -1708,6 +1710,20 @@ export default function Explorer3D() {
       </div>
       {splitView && (
         <div className="w-1/2 border-l border-white/10 bg-[#070b14] flex flex-col min-h-0">
+          <div className="flex items-center gap-1 px-3 py-1.5 shrink-0 border-b border-white/10">
+            {(['satellite', 'vector'] as const).map((m) => (
+              <button
+                key={m}
+                type="button"
+                onClick={() => setMap2DMode(m)}
+                className={`text-[10px] py-1 px-3 rounded uppercase tracking-wider ${map2DMode === m ? 'bg-amber-400/15 text-amber-200 border border-amber-300/40' : 'bg-white/5 text-slate-400 border border-transparent hover:text-white'}`}
+              >
+                {m === 'satellite' ? '◎ Satellite AOI' : '◎ Vector Map'}
+              </button>
+            ))}
+          </div>
+          <div className="flex-1 min-h-0">
+          {map2DMode === 'satellite' ? (
           <LiveMapPanel
             apiBase={(import.meta.env.VITE_API_URL || 'http://127.0.0.1:8000').replace(/\/$/, '')}
             origin={cityMeta?.origin ?? { lon: origin[0], lat: origin[1] }}
@@ -1715,6 +1731,15 @@ export default function Explorer3D() {
             selectedParcelId={selectedLiveParcelId}
             onSelectParcel={setSelectedLiveParcelId}
           />
+          ) : (
+          <MapLibrePanel
+            apiBase={(import.meta.env.VITE_API_URL || 'http://127.0.0.1:8000').replace(/\/$/, '')}
+            footprints={liveParcels}
+            selectedParcelId={selectedLiveParcelId}
+            onSelectParcel={setSelectedLiveParcelId}
+          />
+          )}
+          </div>
         </div>
       )}
     </div>
