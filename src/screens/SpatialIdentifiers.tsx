@@ -26,13 +26,13 @@ export default function SpatialIdentifiers() {
   }
 
   return (
-    <div className="flex flex-col h-full overflow-hidden" style={{ background: '#0A0D12' }}>
-      <div className="px-6 py-4 shrink-0" style={{ borderBottom: '1px solid #28313C' }}>
-        <div className="font-mono text-[10px] tracking-[0.2em] text-amber-300/70 mb-1">ANALYSIS · IDENTIFIERS</div>
-        <h1 className="font-display font-semibold" style={{ fontSize: 18, color: '#F1F3F5', letterSpacing: '0.04em' }}>
+    <div className="flex flex-col h-full overflow-hidden" style={{ background: '#F4F1E8' }}>
+      <div className="px-6 py-4 shrink-0" style={{ borderBottom: '3px solid #111111', background: '#FFFFFF' }}>
+        <div className="brutal-eyebrow">Analysis · Identifiers</div>
+        <h1 className="font-display font-bold" style={{ fontSize: 18, color: '#111111', letterSpacing: '0.01em' }}>
           SPATIAL IDENTIFIER REGISTRY
         </h1>
-        <p style={{ fontSize: 11, color: '#6E7783', marginTop: 4 }}>
+        <p style={{ fontSize: 11, color: '#555555', marginTop: 4 }}>
           Versioned 3D spatial identifiers for all registered property units.
         </p>
       </div>
@@ -40,78 +40,60 @@ export default function SpatialIdentifiers() {
       {/* Filters */}
       <div
         className="flex items-center gap-3 px-5 py-3 shrink-0"
-        style={{ borderBottom: '1px solid #28313C', background: '#10151C' }}
+        style={{ borderBottom: '3px solid #111111', background: '#FFFFFF' }}
       >
         <div className="input-icon" style={{ flex: 1, maxWidth: 360 }}>
-          <Search size={12} color="#6E7783" />
+          <Search size={12} color="#555555" />
           <input
             value={query}
             onChange={(e) => setQuery(e.target.value)}
             placeholder="SEARCH IDENTIFIER..."
-            style={{
-              background: 'transparent',
-              border: 'none',
-              outline: 'none',
-              fontFamily: 'IBM Plex Mono',
-              fontSize: 11,
-              color: '#F1F3F5',
-              letterSpacing: '0.04em',
-            }}
+            className="brutal-input font-mono"
+            style={{ fontSize: 11, letterSpacing: '0.04em' }}
           />
         </div>
-        <div className="flex items-center gap-1">
+        <div className="flex items-center gap-0">
           {['ALL', 'F01', 'F02'].map((f) => (
             <button
               key={f}
               onClick={() => setFloorFilter(f)}
-              className={`chip transition-all ${floorFilter === f ? 'chip-gold' : ''}`}
-              style={{
-                cursor: 'pointer',
-                background: floorFilter === f ? undefined : 'transparent',
-                borderColor: floorFilter === f ? undefined : '#28313C',
-                color: floorFilter === f ? undefined : '#6E7783',
-                fontFamily: 'IBM Plex Mono',
-              }}
+              className={`brutal-tab ${floorFilter === f ? 'active' : ''}`}
+              style={{ fontFamily: 'IBM Plex Mono' }}
             >
               {f}
             </button>
           ))}
         </div>
-        <span className="chip" style={{ background: 'transparent', marginLeft: 8 }}>
+        <span className="brutal-badge brutal-badge-black">
           {filtered.length} RECORDS
         </span>
       </div>
 
       <div className="flex-1 overflow-y-auto p-4">
-        <div className="table-container table-dark fade-up" style={{ background: 'transparent', borderColor: '#28313C' }}>
-        <table className="w-full">
+        <div className="brutal-panel" style={{ padding: 0, overflow: 'hidden' }}>
+        <div className="table-container table-dark fade-up" style={{ background: 'transparent', border: 'none' }}>
+        <table className="brutal-table">
           <thead style={{ position: 'sticky', top: 0, background: '#10151C', zIndex: 1 }}>
             <tr style={{ borderBottom: '1px solid #28313C' }}>
               {['SPATIAL IDENTIFIER', 'ENTITY', 'FLOOR', 'VERSION', 'STATUS', ''].map((h) => (
-                <th key={h} className="text-left px-5 py-2" style={{ fontSize: 9, color: '#6E7783', letterSpacing: '0.1em', fontWeight: 600 }}>
-                  {h}
-                </th>
+                <th key={h}>{h}</th>
               ))}
             </tr>
           </thead>
           <tbody>
             {filtered.map((row, i) => (
-              <tr
-                key={i}
-                className="fade-up"
-                style={{ borderBottom: '1px solid #151B23', animationDelay: `${Math.min(i * 30, 300)}ms` }}
-              >
-                <td className="px-5 py-3 font-mono" style={{ fontSize: 10, color: '#4FB8AC', letterSpacing: '0.02em' }}>
+              <tr key={i}>
+                <td className="font-mono font-bold" style={{ letterSpacing: '0.02em' }}>
                   {row.id}
                 </td>
-                <td className="px-5 py-3 font-mono" style={{ fontSize: 11, color: '#C99A45', fontWeight: 600 }}>{row.entity}</td>
-                <td className="px-5 py-3 font-mono" style={{ fontSize: 10, color: '#A8B0BA' }}>{row.floor}</td>
-                <td className="px-5 py-3 font-mono" style={{ fontSize: 10, color: '#6E7783' }}>{row.ver}</td>
-                <td className="px-5 py-3"><span className="tag-valid">{row.status}</span></td>
-                <td className="px-5 py-3">
+                <td><span className="brutal-badge brutal-badge-gold">{row.entity}</span></td>
+                <td className="font-mono">{row.floor}</td>
+                <td className="font-mono">{row.ver}</td>
+                <td><span className="brutal-badge brutal-badge-green">● {row.status}</span></td>
+                <td>
                   <button
-                    className="btn-ghost"
-                    style={{ padding: '3px 8px', fontSize: 9, color: copied === row.id ? '#4FB8AC' : '#6E7783' }}
+                    className="brutal-btn"
+                    style={{ padding: '3px 8px', fontSize: 9 }}
                     onClick={() => copy(row.id)}
                   >
                     <Copy size={10} style={{ display: 'inline', marginRight: 4 }} />
@@ -122,6 +104,7 @@ export default function SpatialIdentifiers() {
             ))}
           </tbody>
         </table>
+        </div>
         </div>
       </div>
     </div>

@@ -26,13 +26,13 @@ export default function AuditTrail() {
   );
 
   return (
-    <div className="flex flex-col h-full overflow-hidden" style={{ background: '#0A0D12' }}>
-      <div className="px-6 py-4 shrink-0" style={{ borderBottom: '1px solid #28313C' }}>
-        <div className="font-mono text-[10px] tracking-[0.2em] text-amber-300/70 mb-1">SYSTEM · IMMUTABLE LOG</div>
-        <h1 className="font-display font-semibold" style={{ fontSize: 18, color: '#F1F3F5', letterSpacing: '0.04em' }}>
+    <div className="flex flex-col h-full overflow-hidden" style={{ background: '#F4F1E8' }}>
+      <div className="px-6 py-4 shrink-0" style={{ borderBottom: '3px solid #111111', background: '#FFFFFF' }}>
+        <div className="brutal-eyebrow">System · Immutable Log</div>
+        <h1 className="font-display font-bold" style={{ fontSize: 18, color: '#111111', letterSpacing: '0.01em' }}>
           AUDIT TRAIL
         </h1>
-        <p style={{ fontSize: 11, color: '#6E7783', marginTop: 4 }}>
+        <p style={{ fontSize: 11, color: '#555555', marginTop: 4 }}>
           Immutable event log of all cadastral operations.
         </p>
       </div>
@@ -40,62 +40,51 @@ export default function AuditTrail() {
       {/* Filter bar */}
       <div
         className="flex items-center gap-3 px-5 py-3 shrink-0"
-        style={{ borderBottom: '1px solid #28313C', background: '#10151C' }}
+        style={{ borderBottom: '3px solid #111111', background: '#FFFFFF' }}
       >
         <div className="input-icon" style={{ flex: 1, maxWidth: 360 }}>
-          <Search size={12} color="#6E7783" />
+          <Search size={12} color="#555555" />
           <input
             value={query}
             onChange={(e) => setQuery(e.target.value)}
             placeholder="FILTER EVENTS..."
-            style={{
-              background: 'transparent',
-              border: 'none',
-              outline: 'none',
-              fontFamily: 'IBM Plex Mono',
-              fontSize: 11,
-              color: '#F1F3F5',
-              letterSpacing: '0.04em',
-            }}
+            className="brutal-input font-mono"
+            style={{ fontSize: 11, letterSpacing: '0.04em' }}
           />
         </div>
-        <span className="chip" style={{ background: 'transparent' }}>
+        <span className="brutal-badge brutal-badge-black">
           {filtered.length} EVENTS
         </span>
       </div>
 
       <div className="flex-1 overflow-y-auto p-4">
-        <div className="table-container table-dark fade-up" style={{ background: 'transparent', borderColor: '#28313C' }}>
-        <table className="w-full">
-          <thead style={{ position: 'sticky', top: 0, background: '#10151C', zIndex: 1 }}>
-            <tr style={{ borderBottom: '1px solid #28313C' }}>
+        <div className="brutal-panel" style={{ padding: 0, overflow: 'hidden' }}>
+        <div className="table-container table-dark fade-up" style={{ background: 'transparent', border: 'none' }}>
+        <table className="brutal-table">
+          <thead>
+            <tr>
               {['TIMESTAMP', 'ACTOR', 'ACTION', 'OBJECT', 'RESULT'].map((h) => (
-                <th key={h} className="text-left px-5 py-2" style={{ fontSize: 9, color: '#6E7783', letterSpacing: '0.1em', fontWeight: 600 }}>
-                  {h}
-                </th>
+                <th key={h}>{h}</th>
               ))}
             </tr>
           </thead>
           <tbody>
             {filtered.map((e, i) => (
-              <tr
-                key={i}
-                className="fade-up"
-                style={{ borderBottom: '1px solid #151B23', animationDelay: `${Math.min(i * 30, 300)}ms` }}
-              >
-                <td className="px-5 py-3 font-mono" style={{ fontSize: 9, color: '#6E7783', letterSpacing: '0.04em', whiteSpace: 'nowrap' }}>
+              <tr key={i}>
+                <td className="font-mono" style={{ whiteSpace: 'nowrap' }}>
                   {e.ts}
                 </td>
-                <td className="px-5 py-3 font-mono" style={{ fontSize: 10, color: '#A8B0BA' }}>{e.actor}</td>
-                <td className="px-5 py-3 font-mono" style={{ fontSize: 10, color: '#F1F3F5', letterSpacing: '0.02em' }}>{e.action}</td>
-                <td className="px-5 py-3 font-mono" style={{ fontSize: 10, color: '#C99A45' }}>{e.obj}</td>
-                <td className="px-5 py-3">
-                  <span className={e.result === 'SUCCESS' ? 'tag-valid' : 'tag-error'}>{e.result}</span>
+                <td className="font-mono font-bold">{e.actor}</td>
+                <td className="font-mono">{e.action}</td>
+                <td><span className="brutal-badge brutal-badge-gold">{e.obj}</span></td>
+                <td>
+                  <span className={e.result === 'SUCCESS' ? 'brutal-badge brutal-badge-green' : 'brutal-badge brutal-badge-red'}>● {e.result}</span>
                 </td>
               </tr>
             ))}
           </tbody>
         </table>
+        </div>
         </div>
       </div>
     </div>
