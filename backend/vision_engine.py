@@ -116,15 +116,21 @@ def _mercator_bbox(lat: float, lon: float, half_m: float = TILE_HALF_M):
 
 
 def _fetch_satellite_tile(lat: float, lon: float, zoom: int = 19) -> np.ndarray | None:
-    """Fetches a live satellite tile from Esri World Imagery and resizes it for YOLO."""
+    """Fetches a live satellite tile from Google Maps and resizes it for YOLO."""
     try:
         lat_rad = math.radians(lat)
         n = 2.0 ** zoom
         x = int((lon + 180.0) / 360.0 * n)
         y = int((1.0 - math.asinh(math.tan(lat_rad)) / math.pi) / 2.0 * n)
 
-        url = f"https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{zoom}/{y}/{x}"
-        req = urllib.request.Request(url, headers={'User-Agent': 'CadastralAI-SIH26012/1.0'})
+        # lyrs=s requests high-res satellite imagery without street labels
+        url = f"https://mt1.google.com/vt/lyrs=s&x={x}&y={y}&z={zoom}"
+
+        # Google requires a standard browser User-Agent
+        req = urllib.request.Request(
+            url,
+            headers={'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36'}
+        )
 
         with urllib.request.urlopen(req, timeout=5) as resp:
             arr = np.frombuffer(resp.read(), np.uint8)
