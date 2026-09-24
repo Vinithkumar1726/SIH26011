@@ -32,7 +32,7 @@ import geojson
 import csv
 import io
 
-from vision_engine import detect_osm_building, extract_building_wkt
+from vision_engine import detect_osm_building, extract_batch_building_wkts, extract_building_wkt
 
 # Database configuration
 DATABASE_URL = os.getenv("DATABASE_URL", "postgresql+asyncpg://postgres:postgres@localhost:5432/sih26011")
@@ -1811,6 +1811,60 @@ async def extract_live_building(payload: LiveExtractionRequest):
         ))
         await session.commit()
     return {"status": "PENDING_REVIEW", "proposal_id": proposal_id, "source": source}
+
+
+class BatchExtractionRequest(BaseModel):
+    latitude: float
+    longitude: float
+    building_height_m: float = 12.0
+
+
+@app.post("/api/ai/extract-batch")
+async def extract_batch_buildings(payload: BatchExtractionRequest):
+    """Stage every vision-detected building around a click for human review.
+
+    Review-gate compliant: creates one REVIEW_REQUIRED AIProposal per
+    contour. Nothing reaches cadastral_parcels except via APPROVED reviews.
+    """
+    from shapely.geometry import shape as _shape
+    from shapely.wkt import loads as _wkt_loads
+
+    lat, lon, height = payload.latitude, payload.longitude, payload.building_height_m
+    wkts = extract_batch_building_wkts(lat, lon)
+    # One terrain lookup shared by the whole batch.
+    z_base = fetch_srtm_elevation(lat, lon)
+    proposal_ids = []
+    async with async_session() as session:
+        for wkt in wkts:
+            try:
+                centroid = _wkt_loads(wkt).centroid
+            except Exception:
+                continue
+            ulpin = generate_3d_ulpin(centroid.y, centroid.x, height)
+            proposal_id = uuid.uuid4().hex
+            session.add(AIProposal(
+                id=proposal_id,
+                building_id=None,
+                model_primary="YOLO11n-seg ONNX (batch)",
+                model_verifier=None,
+                footprint_proposed=None,
+                footprint_verified=None,
+                iou_score=None,
+                agreement_score=None,
+                status="REVIEW_REQUIRED",
+                proposal_data={
+                    "wkt": wkt,
+                    "height_m": height,
+                    "ulpin": ulpin,
+                    "lat": centroid.y,
+                    "lon": centroid.x,
+                    "source": "vision-batch",
+                    "z_base_msl_m": z_base,
+                },
+            ))
+            proposal_ids.append(proposal_id)
+        await session.commit()
+    return {"status": "PENDING_REVIEW", "count": len(proposal_ids), "proposal_ids": proposal_ids, "z_base_msl_m": z_base, "source": "vision-batch"}
 
 
 @app.get("/api/ai/candidates")

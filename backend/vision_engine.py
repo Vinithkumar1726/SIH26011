@@ -22,6 +22,15 @@ TILE_HALF_M = 25.0
 _OSM_CATALOG = None
 
 
+def _resolve_model_path(model_path: str) -> str:
+    """Accept CWD-relative paths and backend-relative paths alike."""
+    if os.path.exists(model_path):
+        return model_path
+    here = os.path.dirname(os.path.abspath(__file__))
+    sibling = os.path.join(here, model_path)
+    return sibling if os.path.exists(sibling) else model_path
+
+
 def _osm_paths():
     here = os.path.dirname(os.path.abspath(__file__))
     base = os.path.join(here, "..", "public", "coimbatore")
@@ -148,6 +157,7 @@ def extract_building_wkt(
 ) -> str | None:
     """Segment a building contour near (lat, lon); None on any failure."""
     try:
+        model_path = _resolve_model_path(model_path)
         if not os.path.exists(model_path):
             return None
 
@@ -212,3 +222,69 @@ def extract_building_wkt(
         return "POLYGON((%s))" % ", ".join(f"{x} {y}" for x, y in ring)
     except Exception:
         return None
+
+
+def extract_batch_building_wkts(
+    lat: float, lon: float, model_path: str = "test-data/yolo-seg.onnx"
+) -> list:
+    """Segment every building contour near (lat, lon); [] on any failure."""
+    try:
+        model_path = _resolve_model_path(model_path)
+        if not os.path.exists(model_path):
+            return []
+
+        min_lon, min_lat, max_lon, max_lat = _mercator_bbox(lat, lon)
+
+        tile = _fetch_satellite_tile(lat, lon)
+        if tile is None:
+            return []
+
+        session = ort.InferenceSession(model_path)
+        rgb_tile = cv2.cvtColor(tile, cv2.COLOR_BGR2RGB)
+        feed = {session.get_inputs()[0].name: rgb_tile.transpose(2, 0, 1)[None].astype(np.float32) / 255.0}
+        outputs = session.run(None, feed)
+
+        mask = np.asarray(outputs[0]).squeeze()
+        if mask.ndim != 2:
+            mask = mask.reshape(mask.shape[-2], mask.shape[-1]) if mask.size == TILE_PX * TILE_PX else None
+            if mask is None:
+                return []
+        gray = (np.clip(mask, 0, 1) * 255).astype(np.uint8)
+        if gray.shape != (TILE_PX, TILE_PX):
+            gray = cv2.resize(gray, (TILE_PX, TILE_PX))
+
+        contours, _ = cv2.findContours(gray, cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_SIMPLE)
+        span_lon = max_lon - min_lon
+        span_lat = max_lat - min_lat
+        wkts = []
+        for contour in contours:
+            if cv2.contourArea(contour) <= 10:
+                continue
+            perimeter = cv2.arcLength(contour, True)
+            approx = cv2.approxPolyDP(contour, 0.01 * perimeter, True)
+            if len(approx) < 3:
+                continue
+            pts = approx.squeeze(1).astype(np.float64)
+            coords = [
+                (
+                    min_lon + (float(x) / TILE_PX) * span_lon,
+                    max_lat - (float(y) / TILE_PX) * span_lat,
+                )
+                for x, y in pts
+            ]
+            poly = Polygon(coords)
+            if not poly.is_valid:
+                poly = make_valid(poly)
+                if poly.geom_type == "MultiPolygon":
+                    poly = max(poly.geoms, key=lambda g: g.area)
+                if poly.geom_type != "Polygon":
+                    continue
+            if poly.is_empty or poly.area == 0:
+                continue
+            ring = list(poly.exterior.coords)
+            if len(ring) < 4:
+                continue
+            wkts.append("POLYGON((%s))" % ", ".join(f"{x} {y}" for x, y in ring))
+        return wkts
+    except Exception:
+        return []
