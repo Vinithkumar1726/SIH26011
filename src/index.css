@@ -624,15 +624,24 @@ tr:hover td { background: var(--color-bg-hover); }
    Off-white paper, ink-black borders, hard offset shadows, gold signals.
    Applied progressively; legacy classes below remain functional. */
 :root {
-  --brutal-paper: #F4F1EA;
+  --bg-canvas: #F4F1E8;
+  --bg-surface: #FFFFFF;
+  --bg-dark: #1A1A1A;
+  --ink-primary: #111111;
+  --ink-muted: #555555;
+  --accent-primary: #F5C400;
+  --accent-danger: #D92D20;
+  --accent-success: #16A34A;
+  --accent-info: #2563EB;
+  --brutal-paper: #F4F1E8;
   --brutal-ink: #111111;
   --brutal-white: #FFFFFF;
-  --brutal-gold: #F5B700;
+  --brutal-gold: #F5C400;
   --brutal-gold-soft: #FFD23F;
-  --brutal-success: #22C55E;
+  --brutal-success: #16A34A;
   --brutal-warning: #F59E0B;
-  --brutal-error: #EF4444;
-  --brutal-info: #3B82F6;
+  --brutal-error: #D92D20;
+  --brutal-info: #2563EB;
   --brutal-muted: #6B7280;
   --brutal-border: 2px solid #111111;
   --brutal-border-thick: 3px solid #111111;
@@ -1018,30 +1027,29 @@ td.numeric, th.numeric { text-align: right; font-variant-numeric: tabular-nums; 
 /* Stepper (wizard) */
 .stepper { display: flex; align-items: center; gap: 0; }
 .step-dot {
-  width: 26px;
-  height: 26px;
-  border-radius: 50%;
+  width: 30px;
+  height: 30px;
   display: inline-flex;
   align-items: center;
   justify-content: center;
   font-size: 11px;
   font-weight: 700;
-  font-family: var(--font-mono);
-  border: 1.5px solid var(--color-border-primary);
-  background: var(--color-bg-surface);
-  color: var(--color-text-quaternary);
+  font-family: var(--brutal-font-mono);
+  border: 2px solid #111111;
+  background: #FFFFFF;
+  color: #555555;
   flex-shrink: 0;
-  transition: all 0.2s ease;
+  transition: all 0.1s ease;
 }
-.step-dot.done { background: var(--color-success); border-color: var(--color-success); color: #fff; }
+.step-dot.done { background: #16A34A; border-color: #111111; color: #fff; }
 .step-dot.now {
-  background: linear-gradient(180deg, var(--color-gold-400), var(--color-gold-600));
-  border-color: var(--color-gold-600);
-  color: #0B132B;
-  box-shadow: var(--shadow-gold);
+  background: #111111;
+  border-color: #111111;
+  color: #F5C400;
+  box-shadow: 3px 3px 0 rgba(17,17,17,0.35);
 }
-.step-bar { flex: 1; height: 2px; min-width: 12px; background: var(--color-border-secondary); border-radius: 999px; }
-.step-bar.done { background: var(--color-success); }
+.step-bar { flex: 1; height: 2px; min-width: 12px; background: #d8d2c2; }
+.step-bar.done { background: #16A34A; }
 
 /* Gold hairline glass for premium dark overlays */
 .glass-gold {

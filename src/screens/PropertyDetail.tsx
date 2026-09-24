@@ -69,26 +69,26 @@ export default function PropertyDetail({ unitId, onBack }: Props) {
   const parcel = unit.parcel;
 
   return (
-    <div className="flex flex-col h-full" style={{ background: '#F8FAFC' }}>
+    <div className="flex flex-col h-full" style={{ background: '#F4F1E8' }}>
       {/* Header */}
-      <div className="px-6 py-4 shrink-0 border-b border-border">
+      <div className="px-6 py-4 shrink-0" style={{ borderBottom: '3px solid #111111', background: '#FFFFFF' }}>
         <div className="flex items-start justify-between">
-          <div className="flex items-center gap-4">
-            <button className="btn-ghost" onClick={onBack}>
+          <div className="flex items-center gap-3">
+            <button className="brutal-btn" style={{ padding: '6px 10px' }} onClick={onBack} aria-label="Back to records">
               <ChevronLeft size={18} />
             </button>
             <div>
-              <div className="font-mono text-xs text-text-tertiary mb-1">
+              <div className="font-mono text-xs font-bold text-[#555] mb-1">
                 {parcel?.ulpin} / {building?.id} / {floor?.floor_code} / {unit.unit_code}
               </div>
-              <h1 className="font-display font-semibold text-xl text-text-primary">
+              <h1 className="font-display font-bold text-xl text-[#111]">
                 PROPERTY RECORD
               </h1>
             </div>
           </div>
-          <div className="flex items-center gap-3">
-            <span className="tag-valid">VALIDATED</span>
-            <div className="flex items-center gap-2 text-sm text-text-tertiary">
+          <div className="flex items-center gap-2">
+            <span className="brutal-badge brutal-badge-green">● VALIDATED</span>
+            <div className="hidden sm:flex items-center gap-2 text-sm font-bold text-[#111]">
               <User size={14} />
               <span>{user?.displayName || 'Anonymous'}</span>
             </div>
@@ -96,7 +96,7 @@ export default function PropertyDetail({ unitId, onBack }: Props) {
         </div>
 
         {/* Tabs */}
-        <div className="flex gap-1 mt-4">
+        <div className="brutal-tabs mt-4">
           {[
             { id: 'record', label: 'RECORD', icon: MapPin },
             { id: 'geometry', label: 'GEOMETRY', icon: Layers },
@@ -106,10 +106,9 @@ export default function PropertyDetail({ unitId, onBack }: Props) {
             <button
               key={t.id}
               onClick={() => setActiveTab(t.id as any)}
-              className={`chip transition-all ${activeTab === t.id ? 'chip-gold' : ''}`}
-              style={{ cursor: 'pointer', padding: '6px 14px' }}
+              className={`brutal-tab ${activeTab === t.id ? 'active' : ''}`}
             >
-              <t.icon size={12} />
+              <t.icon size={12} style={{ display: 'inline', marginRight: 6 }} />
               {t.label}
             </button>
           ))}
@@ -130,13 +129,13 @@ function RecordTab({ unit, spatialId, onCopy, copied }: any) {
   return (
     <div className="grid gap-6" style={{ gridTemplateColumns: '1fr 1fr', maxWidth: '1200px' }}>
       {/* Spatial ID Banner */}
-      <div className="col-span-2 bg-surface border border-primary rounded-lg p-4 flex items-center justify-between">
+      <div className="col-span-2 brutal-panel" style={{ background: '#111111', padding: '12px 16px', display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
         <div>
-          <div className="text-xs text-text-tertiary uppercase tracking-wider mb-1">3D SPATIAL IDENTIFIER</div>
-          <div className="font-mono text-lg text-primary break-all">{spatialId}</div>
+          <div className="brutal-eyebrow" style={{ color: '#F5C400', marginBottom: 4 }}>3D SPATIAL IDENTIFIER</div>
+          <div className="font-mono font-bold text-lg break-all" style={{ color: '#FFFFFF' }}>{spatialId}</div>
         </div>
-        <button className="btn-ghost" onClick={() => onCopy(spatialId, 'spatialId')}>
-          <Copy size={16} /> {copied === 'spatialId' ? 'COPIED' : 'COPY'}
+        <button className="brutal-btn brutal-btn-gold" style={{ fontSize: 10 }} onClick={() => onCopy(spatialId, 'spatialId')}>
+          <Copy size={14} /> {copied === 'spatialId' ? 'COPIED' : 'COPY'}
         </button>
       </div>
 
@@ -180,11 +179,8 @@ function RecordTab({ unit, spatialId, onCopy, copied }: any) {
           { check: 'VERTICAL DATUM CONSISTENCY', pass: true },
         ].map((c) => (
           <div key={c.check} className="flex items-center justify-between mb-2.5">
-            <span className="font-mono text-xs text-text-tertiary uppercase tracking-wider">{c.check}</span>
-            <div className="flex items-center gap-1.5">
-              <CheckCircle size={12} color="#4FB8AC" />
-              <span className="font-mono text-xs text-success">PASS</span>
-            </div>
+            <span className="font-mono font-bold text-xs text-[#555] uppercase tracking-wider">{c.check}</span>
+            <span className="brutal-badge brutal-badge-green" style={{ fontSize: 8 }}>● PASS</span>
           </div>
         ))}
         <div className="mt-3 pt-3 border-t border-border">
@@ -222,32 +218,32 @@ function GeometryTab({ unit, onCopy, copied }: any) {
   return (
     <div className="grid gap-6 max-w-4xl">
       <Section title="3D SOLID GEOMETRY" icon={Layers}>
-        <div className="bg-surface border border-border rounded-lg p-4">
-          <div className="text-xs text-text-tertiary uppercase tracking-wider mb-3">PolyhedralSurfaceZ Representation</div>
-          <div className="font-mono text-xs text-text-secondary bg-muted p-3 rounded border border-border overflow-x-auto">
+        <div className="brutal-panel-flat p-4">
+          <div className="brutal-eyebrow mb-3">PolyhedralSurfaceZ Representation</div>
+          <div className="font-mono text-xs p-3 overflow-x-auto" style={{ background: '#111111', color: '#F5C400', border: '2px solid #111111' }}>
             {unit.solid_geom ? JSON.stringify(unit.solid_geom, null, 2) : 'Geometry not loaded (stored in PostGIS)'}
           </div>
         </div>
       </Section>
 
       <Section title="FOOTPRINT (2D)" icon={MapPin}>
-        <div className="bg-surface border border-border rounded-lg p-4">
-          <div className="text-xs text-text-tertiary uppercase tracking-wider mb-3">Polygon Footprint</div>
-          <div className="font-mono text-xs text-text-secondary bg-muted p-3 rounded border border-border overflow-x-auto">
+        <div className="brutal-panel-flat p-4">
+          <div className="brutal-eyebrow mb-3">Polygon Footprint</div>
+          <div className="font-mono text-xs p-3 overflow-x-auto" style={{ background: '#111111', color: '#EDEAE0', border: '2px solid #111111' }}>
             {unit.footprint ? JSON.stringify(unit.footprint, null, 2) : 'Footprint not loaded'}
           </div>
         </div>
       </Section>
 
       <Section title="GEOMETRY HASH (SHA-256)" icon={Hash}>
-        <div className="bg-surface border border-border rounded-lg p-4">
-          <div className="text-xs text-text-tertiary uppercase tracking-wider mb-3">Deterministic hash for version control</div>
+        <div className="brutal-panel-flat p-4">
+          <div className="brutal-eyebrow mb-3">Deterministic hash for version control</div>
           <div className="flex items-center gap-3">
-            <code className="font-mono text-sm text-text-primary break-all flex-1 bg-muted p-3 rounded border border-border">
+            <code className="font-mono text-sm break-all flex-1 brutal-panel-flat p-3">
               {unit.geometry_hash || 'Not computed'}
             </code>
-            <button className="btn-ghost" onClick={() => onCopy(unit.geometry_hash, 'hash')}>
-              <Copy size={16} /> {copied === 'hash' ? 'COPIED' : 'COPY'}
+            <button className="brutal-btn" style={{ fontSize: 10 }} onClick={() => onCopy(unit.geometry_hash, 'hash')}>
+              <Copy size={14} /> {copied === 'hash' ? 'COPIED' : 'COPY'}
             </button>
           </div>
         </div>
@@ -284,13 +280,12 @@ function ValidationTab({ unit }: any) {
     <div className="grid gap-6 max-w-4xl">
       <Section title="TOPOLOGY VALIDATION" icon={Shield}>
         <div className="flex gap-3 mb-4">
-          <button className="btn-primary" onClick={runValidation} disabled={loading}>
+          <button className="brutal-btn brutal-btn-primary" onClick={runValidation} disabled={loading}>
             {loading ? 'RUNNING...' : 'RUN VALIDATION'}
           </button>
           {result && (
-            <span className={`flex items-center gap-2 px-3 py-1 rounded text-sm font-mono ${result.passed ? 'bg-success/10 text-success border border-success/20' : 'bg-error/10 text-error border border-error/20'}`}>
-              {result.passed ? <CheckCircle size={14} /> : <AlertTriangle size={14} />}
-              {result.passed ? 'PASSED' : 'FAILED'}
+            <span className={result.passed ? 'brutal-badge brutal-badge-green' : 'brutal-badge brutal-badge-red'}>
+              {result.passed ? '● PASSED' : '● FAILED'}
             </span>
           )}
         </div>
@@ -298,14 +293,14 @@ function ValidationTab({ unit }: any) {
         {result && (
           <div className="grid gap-3" style={{ gridTemplateColumns: 'repeat(4,1fr)' }}>
             {[
-              { label: 'CRITICAL', value: result.failed_checks || '0', color: '#C85C5C' },
-              { label: 'ERRORS', value: '0', color: '#C85C5C' },
-              { label: 'WARNINGS', value: result.issues?.filter((i: any) => i.severity === 'MEDIUM').length || '0', color: '#D6A84F' },
-              { label: 'CHECKS PASSED', value: result.passed_checks || '0', color: '#4FB8AC' },
+              { label: 'CRITICAL', value: result.failed_checks || '0', tone: 'red' as const },
+              { label: 'ERRORS', value: '0', tone: 'red' as const },
+              { label: 'WARNINGS', value: result.issues?.filter((i: any) => i.severity === 'MEDIUM').length || '0', tone: 'warn' as const },
+              { label: 'CHECKS PASSED', value: result.passed_checks || '0', tone: 'ok' as const },
             ].map((m) => (
-              <div key={m.label} className="bg-surface border border-border rounded-lg p-4">
-                <div className="text-xs text-text-tertiary uppercase tracking-wider mb-1">{m.label}</div>
-                <div className="font-display font-bold text-2xl" style={{ color: m.color }}>{m.value}</div>
+              <div key={m.label} className="brutal-panel" style={{ padding: 14, borderTop: `6px solid ${m.tone === 'warn' ? '#F59E0B' : m.tone === 'ok' ? '#16A34A' : '#D92D20'}` }}>
+                <div className="brutal-eyebrow" style={{ marginBottom: 4 }}>{m.label}</div>
+                <div className="brutal-metric-num" style={{ fontSize: 26 }}>{m.value}</div>
               </div>
             ))}
           </div>
@@ -316,14 +311,14 @@ function ValidationTab({ unit }: any) {
             <h4 className="text-sm font-semibold text-text-primary mb-3">ISSUES</h4>
             <div className="space-y-2">
               {result.issues.map((issue: any, i: number) => (
-                <div key={i} className="bg-surface border border-border rounded-lg p-3">
+                <div key={i} className="brutal-panel" style={{ padding: 12 }}>
                   <div className="flex items-start gap-3">
-                    <span className={`tag-${issue.severity === 'HIGH' ? 'error' : 'warning'}`}>{issue.severity}</span>
+                    <span className={issue.severity === 'HIGH' ? 'brutal-badge brutal-badge-red' : 'brutal-badge brutal-badge-gold'}>{issue.severity}</span>
                     <div className="flex-1">
-                      <div className="font-mono text-sm text-text-primary">{issue.code}</div>
-                      <div className="text-sm text-text-secondary mt-1">{issue.message}</div>
+                      <div className="font-mono font-bold text-sm text-[#111]">{issue.code}</div>
+                      <div className="text-sm mt-1" style={{ color: '#333' }}>{issue.message}</div>
                       {issue.overlap_volume && (
-                        <div className="text-xs text-text-tertiary mt-1">Overlap volume: {issue.overlap_volume.toFixed(2)} m³</div>
+                        <div className="text-xs mt-1 font-mono" style={{ color: '#555' }}>Overlap volume: {issue.overlap_volume.toFixed(2)} m³</div>
                       )}
                     </div>
                   </div>
@@ -396,18 +391,18 @@ function HistoryTab({ unitId, unit }: any) {
 
   return (
     <div className="max-w-2xl">
-      <h3 className="font-display font-semibold mb-6 text-text-primary">VERSION HISTORY</h3>
+      <h3 className="font-display font-bold mb-6 text-[#111]">VERSION HISTORY</h3>
       <div className="relative">
-        <div className="absolute left-8 top-8 bottom-8 w-0.5 bg-border" />
+        <div className="absolute top-8 bottom-8 w-1 bg-[#111]" style={{ left: 19 }} />
         {versions.map((v, i) => (
           <div key={v.v} className="flex gap-4 mb-8 relative">
-            <div className="font-mono flex items-center justify-center shrink-0 relative z-10" style={{ width: 32, height: 32, background: i === 0 ? '#FEF3C7' : '#F3F4F6', border: `1px solid ${i === 0 ? '#F59E0B' : '#D1D5DB'}`, borderRadius: 4, fontSize: 11, color: i === 0 ? '#D97706' : '#6B7280', fontWeight: 600 }}>
+            <div className="font-mono flex items-center justify-center shrink-0 relative z-10" style={{ width: 40, height: 40, background: i === 0 ? '#F5C400' : '#FFFFFF', border: '2px solid #111111', boxShadow: '3px 3px 0 #111111', fontSize: 11, color: '#111111', fontWeight: 700 }}>
               {v.v}
             </div>
-            <div className={`flex-1 bg-surface border rounded-lg p-4 ${i === 0 ? 'border-primary' : 'border-border'}`}>
+            <div className="flex-1 brutal-panel" style={{ padding: 14 }}>
               <div className="flex items-center justify-between mb-2">
-                <span className="font-mono text-sm text-text-primary">{v.change}</span>
-                {i === 0 && <span className="tag-valid">CURRENT</span>}
+                <span className="font-mono font-bold text-sm text-[#111]">{v.change}</span>
+                {i === 0 && <span className="brutal-badge brutal-badge-gold">CURRENT</span>}
               </div>
               <div className="grid gap-2" style={{ gridTemplateColumns: '1fr 1fr' }}>
                 <SmallRow label="DATE" value={v.date} />
@@ -427,10 +422,10 @@ function HistoryTab({ unitId, unit }: any) {
 
 function Section({ title, icon: Icon, children }: { title: string; icon?: any; children: React.ReactNode }) {
   return (
-    <div className="bg-surface border border-border rounded-lg overflow-hidden">
-      <div className="px-4 py-3 border-b border-border flex items-center gap-2">
-        {Icon && <Icon size={14} className="text-text-tertiary" />}
-        <span className="text-xs font-semibold text-text-tertiary uppercase tracking-wider">{title}</span>
+    <div className="brutal-panel" style={{ padding: 0, overflow: 'hidden' }}>
+      <div className="brutal-header">
+        {Icon && <Icon size={14} style={{ color: '#F5C400' }} />}
+        <span className="brutal-title">{title}</span>
       </div>
       <div className="p-4">{children}</div>
     </div>
@@ -439,9 +434,9 @@ function Section({ title, icon: Icon, children }: { title: string; icon?: any; c
 
 function Row({ label, value, mono, small }: { label: string; value: string; mono?: boolean; small?: boolean }) {
   return (
-    <div className="flex justify-between items-start mb-2.5">
-      <span className="text-xs text-text-tertiary uppercase tracking-wider font-medium" style={{ fontFamily: 'IBM Plex Sans' }}>{label}</span>
-      <span className={mono ? 'font-mono' : ''} style={{ fontSize: small ? 11 : 13, color: '#1E293B', textAlign: 'right', wordBreak: 'break-all', letterSpacing: small ? '0.02em' : '0.04em' }}>
+    <div className="flex justify-between items-start mb-2.5" style={{ borderBottom: '1px solid rgba(17,17,17,0.12)', paddingBottom: 6 }}>
+      <span className="text-xs font-bold uppercase tracking-wider" style={{ fontFamily: 'IBM Plex Sans', color: '#555555' }}>{label}</span>
+      <span className={mono ? 'font-mono' : ''} style={{ fontSize: small ? 11 : 13, fontWeight: 600, color: '#111111', textAlign: 'right', wordBreak: 'break-all', letterSpacing: small ? '0.02em' : '0.04em' }}>
         {value}
       </span>
     </div>
@@ -450,9 +445,9 @@ function Row({ label, value, mono, small }: { label: string; value: string; mono
 
 function InfoCell({ label, value }: { label: string; value: string }) {
   return (
-    <div className="bg-muted rounded-lg p-3">
-      <div className="text-xs text-text-tertiary uppercase tracking-wider mb-1">{label}</div>
-      <div className="text-sm text-text-primary">{value}</div>
+    <div className="brutal-panel-flat p-3">
+      <div className="brutal-eyebrow mb-1">{label}</div>
+      <div className="text-sm font-semibold text-[#111]">{value}</div>
     </div>
   );
 }
@@ -460,8 +455,8 @@ function InfoCell({ label, value }: { label: string; value: string }) {
 function SmallRow({ label, value }: { label: string; value: string }) {
   return (
     <div>
-      <div className="text-xs text-text-tertiary uppercase tracking-wider mb-0.5">{label}</div>
-      <div className="font-mono text-xs text-text-secondary">{value}</div>
+      <div className="brutal-eyebrow" style={{ fontSize: 8, marginBottom: 2 }}>{label}</div>
+      <div className="font-mono text-xs font-semibold text-[#111]">{value}</div>
     </div>
   );
 }

@@ -104,132 +104,112 @@ export default function AIReview() {
   const pending = Object.values(statuses).filter((s) => s === 'pending').length;
 
   return (
-    <div className="flex flex-col h-full overflow-hidden" style={{ background: '#0A0D12' }}>
-      <div className="px-6 py-4 shrink-0" style={{ borderBottom: '1px solid #28313C' }}>
+    <div className="flex flex-col h-full overflow-hidden" style={{ background: '#F4F1E8' }}>
+      <div className="px-6 py-4 shrink-0" style={{ borderBottom: '3px solid #111111', background: '#FFFFFF' }}>
         <div className="flex items-center gap-3 mb-1">
-          <Sparkles size={14} color="#C99A45" />
-          <h1 className="font-display font-semibold" style={{ fontSize: 18, color: '#F1F3F5', letterSpacing: '0.04em' }}>
+          <span className="brutal-badge brutal-badge-gold">AI</span>
+          <h1 className="font-display font-bold" style={{ fontSize: 18, color: '#111111', letterSpacing: '0.01em' }}>
             AI-ASSISTED MAPPING REVIEW
           </h1>
         </div>
-        <p style={{ fontSize: 11, color: '#6E7783' }}>
+        <p style={{ fontSize: 11, color: '#555555' }}>
           Review AI field-mapping proposals and anomaly detections. Approve or reject each item.
         </p>
 
         {/* Summary chips */}
-        <div className="flex gap-3 mt-3">
+        <div className="flex gap-2 mt-3">
           {[
-            { label: 'PENDING', val: pending, color: '#C99A45' },
-            { label: 'ACCEPTED', val: accepted, color: '#4FB8AC' },
-            { label: 'REJECTED', val: rejected, color: '#C85C5C' },
+            { label: 'PENDING', val: pending, tone: 'gold' as const },
+            { label: 'ACCEPTED', val: accepted, tone: 'green' as const },
+            { label: 'REJECTED', val: rejected, tone: 'red' as const },
           ].map((m) => (
-            <div key={m.label} className="chip fade-up"
-              style={{ background: '#10151C', borderColor: '#28313C', padding: '4px 12px', fontSize: 10 }}>
-              <span className="font-display font-bold" style={{ fontSize: 14, color: m.color }}>{m.val}</span>
-              <span style={{ fontSize: 9, color: '#6E7783', letterSpacing: '0.08em', fontFamily: 'IBM Plex Sans' }}>{m.label}</span>
+            <div key={m.label} className={`brutal-badge brutal-badge-${m.tone}`} style={{ fontSize: 10, padding: '4px 12px' }}>
+              <span className="font-display font-bold" style={{ fontSize: 14 }}>{m.val}</span>
+              <span>{m.label}</span>
             </div>
           ))}
         </div>
       </div>
 
       <div className="flex-1 overflow-y-auto p-5">
-        <div className="flex flex-col gap-3" style={{ maxWidth: 720 }}>
+        <div className="flex flex-col gap-4" style={{ maxWidth: 760 }}>
           <div className="flex items-center justify-between">
-            <div style={{ fontSize: 11, color: '#6E7783', letterSpacing: '0.08em' }}>
+            <div className="brutal-title">
               LIVE-CAPTURED BUILDINGS (FROM 3D GROUND CLICKS)
             </div>
             {!liveLoading && !liveError && live.length > 0 && (
-              <span className="chip chip-gold">{live.length} PENDING</span>
+              <span className="brutal-badge brutal-badge-gold">{live.length} PENDING</span>
             )}
           </div>
           {liveLoading && (
             <div className="flex flex-col gap-3">
               {[0, 1].map((i) => (
-                <div key={i} className="skeleton" style={{ height: 120, background: 'linear-gradient(90deg, #10151C 25%, #1B222C 50%, #10151C 75%)', backgroundSize: '800px 100%' }} />
+                <div key={i} className="brutal-skeleton" style={{ height: 120 }} />
               ))}
             </div>
           )}
           {liveError && (
-            <div style={{ fontSize: 11, color: '#C85C5C' }}>{liveError}</div>
+            <div className="brutal-notice brutal-notice-red">{liveError}</div>
           )}
           {encroachNote && (
-            <div style={{ fontSize: 11, color: '#E5484D', border: '1px solid #E5484D', borderRadius: 3, padding: '6px 10px' }}>{encroachNote}</div>
+            <div className="brutal-notice brutal-notice-red" style={{ fontWeight: 700 }}>{encroachNote}</div>
           )}
           {!liveLoading && !liveError && live.length === 0 && (
-            <div style={{ fontSize: 11, color: '#6E7783' }}>
-              No pending captures. Click ground in the 3D Explorer with Live Capture Mode on.
+            <div className="brutal-panel-flat" style={{ padding: 20, textAlign: 'center', borderStyle: 'dashed' }}>
+              <div className="brutal-title" style={{ marginBottom: 4 }}>No pending captures</div>
+              <div style={{ fontSize: 11, color: '#555' }}>
+                Click ground in the 3D Explorer with Live Capture Mode on.
+              </div>
             </div>
           )}
           {live.map((p, li) => (
             <div
               key={p.id}
-              className="fade-up"
-              style={{
-                background: '#10151C',
-                border: '1px solid #28313C',
-                borderRadius: 'var(--radius-lg)',
-                padding: 16,
-                animationDelay: `${Math.min(li * 50, 300)}ms`,
-                transition: 'border-color 0.2s ease, box-shadow 0.2s ease',
-              }}
-              onMouseEnter={(e) => { e.currentTarget.style.borderColor = 'rgb(201 154 69 / 0.5)'; e.currentTarget.style.boxShadow = '0 12px 32px -16px rgb(201 154 69 / 0.5)'; }}
-              onMouseLeave={(e) => { e.currentTarget.style.borderColor = '#28313C'; e.currentTarget.style.boxShadow = 'none'; }}
+              className="brutal-panel"
+              style={{ padding: 16, borderLeft: '8px solid #F5C400' }}
             >
-              <div className="flex items-center gap-2 mb-2">
-                <span className="font-mono" style={{ fontSize: 9, color: '#C99A45', letterSpacing: '0.1em' }}>
+              <div className="flex items-center gap-2 mb-2 flex-wrap">
+                <span className="brutal-badge brutal-badge-black">
                   LIVE CAPTURE {p.id.slice(0, 8)}…
                 </span>
                 <span
-                  style={{
-                    fontSize: 8,
-                    color: p.source === 'synthetic_fallback' ? '#D6A84F' : '#6E7783',
-                    border: '1px solid #28313C',
-                    padding: '1px 6px',
-                    borderRadius: 2,
-                    letterSpacing: '0.08em',
-                    fontWeight: 600,
-                  }}
+                  className={`brutal-badge ${p.source === 'synthetic_fallback' ? 'brutal-badge-gold' : ''}`}
                 >
                   {(p.source ?? 'unknown').toUpperCase()}
                 </span>
               </div>
-              <p style={{ fontSize: 11, color: '#A8B0BA', margin: '0 0 4px 0', lineHeight: 1.5 }}>
+              <p className="font-mono font-bold" style={{ fontSize: 12, color: '#111', margin: '0 0 4px 0', lineHeight: 1.5 }}>
                 Bhu-Aadhaar {p.ulpin ?? '—'} · captured{' '}
                 {p.created_at ? new Date(p.created_at).toLocaleString('en-IN') : '—'}
               </p>
               {p.source === 'synthetic_fallback' && (
-                <p style={{ fontSize: 11, color: '#D6A84F', margin: '0 0 4px 0' }}>
+                <div className="brutal-notice brutal-notice-gold" style={{ margin: '4px 0', fontSize: 11 }}>
                   Synthetic 10 m box — NOT a detected building.
-                </p>
+                </div>
               )}
-              <div className="flex items-center gap-2 flex-wrap" style={{ margin: '4px 0' }}>
-                <span className="chip" style={{ background: 'transparent', fontSize: 9 }}>
+              <div className="flex items-center gap-2 flex-wrap" style={{ margin: '8px 0' }}>
+                <span className="brutal-badge">
                   H {p.height_m ?? '—'} m
                 </span>
                 <span
-                  className="chip"
-                  style={{
-                    background: 'transparent', fontSize: 9,
-                    borderColor: (p.height_source ?? 'ESTIMATED') === 'USER' ? 'rgb(79 184 172 / 0.5)' : 'rgb(201 154 69 / 0.4)',
-                    color: (p.height_source ?? 'ESTIMATED') === 'USER' ? '#4FB8AC' : '#D6A84F',
-                  }}
+                  className={`brutal-badge ${(p.height_source ?? 'ESTIMATED') === 'USER' ? 'brutal-badge-green' : 'brutal-badge-gold'}`}
                   title="Height provenance: ESTIMATED is not survey-grade"
                 >
-                  {(p.height_source ?? 'ESTIMATED') === 'USER' ? 'USER-SET' : 'ESTIMATED'}
+                  {(p.height_source ?? 'ESTIMATED') === 'USER' ? 'USER-SET' : 'ESTIMATED — NOT SURVEY-GRADE'}
                 </span>
                 {p.floors_override != null && (
-                  <span className="chip" style={{ background: 'transparent', fontSize: 9 }}>
+                  <span className="brutal-badge">
                     {p.floors_override} FLOORS (USER)
                   </span>
                 )}
                 {p.z_base_msl_m != null && (
-                  <span className="chip" style={{ background: 'transparent', fontSize: 9 }}>
+                  <span className="brutal-badge">
                     BASE {Number(p.z_base_msl_m).toFixed(1)} m MSL
                   </span>
                 )}
                 <button
-                  className="btn-ghost"
-                  style={{ fontSize: 9, padding: '2px 8px' }}
+                  className="brutal-btn"
+                  style={{ fontSize: 9, padding: '4px 10px' }}
                   onClick={() => {
                     setEditingId(editingId === p.id ? null : p.id);
                     setDraftHeight(p.height_m != null ? String(p.height_m) : '');
@@ -249,7 +229,8 @@ export default function AIReview() {
                     type="number"
                     min="0"
                     step="0.5"
-                    style={{ width: 110, background: '#151B23', border: '1px solid #28313C', borderRadius: 6, padding: '4px 8px', fontFamily: 'IBM Plex Mono', fontSize: 10, color: '#F1F3F5', outline: 'none' }}
+                    className="brutal-input font-mono"
+                    style={{ width: 110, fontSize: 10 }}
                   />
                   <input
                     value={draftFloors}
@@ -258,25 +239,26 @@ export default function AIReview() {
                     type="number"
                     min="1"
                     step="1"
-                    style={{ width: 90, background: '#151B23', border: '1px solid #28313C', borderRadius: 6, padding: '4px 8px', fontFamily: 'IBM Plex Mono', fontSize: 10, color: '#F1F3F5', outline: 'none' }}
+                    className="brutal-input font-mono"
+                    style={{ width: 90, fontSize: 10 }}
                   />
-                  <button className="btn-accent" style={{ fontSize: 9, padding: '4px 12px' }} onClick={() => void saveEdit(p.id)}>
+                  <button className="brutal-btn brutal-btn-gold" style={{ fontSize: 9, padding: '6px 12px' }} onClick={() => void saveEdit(p.id)}>
                     SAVE
                   </button>
                   {editMsg && <span style={{ fontSize: 10, color: '#E5484D' }}>{editMsg}</span>}
                 </div>
               )}
-              <div className="flex gap-2 mt-3 pt-3" style={{ borderTop: '1px solid #1B222C' }}>
+              <div className="flex gap-2 mt-3 pt-3" style={{ borderTop: '2px solid #111111' }}>
                 <button
-                  className="btn-secondary"
-                  style={{ fontSize: 10, padding: '5px 14px' }}
+                  className="brutal-btn brutal-btn-danger"
+                  style={{ fontSize: 10, padding: '6px 14px' }}
                   onClick={() => void decide(p.id, 'REJECTED')}
                 >
                   REJECT
                 </button>
                 <button
-                  className="btn-primary"
-                  style={{ fontSize: 10, padding: '5px 14px' }}
+                  className="brutal-btn brutal-btn-success"
+                  style={{ fontSize: 10, padding: '6px 14px' }}
                   onClick={() => void decide(p.id, 'APPROVED')}
                 >
                   APPROVE → ADD 3D BUILDING
@@ -284,7 +266,7 @@ export default function AIReview() {
               </div>
             </div>
           ))}
-          <div style={{ fontSize: 11, color: '#6E7783', letterSpacing: '0.08em', marginTop: 8 }}>
+          <div className="brutal-eyebrow" style={{ marginTop: 8 }}>
             FIELD-MAPPING PROPOSALS (STATIC DEMO)
           </div>
           {PROPOSALS.map((p) => {
@@ -292,56 +274,44 @@ export default function AIReview() {
             return (
               <div
                 key={p.id}
-                className="fade-in"
+                className="brutal-panel"
                 style={{
-                  background: '#10151C',
-                  border: `1px solid ${st === 'accepted' ? '#4FB8AC' : st === 'rejected' ? '#C85C5C' : '#28313C'}`,
-                  borderRadius: 3,
                   padding: 16,
-                  opacity: st === 'rejected' ? 0.5 : 1,
-                  transition: 'opacity 0.2s, border-color 0.2s',
+                  opacity: st === 'rejected' ? 0.55 : 1,
+                  borderLeft: `8px solid ${st === 'accepted' ? '#16A34A' : st === 'rejected' ? '#D92D20' : '#F5C400'}`,
                 }}
               >
                 <div className="flex items-start justify-between">
                   <div className="flex-1">
-                    <div className="flex items-center gap-2 mb-3">
-                      <span className="font-mono" style={{ fontSize: 9, color: '#C99A45', letterSpacing: '0.1em' }}>
+                    <div className="flex items-center gap-2 mb-3 flex-wrap">
+                      <span className="brutal-badge brutal-badge-black">
                         AI PROPOSAL {p.id}
                       </span>
                       <span
-                        style={{
-                          fontSize: 8,
-                          color: p.type === 'ANOMALY' ? '#D6A84F' : '#6E7783',
-                          border: `1px solid ${p.type === 'ANOMALY' ? '#D6A84F' : '#28313C'}`,
-                          padding: '1px 6px',
-                          borderRadius: 2,
-                          letterSpacing: '0.08em',
-                          fontFamily: 'IBM Plex Sans',
-                          fontWeight: 600,
-                        }}
+                        className={`brutal-badge ${p.type === 'ANOMALY' ? 'brutal-badge-gold' : ''}`}
                       >
                         {p.type}
                       </span>
                       {st !== 'pending' && (
-                        <span className={st === 'accepted' ? 'tag-valid' : 'tag-error'}>
-                          {st.toUpperCase()}
+                        <span className={st === 'accepted' ? 'brutal-badge brutal-badge-green' : 'brutal-badge brutal-badge-red'}>
+                          ● {st.toUpperCase()}
                         </span>
                       )}
                     </div>
 
-                    <div className="flex items-center gap-3 mb-3">
-                      <span className="font-mono"
-                        style={{ fontSize: 12, color: '#A8B0BA', background: '#151B23', padding: '3px 10px', borderRadius: 2, border: '1px solid #28313C' }}>
+                    <div className="flex items-center gap-2 mb-3 flex-wrap">
+                      <span className="font-mono font-bold"
+                        style={{ fontSize: 12, color: '#111', background: '#F4F1E8', padding: '4px 10px', border: '2px solid #111' }}>
                         {p.src}
                       </span>
-                      <ArrowRight size={12} color="#C99A45" />
-                      <span className="font-mono"
-                        style={{ fontSize: 12, color: '#F1F3F5', background: '#151B23', padding: '3px 10px', borderRadius: 2, border: '1px solid #28313C' }}>
+                      <ArrowRight size={12} color="#111111" strokeWidth={3} />
+                      <span className="font-mono font-bold"
+                        style={{ fontSize: 12, color: '#111', background: '#F5C400', padding: '4px 10px', border: '2px solid #111' }}>
                         {p.dst}
                       </span>
                     </div>
 
-                    <p style={{ fontSize: 11, color: '#A8B0BA', margin: 0, lineHeight: 1.5 }}>
+                    <p style={{ fontSize: 11, color: '#333', margin: 0, lineHeight: 1.5 }}>
                       {p.reason}
                     </p>
                   </div>
@@ -349,18 +319,18 @@ export default function AIReview() {
                   <div className="flex flex-col items-end gap-1 ml-6 shrink-0">
                     <div
                       className="font-display font-bold"
-                      style={{ fontSize: 22, color: p.confidence > 90 ? '#4FB8AC' : p.confidence > 80 ? '#C99A45' : '#D6A84F' }}
+                      style={{ fontSize: 22, color: '#111' }}
                     >
                       {p.confidence}%
                     </div>
-                    <div style={{ fontSize: 8, color: '#6E7783', letterSpacing: '0.08em', fontFamily: 'IBM Plex Sans' }}>
+                    <div className="brutal-eyebrow" style={{ fontSize: 8 }}>
                       CONFIDENCE
                     </div>
-                    <div className="progress-bar" style={{ width: 60, height: 3, marginTop: 2 }}>
+                    <div className="progress-bar" style={{ width: 60, height: 10, marginTop: 2, border: '2px solid #111', background: '#fff' }}>
                       <div className="fill"
                         style={{
                           width: `${p.confidence}%`,
-                          background: p.confidence > 90 ? '#4FB8AC' : '#C99A45',
+                          background: p.confidence > 90 ? '#16A34A' : '#F5C400',
                         }}
                       />
                     </div>
@@ -368,23 +338,23 @@ export default function AIReview() {
                 </div>
 
                 {st === 'pending' && (
-                  <div className="flex gap-2 mt-4 pt-3" style={{ borderTop: '1px solid #1B222C' }}>
+                  <div className="flex gap-2 mt-4 pt-3" style={{ borderTop: '2px solid #111111' }}>
                     <button
-                      className="btn-secondary"
-                      style={{ fontSize: 10, padding: '5px 14px' }}
+                      className="brutal-btn brutal-btn-danger"
+                      style={{ fontSize: 10, padding: '6px 14px' }}
                       onClick={() => setStatuses((prev) => ({ ...prev, [p.id]: 'rejected' }))}
                     >
                       REJECT
                     </button>
                     <button
-                      className="btn-ghost"
-                      style={{ fontSize: 10, padding: '5px 14px', border: '1px solid #28313C' }}
+                      className="brutal-btn"
+                      style={{ fontSize: 10, padding: '6px 14px' }}
                     >
                       EDIT
                     </button>
                     <button
-                      className="btn-primary"
-                      style={{ fontSize: 10, padding: '5px 14px' }}
+                      className="brutal-btn brutal-btn-success"
+                      style={{ fontSize: 10, padding: '6px 14px' }}
                       onClick={() => setStatuses((prev) => ({ ...prev, [p.id]: 'accepted' }))}
                     >
                       ACCEPT

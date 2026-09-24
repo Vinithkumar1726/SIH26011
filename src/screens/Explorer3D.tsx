@@ -1002,21 +1002,21 @@ export default function Explorer3D() {
           <button
             type="button"
             onClick={() => setLiveCaptureMode((v) => !v)}
-            className={`w-full text-[10px] py-1 rounded uppercase tracking-wider mb-2 ${liveCaptureMode ? 'bg-amber-400/15 text-amber-200 border border-amber-300/40' : 'bg-white/5 text-slate-400 border border-transparent hover:text-white'}`}
+            className={`w-full text-[10px] py-1 rounded-none uppercase tracking-wider mb-2 ${liveCaptureMode ? 'bg-amber-400/15 text-amber-200 border border-amber-300/40' : 'bg-white/5 text-slate-400 border border-transparent hover:text-white'}`}
           >
             {liveCaptureMode ? '◉ Live Capture: ON' : '◎ Live Capture Mode'}
           </button>
           <button
             type="button"
             onClick={() => setLowPower((v) => !v)}
-            className={`w-full text-[10px] py-1 rounded uppercase tracking-wider mb-2 ${lowPower ? 'bg-amber-400/15 text-amber-200 border border-amber-300/40' : 'bg-white/5 text-slate-400 border border-transparent hover:text-white'}`}
+            className={`w-full text-[10px] py-1 rounded-none uppercase tracking-wider mb-2 ${lowPower ? 'bg-amber-400/15 text-amber-200 border border-amber-300/40' : 'bg-white/5 text-slate-400 border border-transparent hover:text-white'}`}
           >
             {lowPower ? '◉ Low Power: ON' : '◎ Low Power Mode'}
           </button>
           <button
             type="button"
             onClick={() => setSplitView((v) => !v)}
-            className={`w-full text-[10px] py-1 rounded uppercase tracking-wider mb-2 ${splitView ? 'bg-amber-400/15 text-amber-200 border border-amber-300/40' : 'bg-white/5 text-slate-400 border border-transparent hover:text-white'}`}
+            className={`w-full text-[10px] py-1 rounded-none uppercase tracking-wider mb-2 ${splitView ? 'bg-amber-400/15 text-amber-200 border border-amber-300/40' : 'bg-white/5 text-slate-400 border border-transparent hover:text-white'}`}
           >
             {splitView ? '◉ Split 2D/3D: ON' : '◎ Split 2D/3D View'}
           </button>
@@ -1035,14 +1035,14 @@ export default function Explorer3D() {
               <button
                 type="button"
                 onClick={() => { setLiveSync(false); setHourOfDay(12); }}
-                className={`text-[10px] py-1 rounded uppercase tracking-wider ${!isNight ? 'bg-amber-400/15 text-amber-200 border border-amber-300/40' : 'bg-white/5 text-slate-400 border border-transparent hover:text-white'}`}
+                className={`text-[10px] py-1 rounded-none uppercase tracking-wider ${!isNight ? 'bg-amber-400/15 text-amber-200 border border-amber-300/40' : 'bg-white/5 text-slate-400 border border-transparent hover:text-white'}`}
               >
                 ☀ DAY
               </button>
               <button
                 type="button"
                 onClick={() => { setLiveSync(false); setHourOfDay(0); }}
-                className={`text-[10px] py-1 rounded uppercase tracking-wider ${isNight ? 'bg-amber-400/15 text-amber-200 border border-amber-300/40' : 'bg-white/5 text-slate-400 border border-transparent hover:text-white'}`}
+                className={`text-[10px] py-1 rounded-none uppercase tracking-wider ${isNight ? 'bg-amber-400/15 text-amber-200 border border-amber-300/40' : 'bg-white/5 text-slate-400 border border-transparent hover:text-white'}`}
               >
                 ☾ NIGHT
               </button>
@@ -1085,7 +1085,7 @@ export default function Explorer3D() {
                       type="button"
                       key={w}
                       onClick={() => setWeather(w)}
-                      className={`text-[10px] py-1 rounded uppercase tracking-wider ${weather === w ? 'bg-amber-400/15 text-amber-200 border border-amber-300/40' : 'bg-white/5 text-slate-400 border border-transparent hover:text-white'}`}
+                      className={`text-[10px] py-1 rounded-none uppercase tracking-wider ${weather === w ? 'bg-amber-400/15 text-amber-200 border border-amber-300/40' : 'bg-white/5 text-slate-400 border border-transparent hover:text-white'}`}
                     >
                       {w}
                     </button>
@@ -1102,7 +1102,7 @@ export default function Explorer3D() {
                       <button
                         type="button"
                         onClick={() => { flyTo(v); if (v === 'street' || v !== 'orbit') setInteriorTour(false); }}
-                        className={`w-full text-left text-[10px] py-1 px-2 rounded uppercase tracking-wider ${viewPreset === v ? 'bg-amber-400/15 text-amber-200 border border-amber-300/40' : 'bg-white/5 text-slate-400 border border-transparent hover:text-white'}`}
+                        className={`w-full text-left text-[10px] py-1 px-2 rounded-none uppercase tracking-wider ${viewPreset === v ? 'bg-amber-400/15 text-amber-200 border border-amber-300/40' : 'bg-white/5 text-slate-400 border border-transparent hover:text-white'}`}
                       >
                         {label}
                       </button>
@@ -1151,7 +1151,7 @@ export default function Explorer3D() {
                       type="button"
                       key={q}
                       onClick={() => setQuality(q)}
-                      className={`text-[10px] py-1 rounded uppercase tracking-wider ${quality === q ? 'bg-amber-400/15 text-amber-200 border border-amber-300/40' : 'bg-white/5 text-slate-400 border border-transparent hover:text-white'}`}
+                      className={`text-[10px] py-1 rounded-none uppercase tracking-wider ${quality === q ? 'bg-amber-400/15 text-amber-200 border border-amber-300/40' : 'bg-white/5 text-slate-400 border border-transparent hover:text-white'}`}
                     >
                       {q}
                     </button>
@@ -1172,7 +1172,7 @@ export default function Explorer3D() {
                     type="button"
                     onClick={() => void runLidar()}
                     disabled={lidarRunning}
-                    className="text-[10px] px-2 py-1 rounded uppercase tracking-wider bg-amber-400/10 text-amber-200 border border-amber-300/25 hover:bg-amber-400/20 disabled:opacity-50 shrink-0"
+                    className="text-[10px] px-2 py-1 rounded-none uppercase tracking-wider bg-amber-400/10 text-amber-200 border border-amber-300/25 hover:bg-amber-400/20 disabled:opacity-50 shrink-0"
                   >
                     Run
                   </button>
@@ -1271,7 +1271,7 @@ export default function Explorer3D() {
           <input type="range" min={0} max={60000000} step={1000000} value={minimumMarketValue} disabled={source === 'live'} onChange={(e) => setMinimumMarketValue(Number(e.target.value))} className="w-full" />
           <div className="grid grid-cols-2 gap-1 mt-2">
             <button type="button" onClick={() => downloadCsv(building, floors)} className="text-[9px] py-1.5 rounded bg-amber-400/10 text-amber-200 border border-amber-300/25 hover:bg-amber-400/20">CSV REPORT</button>
-            <button type="button" onClick={async () => { setPopupBlocked(false); setPopupBlocked(!(await printPdfReport(building, floors, units, spatialIDs))); }} className="text-[9px] py-1.5 rounded bg-white/5 text-slate-300 border border-white/10 hover:bg-white/10">Generate 3D Bhu-Aadhaar</button>
+            <button type="button" onClick={async () => { setPopupBlocked(false); setPopupBlocked(!(await printPdfReport(building, floors, units, spatialIDs))); }} className="brutal-btn brutal-btn-gold w-full justify-center" style={{ fontSize: 9 }}>Generate 3D Bhu-Aadhaar</button>
           </div>
           {popupBlocked && <div className="text-[9px] text-amber-300 mt-2">Pop-up blocked — allow pop-ups for this site to generate the record.</div>}
           {reportFilterActive && matchingFloorIds.size === 0 && <div className="text-[9px] text-danger mt-2">No floors match this filter.</div>}
@@ -1590,35 +1590,36 @@ export default function Explorer3D() {
         </div>
       </div>
 
-      <div className={`${mobilePanel === 'inspector' ? 'fixed' : 'hidden'} md:static md:flex inset-x-0 bottom-0 z-40 md:z-auto w-auto md:w-80 max-h-[70vh] md:max-h-none overflow-y-auto md:overflow-visible flex-shrink-0 bg-abyss border-t md:border-t-0 md:border-l border-line flex-col`}>
+      <div className={`${mobilePanel === 'inspector' ? 'fixed' : 'hidden'} md:static md:flex inset-x-0 bottom-0 z-40 md:z-auto w-auto md:w-80 max-h-[70vh] md:max-h-none overflow-y-auto md:overflow-visible flex-shrink-0 bg-white md:border-t-0 md:border-l flex-col`} style={{ borderTop: '3px solid #111111', borderLeft: '3px solid #111111' }}>
         {selectedLiveParcelId && (
           <LiveParcelInspector
             parcelId={selectedLiveParcelId}
             onClose={() => setSelectedLiveParcelId(null)}
           />
         )}
-        <div className="p-4 border-b border-line">
+        <div className="p-4" style={{ borderBottom: '3px solid #111111', background: '#111111' }}>
           <div className="flex items-center justify-between">
-            <h3 className="text-sm font-semibold text-white flex items-center gap-2">
-              <i className="fas fa-circle-info text-amber-300 text-xs"></i>
+            <h3 className="text-sm font-bold text-white flex items-center gap-2">
+              <span className="brutal-badge brutal-badge-gold" style={{ fontSize: 8 }}>i</span>
               Inspector
             </h3>
             <button
               type="button"
               onClick={() => setMobilePanel(null)}
               aria-label="Close panel"
-              className="md:hidden text-slate-400 hover:text-white text-xs px-2 py-1"
+              className="md:hidden text-white hover:bg-[#F5C400] hover:text-black text-xs px-2 py-1"
+              style={{ border: '2px solid #F5C400' }}
             >
               ✕
             </button>
           </div>
         </div>
-        <div className="p-4 border-b border-line">
+        <div className="p-4" style={{ borderBottom: '2px solid #111111' }}>
           {selected ? (
             <div className="space-y-3 animate-fade-in">
-              <div className="bg-deep rounded-lg p-3">
-                <div className="text-[9px] text-slate-500 uppercase tracking-wider mb-1">Spatial Identifier</div>
-                <div className="text-[11px] mono text-emerald-300 break-all">{spatialIDs.find((s) => s.unit_id === selected.id)?.full}</div>
+              <div className="brutal-panel" style={{ background: '#111111', padding: 12 }}>
+                <div className="brutal-eyebrow" style={{ color: '#F5C400', marginBottom: 4 }}>Spatial Identifier</div>
+                <div className="text-[11px] mono font-bold break-all" style={{ color: '#FFFFFF' }}>{spatialIDs.find((s) => s.unit_id === selected.id)?.full}</div>
               </div>
               <div className="grid grid-cols-2 gap-2">
                 <InfoCell label="Label" value={selected.label} />
@@ -1632,22 +1633,16 @@ export default function Explorer3D() {
                 <InfoCell label="Volume" value={volumeText(selected.volume_cum)} />
                 <InfoCell label="Geom. Version" value={`V${String(selected.version).padStart(2, '0')}`} />
               </div>
-              <div className="bg-deep rounded-lg p-3">
-                <div className="text-[9px] text-slate-500 uppercase tracking-wider mb-1">Geometry Hash (SHA-256)</div>
-                <div className="text-[9px] mono text-slate-400 break-all">{selected.hash}</div>
+              <div className="brutal-panel-flat" style={{ padding: 12 }}>
+                <div className="brutal-eyebrow" style={{ marginBottom: 4 }}>Geometry Hash (SHA-256)</div>
+                <div className="text-[9px] mono font-bold break-all" style={{ color: '#111' }}>{selected.hash}</div>
               </div>
-              <div className="bg-deep rounded-lg p-3">
-                <div className="text-[9px] text-slate-500 uppercase tracking-wider mb-1">Validation Status</div>
+              <div className="brutal-panel-flat" style={{ padding: 12 }}>
+                <div className="brutal-eyebrow" style={{ marginBottom: 6 }}>Validation Status</div>
                 {conflicts.has(selected.id) ? (
-                  <div className="flex items-center gap-2">
-                    <i className="fas fa-triangle-exclamation text-danger text-xs"></i>
-                    <span className="text-xs text-danger">Conflict detected</span>
-                  </div>
+                  <span className="brutal-badge brutal-badge-red">▲ CONFLICT DETECTED</span>
                 ) : (
-                  <div className="flex items-center gap-2">
-                    <i className="fas fa-circle-check text-accent text-xs"></i>
-                    <span className="text-xs text-accent">Valid — no overlaps</span>
-                  </div>
+                  <span className="brutal-badge brutal-badge-green">● VALID — NO OVERLAPS</span>
                 )}
               </div>
             </div>
@@ -1709,16 +1704,18 @@ export default function Explorer3D() {
         </div>
       </div>
       {splitView && (
-        <div className="w-1/2 border-l border-white/10 bg-[#070b14] flex flex-col min-h-0">
-          <div className="flex items-center gap-1 px-3 py-1.5 shrink-0 border-b border-white/10">
+        <div className="w-1/2 flex flex-col min-h-0" style={{ borderLeft: '3px solid #111111', background: '#F4F1E8' }}>
+          <div className="flex items-center gap-0 px-3 py-1.5 shrink-0" style={{ background: '#FFFFFF', borderBottom: '3px solid #111111' }}>
+            <span className="brutal-eyebrow mr-2">2D VIEW</span>
             {(['satellite', 'vector'] as const).map((m) => (
               <button
                 key={m}
                 type="button"
                 onClick={() => setMap2DMode(m)}
-                className={`text-[10px] py-1 px-3 rounded uppercase tracking-wider ${map2DMode === m ? 'bg-amber-400/15 text-amber-200 border border-amber-300/40' : 'bg-white/5 text-slate-400 border border-transparent hover:text-white'}`}
+                className={`brutal-tab ${map2DMode === m ? 'active' : ''}`}
+                style={{ fontSize: 9 }}
               >
-                {m === 'satellite' ? '◎ Satellite AOI' : '◎ Vector Map'}
+                {m === 'satellite' ? '▭ Satellite AOI' : '▦ Vector Map'}
               </button>
             ))}
           </div>
@@ -2172,19 +2169,26 @@ function LiveParcelInspector({ parcelId, onClose }: { parcelId: string; onClose:
     ['HEIGHT SOURCE', `${detail.height_source ?? 'ESTIMATED'}${detail.height_source === 'ESTIMATED' ? ' — NOT SURVEY-GRADE' : ''}`],
   ] : [];
   return (
-    <div className="p-4 border-b border-amber-300/25" style={{ background: 'rgb(201 154 69 / 0.06)' }}>
-      <div className="flex items-center justify-between mb-2">
-        <h3 className="text-sm font-semibold text-amber-200">Live Parcel Inspector</h3>
-        <button type="button" onClick={onClose} aria-label="Close parcel inspector" className="text-slate-400 hover:text-white text-xs px-2 py-1">✕</button>
+    <div className="brutal-panel" style={{ borderLeft: 'none', borderRight: 'none', borderTop: 'none', boxShadow: 'none', background: '#FFFDF5' }}>
+      <div className="brutal-header brutal-header-gold">
+        <span className="brutal-title">Parcel Inspector</span>
+        <button type="button" onClick={onClose} aria-label="Close parcel inspector" className="brutal-btn" style={{ fontSize: 9, padding: '2px 8px' }}>✕</button>
       </div>
-      {failed && <div className="text-[11px] text-red-300">Inspector detail unavailable.</div>}
-      {!detail && !failed && <div className="text-[11px] text-slate-400">Loading parcel metrics…</div>}
+      <div className="p-3">
+      {failed && <div className="brutal-notice brutal-notice-red">Inspector detail unavailable.</div>}
+      {!detail && !failed && <div className="brutal-skeleton" style={{ height: 120 }} />}
       {rows.map(([k, v]) => (
-        <div key={k} className="flex items-start justify-between gap-2 py-0.5">
-          <span className="text-[9px] text-slate-500 uppercase tracking-wider shrink-0">{k}</span>
-          <span className="text-[10px] mono text-slate-200 text-right break-all">{v}</span>
+        <div key={k} className="flex items-start justify-between gap-2" style={{ padding: '3px 0', borderBottom: '1px solid rgba(17,17,17,0.12)' }}>
+          <span className="brutal-eyebrow shrink-0" style={{ fontSize: 8 }}>{k}</span>
+          <span className="text-[10px] mono font-bold text-[#111] text-right break-all">{v}</span>
         </div>
       ))}
+      {detail && (
+        <button type="button" className="brutal-btn brutal-btn-gold w-full justify-center mt-2" style={{ fontSize: 10 }}>
+          OPEN 3D VIEW
+        </button>
+      )}
+      </div>
     </div>
   );
 }
@@ -2397,9 +2401,9 @@ function DataRow({ k, v, good }: any) {
 
 function InfoCell({ label, value }: any) {
   return (
-    <div className="bg-deep rounded-lg p-2.5">
-      <div className="text-[9px] text-text-tertiary uppercase tracking-wider mb-0.5">{label}</div>
-      <div className="text-xs text-text-primary capitalize">{value}</div>
+    <div className="brutal-panel-flat p-2.5">
+      <div className="brutal-eyebrow" style={{ fontSize: 8, marginBottom: 2 }}>{label}</div>
+      <div className="text-xs font-bold text-[#111] capitalize">{value}</div>
     </div>
   );
 }
@@ -2439,14 +2443,14 @@ function InspectorEntityPanel({ kind, title, subtitle, ownership, valuation }: {
   const currency = new Intl.NumberFormat('en-IN', { style: 'currency', currency: valuation?.currency ?? 'INR', maximumFractionDigits: 0 });
   return (
     <div className="space-y-3 animate-fade-in">
-      <div className="bg-deep rounded-lg p-3">
-        <div className="text-[9px] text-emerald-300 uppercase tracking-wider mb-1">{kind} RECORD</div>
-        <div className="text-sm text-white font-medium">{title}</div>
-        <div className="text-[10px] text-slate-500 mt-1">{subtitle}</div>
+      <div className="brutal-panel" style={{ background: '#111111', padding: 12 }}>
+        <div className="brutal-eyebrow" style={{ color: '#F5C400', marginBottom: 4 }}>{kind} RECORD</div>
+        <div className="text-sm text-white font-bold">{title}</div>
+        <div className="text-[10px] mt-1" style={{ color: '#a3a3a3' }}>{subtitle}</div>
       </div>
-      <div className="bg-deep rounded-lg p-3">
-        <div className="text-[9px] text-slate-500 uppercase tracking-wider mb-2">Ownership</div>
-        <div className="text-xs text-white font-medium mb-2">{ownership?.ownerName ?? dash}</div>
+      <div className="brutal-panel" style={{ padding: 12 }}>
+        <div className="brutal-eyebrow" style={{ marginBottom: 8 }}>Ownership</div>
+        <div className="text-xs font-bold mb-2" style={{ color: '#111' }}>{ownership?.ownerName ?? dash}</div>
         <div className="grid grid-cols-2 gap-2">
           <InfoCell label="Title" value={ownership?.ownershipType ?? dash} />
           <InfoCell label="Tenure" value={ownership?.tenure ?? dash} />
@@ -2454,18 +2458,18 @@ function InspectorEntityPanel({ kind, title, subtitle, ownership, valuation }: {
           <InfoCell label="Verified" value={ownership?.lastVerified ?? dash} />
         </div>
       </div>
-      <div className="bg-deep rounded-lg p-3">
+      <div className="brutal-panel" style={{ padding: 12 }}>
         <div className="flex items-center justify-between mb-2">
-          <div className="text-[9px] text-slate-500 uppercase tracking-wider">Property Valuation</div>
-          <span className="text-[9px] text-amber-200 mono">{valuation?.valuationYear ?? dash}</span>
+          <div className="brutal-eyebrow">Property Valuation</div>
+          <span className="brutal-badge brutal-badge-gold" style={{ fontSize: 8 }}>{valuation?.valuationYear ?? dash}</span>
         </div>
         <div className="grid grid-cols-2 gap-2 mb-2">
           <InfoCell label="Market Value" value={valuation ? currency.format(valuation.marketValue) : dash} />
           <InfoCell label="Assessed Value" value={valuation ? currency.format(valuation.assessedValue) : dash} />
         </div>
-        <div className="flex items-center justify-between text-[10px] text-slate-500">
+        <div className="flex items-center justify-between text-[10px]" style={{ color: '#555' }}>
           <span>{valuation?.method ?? dash}</span>
-          <span className="text-emerald-300">{valuation ? `${Math.round(valuation.confidence * 100)}% confidence` : dash}</span>
+          <span className="brutal-badge brutal-badge-green" style={{ fontSize: 8 }}>{valuation ? `${Math.round(valuation.confidence * 100)}% CONF` : dash}</span>
         </div>
       </div>
     </div>
