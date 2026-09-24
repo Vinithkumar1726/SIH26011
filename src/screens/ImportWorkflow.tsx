@@ -157,13 +157,14 @@ export default function ImportWorkflow({ onExplore }: { onExplore: () => void })
       {/* Workflow stepper (scrolls horizontally on narrow screens) */}
       <div
         className="flex items-center px-6 shrink-0"
-        style={{ borderBottom: '1px solid var(--color-border-primary)', height: 52, background: 'var(--color-bg-tertiary)', overflowX: 'auto' }}
+        style={{ borderBottom: '1px solid var(--color-border-primary)', minHeight: 60, background: 'var(--color-bg-tertiary)', overflowX: 'auto', paddingTop: 8, paddingBottom: 8 }}
       >
+        <div className="stepper w-full" style={{ maxWidth: 860, margin: '0 auto' }}>
         {STEPS.map((s, i) => {
           const done = s.n < step;
           const active = s.n === step;
           return (
-            <div key={s.n} className="flex items-center shrink-0">
+            <div key={s.n} className="flex items-center shrink-0" style={{ flex: i < STEPS.length - 1 ? 1 : undefined }}>
               <button
                 onClick={() => done && setStep(s.n as Step)}
                 className="flex items-center gap-2 transition-colors"
@@ -173,28 +174,17 @@ export default function ImportWorkflow({ onExplore }: { onExplore: () => void })
                   cursor: done ? 'pointer' : 'default',
                   padding: '4px 8px',
                 }}
+                title={done ? `Back to ${s.label}` : s.label}
               >
-                <div
-                  className="flex items-center justify-center font-mono"
-                  style={{
-                    width: 20,
-                    height: 20,
-                    borderRadius: 2,
-                    background: done ? 'var(--color-navy-800)' : active ? 'var(--color-accent)' : 'var(--color-bg-hover)',
-                    border: '1px solid var(--color-border-primary)',
-                    fontSize: 9,
-                    fontWeight: 600,
-                    color: done ? 'var(--color-accent)' : active ? 'var(--color-navy-900)' : 'var(--color-text-tertiary)',
-                  }}
-                >
-                  {done ? '✓' : `0${s.n}`}
-                </div>
+                <span className={`step-dot${done ? ' done' : active ? ' now' : ''}`}>
+                  {done ? '✓' : s.n}
+                </span>
                 <span
                   style={{
                     fontSize: 10,
-                    fontWeight: active ? 600 : 400,
+                    fontWeight: active || done ? 600 : 400,
                     letterSpacing: '0.08em',
-                    color: done ? 'var(--color-accent)' : active ? 'var(--color-accent)' : 'var(--color-text-tertiary)',
+                    color: done ? 'var(--color-success)' : active ? 'var(--color-primary)' : 'var(--color-text-tertiary)',
                     fontFamily: 'IBM Plex Sans',
                   }}
                 >
@@ -202,11 +192,12 @@ export default function ImportWorkflow({ onExplore }: { onExplore: () => void })
                 </span>
               </button>
               {i < STEPS.length - 1 && (
-                <ChevronRight size={10} style={{ color: 'var(--color-border-primary)', margin: '0 2px' }} />
+                <span className={`step-bar${done ? ' done' : ''}`} />
               )}
             </div>
           );
         })}
+        </div>
       </div>
 
       {/* Step content */}
@@ -233,7 +224,7 @@ export default function ImportWorkflow({ onExplore }: { onExplore: () => void })
                   style={{
                     background: 'var(--color-bg-tertiary)',
                     border: `1px solid ${uploaded[ds.key] ? 'var(--color-accent)' : 'var(--color-border-primary)'}`,
-                    borderRadius: 3,
+                    borderRadius: 'var(--radius-lg)',
                     padding: 16,
                   }}
                 >
@@ -334,7 +325,7 @@ export default function ImportWorkflow({ onExplore }: { onExplore: () => void })
 
             {analyzed && (
               <>
-                <div style={{ background: 'var(--color-bg-tertiary)', border: '1px solid var(--color-border-primary)', borderRadius: 3, overflow: 'hidden', marginBottom: 16 }}>
+                <div style={{ background: 'var(--color-bg-tertiary)', border: '1px solid var(--color-border-primary)', borderRadius: 'var(--radius-lg)', overflow: 'hidden', marginBottom: 16 }}>
                   <table className="w-full">
                     <thead>
                       <tr style={{ borderBottom: '1px solid var(--color-border-primary)' }}>
@@ -366,7 +357,7 @@ export default function ImportWorkflow({ onExplore }: { onExplore: () => void })
                     { label: 'ATTRIBUTES', value: '37' },
                     { label: 'INVALID RECORDS', value: '0' },
                   ].map((m) => (
-                    <div key={m.label} style={{ background: 'var(--color-bg-tertiary)', border: '1px solid var(--color-border-primary)', borderRadius: 3, padding: '12px 14px' }}>
+                    <div key={m.label} style={{ background: 'var(--color-bg-tertiary)', border: '1px solid var(--color-border-primary)', borderRadius: 'var(--radius-lg)', padding: '12px 14px' }}>
                       <div className="font-mono" style={{ fontSize: 9, color: 'var(--color-text-tertiary)', letterSpacing: '0.1em' }}>{m.label}</div>
                       <div className="font-display font-semibold" style={{ fontSize: 22, color: m.label === 'INVALID RECORDS' ? 'var(--color-accent)' : 'var(--color-text-primary)', marginTop: 4 }}>
                         {m.value}
@@ -394,7 +385,7 @@ export default function ImportWorkflow({ onExplore }: { onExplore: () => void })
               Map source attributes to the 3D cadastral schema.
             </p>
 
-            <div style={{ background: 'var(--color-bg-tertiary)', border: '1px solid var(--color-border-primary)', borderRadius: 3, overflowX: 'auto', marginBottom: 16 }}>
+            <div style={{ background: 'var(--color-bg-tertiary)', border: '1px solid var(--color-border-primary)', borderRadius: 'var(--radius-lg)', overflowX: 'auto', marginBottom: 16 }}>
               <div style={{ minWidth: 340 }}>
               <div className="grid px-4 py-2" style={{ gridTemplateColumns: '1fr 40px 1fr 32px', borderBottom: '1px solid var(--color-border-primary)' }}>
                 <span style={{ fontSize: 9, color: 'var(--color-text-tertiary)', letterSpacing: '0.1em', fontWeight: 600 }}>SOURCE FIELD</span>
@@ -450,7 +441,7 @@ export default function ImportWorkflow({ onExplore }: { onExplore: () => void })
                   style={{
                     background: 'var(--color-bg-tertiary)',
                     border: `1px solid ${proposals[p.id] === 'accepted' ? 'var(--color-accent)' : proposals[p.id] === 'rejected' ? 'var(--color-error)' : 'var(--color-border-primary)'}`,
-                    borderRadius: 3,
+                    borderRadius: 'var(--radius-lg)',
                     padding: 16,
                   }}
                 >
@@ -523,7 +514,7 @@ export default function ImportWorkflow({ onExplore }: { onExplore: () => void })
                 style={{
                   background: 'var(--color-bg-tertiary)',
                   border: '1px solid var(--color-border-primary)',
-                  borderRadius: 3,
+                  borderRadius: 'var(--radius-lg)',
                   padding: 40,
                   marginBottom: 20,
                 }}
@@ -539,7 +530,7 @@ export default function ImportWorkflow({ onExplore }: { onExplore: () => void })
             )}
 
             {validating && (
-              <div style={{ background: 'var(--color-bg-tertiary)', border: '1px solid var(--color-border-primary)', borderRadius: 3, padding: 24, marginBottom: 20 }}>
+              <div style={{ background: 'var(--color-bg-tertiary)', border: '1px solid var(--color-border-primary)', borderRadius: 'var(--radius-lg)', padding: 24, marginBottom: 20 }}>
                 {VALIDATION_CHECKS.slice(0, 2).map((c, i) => (
                   <div key={i} className="flex items-center gap-3 mb-3">
                     <CheckCircle size={12} color="var(--color-accent)" />
@@ -557,7 +548,7 @@ export default function ImportWorkflow({ onExplore }: { onExplore: () => void })
 
             {validated && (
               <>
-                <div style={{ background: 'var(--color-bg-tertiary)', border: '1px solid var(--color-accent)', borderRadius: 3, padding: 24, marginBottom: 16 }}>
+                <div style={{ background: 'var(--color-bg-tertiary)', border: '1px solid var(--color-accent)', borderRadius: 'var(--radius-lg)', padding: 24, marginBottom: 16 }}>
                   {VALIDATION_CHECKS.map((c, i) => (
                     <div key={i} className="flex items-center gap-3 mb-2.5">
                       <CheckCircle size={12} color="var(--color-accent)" />
@@ -574,7 +565,7 @@ export default function ImportWorkflow({ onExplore }: { onExplore: () => void })
                     { label: 'WARNINGS', value: '2', color: '#D6A84F' },
                     { label: 'CHECKS PASSED', value: '18', color: 'var(--color-accent)' },
                   ].map((m) => (
-                    <div key={m.label} style={{ background: 'var(--color-bg-tertiary)', border: '1px solid var(--color-border-primary)', borderRadius: 3, padding: '12px 14px' }}>
+                    <div key={m.label} style={{ background: 'var(--color-bg-tertiary)', border: '1px solid var(--color-border-primary)', borderRadius: 'var(--radius-lg)', padding: '12px 14px' }}>
                       <div className="font-mono" style={{ fontSize: 9, color: 'var(--color-text-tertiary)', letterSpacing: '0.1em' }}>{m.label}</div>
                       <div className="font-display font-bold" style={{ fontSize: 24, color: m.color, marginTop: 4 }}>{m.value}</div>
                     </div>
@@ -582,7 +573,7 @@ export default function ImportWorkflow({ onExplore }: { onExplore: () => void })
                 </div>
 
                 {/* Warning table */}
-                <div style={{ background: 'var(--color-bg-tertiary)', border: '1px solid var(--color-border-primary)', borderRadius: 3, overflow: 'hidden', marginBottom: 16 }}>
+                <div style={{ background: 'var(--color-bg-tertiary)', border: '1px solid var(--color-border-primary)', borderRadius: 'var(--radius-lg)', overflow: 'hidden', marginBottom: 16 }}>
                   <div className="px-4 py-2" style={{ borderBottom: '1px solid var(--color-border-primary)' }}>
                     <span style={{ fontSize: 10, fontWeight: 600, letterSpacing: '0.08em', color: 'var(--color-text-quaternary)' }}>VALIDATION ISSUES</span>
                   </div>
@@ -624,7 +615,7 @@ export default function ImportWorkflow({ onExplore }: { onExplore: () => void })
             {/* Pipeline visualization (scrolls horizontally on narrow screens) */}
             <div
               className="flex items-center gap-0 mb-5 justify-start xl:justify-center"
-              style={{ background: 'var(--color-bg-tertiary)', border: '1px solid var(--color-border-primary)', borderRadius: 3, padding: '20px 24px', overflowX: 'auto' }}
+              style={{ background: 'var(--color-bg-tertiary)', border: '1px solid var(--color-border-primary)', borderRadius: 'var(--radius-lg)', padding: '20px 24px', overflowX: 'auto' }}
             >
               {['2D FOOTPRINT', 'Z-MIN / Z-MAX', 'POLYHEDRAL SOLID', 'GEOMETRY HASH', 'SPATIAL IDENTIFIER'].map((step, i, arr) => (
                 <div key={step} className="flex items-center shrink-0">
@@ -668,7 +659,7 @@ export default function ImportWorkflow({ onExplore }: { onExplore: () => void })
             )}
 
             {generated && (
-              <div style={{ background: 'var(--color-bg-tertiary)', border: '1px solid var(--color-border-primary)', borderRadius: 3, overflow: 'hidden', marginBottom: 16 }}>
+              <div style={{ background: 'var(--color-bg-tertiary)', border: '1px solid var(--color-border-primary)', borderRadius: 'var(--radius-lg)', overflow: 'hidden', marginBottom: 16 }}>
                 <table className="w-full">
                   <thead>
                     <tr style={{ borderBottom: '1px solid var(--color-border-primary)' }}>
@@ -725,7 +716,7 @@ export default function ImportWorkflow({ onExplore }: { onExplore: () => void })
             <h2 className="font-display font-semibold" style={{ fontSize: 20, color: 'var(--color-text-primary)', letterSpacing: '0.04em', marginBottom: 8 }}>
               ✓ VALIDATION COMPLETE
             </h2>
-            <div style={{ background: 'var(--color-bg-tertiary)', border: '1px solid var(--color-accent)', borderRadius: 3, padding: '16px 24px', marginBottom: 24, maxWidth: 380 }}>
+            <div style={{ background: 'var(--color-bg-tertiary)', border: '1px solid var(--color-accent)', borderRadius: 'var(--radius-lg)', padding: '16px 24px', marginBottom: 24, maxWidth: 380 }}>
               <div className="font-mono" style={{ fontSize: 10, color: 'var(--color-accent)', letterSpacing: '0.06em', lineHeight: 1.8 }}>
                 18 checks passed<br />
                 0 critical issues<br />

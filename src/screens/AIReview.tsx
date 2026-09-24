@@ -100,8 +100,8 @@ export default function AIReview() {
             { label: 'ACCEPTED', val: accepted, color: '#4FB8AC' },
             { label: 'REJECTED', val: rejected, color: '#C85C5C' },
           ].map((m) => (
-            <div key={m.label} className="flex items-center gap-2"
-              style={{ background: '#10151C', border: '1px solid #28313C', borderRadius: 2, padding: '4px 10px' }}>
+            <div key={m.label} className="chip fade-up"
+              style={{ background: '#10151C', borderColor: '#28313C', padding: '4px 12px', fontSize: 10 }}>
               <span className="font-display font-bold" style={{ fontSize: 14, color: m.color }}>{m.val}</span>
               <span style={{ fontSize: 9, color: '#6E7783', letterSpacing: '0.08em', fontFamily: 'IBM Plex Sans' }}>{m.label}</span>
             </div>
@@ -111,11 +111,20 @@ export default function AIReview() {
 
       <div className="flex-1 overflow-y-auto p-5">
         <div className="flex flex-col gap-3" style={{ maxWidth: 720 }}>
-          <div style={{ fontSize: 11, color: '#6E7783', letterSpacing: '0.08em' }}>
-            LIVE-CAPTURED BUILDINGS (FROM 3D GROUND CLICKS)
+          <div className="flex items-center justify-between">
+            <div style={{ fontSize: 11, color: '#6E7783', letterSpacing: '0.08em' }}>
+              LIVE-CAPTURED BUILDINGS (FROM 3D GROUND CLICKS)
+            </div>
+            {!liveLoading && !liveError && live.length > 0 && (
+              <span className="chip chip-gold">{live.length} PENDING</span>
+            )}
           </div>
           {liveLoading && (
-            <div style={{ fontSize: 11, color: '#6E7783' }}>Loading live captures…</div>
+            <div className="flex flex-col gap-3">
+              {[0, 1].map((i) => (
+                <div key={i} className="skeleton" style={{ height: 120, background: 'linear-gradient(90deg, #10151C 25%, #1B222C 50%, #10151C 75%)', backgroundSize: '800px 100%' }} />
+              ))}
+            </div>
           )}
           {liveError && (
             <div style={{ fontSize: 11, color: '#C85C5C' }}>{liveError}</div>
@@ -128,15 +137,20 @@ export default function AIReview() {
               No pending captures. Click ground in the 3D Explorer with Live Capture Mode on.
             </div>
           )}
-          {live.map((p) => (
+          {live.map((p, li) => (
             <div
               key={p.id}
+              className="fade-up"
               style={{
                 background: '#10151C',
                 border: '1px solid #28313C',
-                borderRadius: 3,
+                borderRadius: 'var(--radius-lg)',
                 padding: 16,
+                animationDelay: `${Math.min(li * 50, 300)}ms`,
+                transition: 'border-color 0.2s ease, box-shadow 0.2s ease',
               }}
+              onMouseEnter={(e) => { e.currentTarget.style.borderColor = 'rgb(201 154 69 / 0.5)'; e.currentTarget.style.boxShadow = '0 12px 32px -16px rgb(201 154 69 / 0.5)'; }}
+              onMouseLeave={(e) => { e.currentTarget.style.borderColor = '#28313C'; e.currentTarget.style.boxShadow = 'none'; }}
             >
               <div className="flex items-center gap-2 mb-2">
                 <span className="font-mono" style={{ fontSize: 9, color: '#C99A45', letterSpacing: '0.1em' }}>

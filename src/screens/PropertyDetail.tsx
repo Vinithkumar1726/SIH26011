@@ -96,7 +96,7 @@ export default function PropertyDetail({ unitId, onBack }: Props) {
         </div>
 
         {/* Tabs */}
-        <div className="flex gap-1 mt-4 border-b border-border">
+        <div className="flex gap-1 mt-4">
           {[
             { id: 'record', label: 'RECORD', icon: MapPin },
             { id: 'geometry', label: 'GEOMETRY', icon: Layers },
@@ -106,13 +106,10 @@ export default function PropertyDetail({ unitId, onBack }: Props) {
             <button
               key={t.id}
               onClick={() => setActiveTab(t.id as any)}
-              className={`flex items-center gap-2 px-4 py-2 text-sm font-medium transition-colors ${
-                activeTab === t.id
-                  ? 'text-primary border-b-2 border-primary'
-                  : 'text-text-tertiary hover:text-text-primary'
-              }`}
+              className={`chip transition-all ${activeTab === t.id ? 'chip-gold' : ''}`}
+              style={{ cursor: 'pointer', padding: '6px 14px' }}
             >
-              <t.icon size={14} />
+              <t.icon size={12} />
               {t.label}
             </button>
           ))}

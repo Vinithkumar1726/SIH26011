@@ -59,17 +59,13 @@ export default function PropertyRecords() {
             <button
               key={t.id}
               onClick={() => setTab(t.id as any)}
+              className={`chip transition-all ${tab === t.id ? 'chip-gold' : ''}`}
               style={{
-                background: tab === t.id ? '#1B222C' : 'transparent',
-                border: `1px solid ${tab === t.id ? '#C99A45' : '#28313C'}`,
-                color: tab === t.id ? '#C99A45' : '#6E7783',
-                fontSize: 10,
-                padding: '5px 14px',
-                borderRadius: 2,
                 cursor: 'pointer',
-                fontFamily: 'IBM Plex Sans',
-                fontWeight: 500,
-                letterSpacing: '0.08em',
+                background: tab === t.id ? undefined : 'transparent',
+                borderColor: tab === t.id ? undefined : '#28313C',
+                color: tab === t.id ? undefined : '#6E7783',
+                padding: '5px 14px',
               }}
             >
               {t.label}
@@ -83,15 +79,17 @@ export default function PropertyRecords() {
           <div className="grid gap-4" style={{ gridTemplateColumns: '1fr 1fr', maxWidth: 900 }}>
             {/* Spatial ID banner */}
             <div
+              className="fade-up"
               style={{
                 gridColumn: '1 / -1',
-                background: '#10151C',
-                border: '1px solid #C99A45',
-                borderRadius: 3,
+                background: 'linear-gradient(90deg, rgb(201 154 69 / 0.12), #10151C 55%)',
+                border: '1px solid rgb(201 154 69 / 0.45)',
+                borderRadius: 'var(--radius-lg)',
                 padding: '12px 16px',
                 display: 'flex',
                 alignItems: 'center',
                 justifyContent: 'space-between',
+                boxShadow: '0 8px 24px -12px rgb(201 154 69 / 0.45)',
               }}
             >
               <div>
