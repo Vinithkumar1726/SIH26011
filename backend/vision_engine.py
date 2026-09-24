@@ -159,20 +159,9 @@ def extract_building_wkt(
             return None
 
         session = ort.InferenceSession(model_path)
-        # Convert BGR to RGB, transpose to (C, H, W), and normalize
-        rgb_tile = cv2.cvtColor(tile, cv2.COLOR_BGR2RGB)
-        feed = {session.get_inputs()[0].name: rgb_tile.transpose(2, 0, 1)[None].astype(np.float32) / 255.0}
-        outputs = session.run(None, feed)
-
-        mask = np.asarray(outputs[0]).squeeze()
-        if mask.ndim != 2:
-            # Take the strongest class channel if the head returns per-class maps.
-            mask = mask.reshape(mask.shape[-2], mask.shape[-1]) if mask.size == TILE_PX * TILE_PX else None
-            if mask is None:
-                return None
-        gray = (np.clip(mask, 0, 1) * 255).astype(np.uint8)
-        if gray.shape != (TILE_PX, TILE_PX):
-            gray = cv2.resize(gray, (TILE_PX, TILE_PX))
+        gray = _infer_mask(session, tile)
+        if gray is None:
+            return None
 
         contours, _ = cv2.findContours(gray, cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_SIMPLE)
         if not contours:
@@ -181,41 +170,126 @@ def extract_building_wkt(
         if cv2.contourArea(contour) < 4:
             return None
 
-        # Simplify the raw detector boundary: jagged pixel zigzags become
-        # self-intersecting rings that PostGIS rejects at ST_Extrude time.
+        # Linear map over this 50 m box (preserved legacy behavior for the
+        # single-click path; the mosaic path uses exact inverse-Mercator).
+        span_lon = max_lon - min_lon
+        span_lat = max_lat - min_lat
+        wkts = _contours_to_wkts(
+            [contour],
+            lambda x, y: (min_lon + (x / TILE_PX) * span_lon, max_lat - (y / TILE_PX) * span_lat),
+            4,
+        )
+        return wkts[0] if wkts else None
+    except Exception:
+        return None
+
+
+def _infer_mask(session, img_bgr_640):
+    """Run one 640x640 BGR image through YOLO; return uint8 mask or None."""
+    rgb = cv2.cvtColor(img_bgr_640, cv2.COLOR_BGR2RGB)
+    feed = {session.get_inputs()[0].name: rgb.transpose(2, 0, 1)[None].astype(np.float32) / 255.0}
+    outputs = session.run(None, feed)
+    mask = np.asarray(outputs[0]).squeeze()
+    if mask.ndim != 2:
+        mask = mask.reshape(mask.shape[-2], mask.shape[-1]) if mask.size == TILE_PX * TILE_PX else None
+        if mask is None:
+            return None
+    gray = (np.clip(mask, 0, 1) * 255).astype(np.uint8)
+    if gray.shape != (TILE_PX, TILE_PX):
+        gray = cv2.resize(gray, (TILE_PX, TILE_PX))
+    return gray
+
+
+def _area_sqm(poly, coords) -> float:
+    _clat = sum(y for _, y in coords) / len(coords)
+    return poly.area * (111320.0 ** 2) * math.cos(math.radians(_clat))
+
+
+def _contours_to_wkts(contours, to_lonlat, min_area_px: float) -> list:
+    """Shared contour -> validated WKT pipeline.
+
+    to_lonlat(x, y) maps mask-pixel coordinates to (lon, lat), so every
+    caller (single tile, batch tile, mosaic window) owns its projection.
+    """
+    wkts = []
+    for contour in contours:
+        if cv2.contourArea(contour) <= min_area_px:
+            continue
         perimeter = cv2.arcLength(contour, True)
         approx = cv2.approxPolyDP(contour, 0.01 * perimeter, True)
         if len(approx) < 3:
-            return None
-
-        pts = approx.squeeze(1).astype(np.float64)  # (N, 2) pixel xy
-        span_lon = max_lon - min_lon
-        span_lat = max_lat - min_lat
-        coords = [
-            (
-                min_lon + (float(x) / TILE_PX) * span_lon,
-                max_lat - (float(y) / TILE_PX) * span_lat,
-            )
-            for x, y in pts
-        ]
+            continue
+        pts = approx.squeeze(1).astype(np.float64)
+        coords = [to_lonlat(float(x), float(y)) for x, y in pts]
         poly = Polygon(coords)
         if not poly.is_valid:
             poly = make_valid(poly)
             if poly.geom_type == "MultiPolygon":
                 poly = max(poly.geoms, key=lambda g: g.area)
             if poly.geom_type != "Polygon":
-                return None
+                continue
         if poly.is_empty or poly.area == 0:
-            return None
-        _clat = sum(y for _, y in coords) / len(coords)
-        if poly.area * (111320.0 ** 2) * math.cos(math.radians(_clat)) < 4.0:
-            return None
+            continue
+        # Drop slivers: < ~4 m^2 can never be a building and their
+        # extrusions produce invalid PostGIS solids.
+        if _area_sqm(poly, coords) < 4.0:
+            continue
         ring = list(poly.exterior.coords)
         if len(ring) < 4:
-            return None
-        return "POLYGON((%s))" % ", ".join(f"{x} {y}" for x, y in ring)
+            continue
+        wkts.append("POLYGON((%s))" % ", ".join(f"{x} {y}" for x, y in ring))
+    return wkts
+
+
+def segment_mosaic(mosaic_bgr, min_tx: int, min_ty: int, zoom: int,
+                   model_path: str = "test-data/yolo-seg.onnx",
+                   px0: int = 0, py0: int = 0) -> list:
+    """Run YOLO over an actual provider mosaic; return validated WKTs.
+
+    The mosaic is split into 640px inference windows. Each mask pixel maps
+    back through exact inverse-Web-Mercator math
+    (mosaic px -> canvas px -> slippy float -> lon/lat), so no
+    linear-latitude approximation is involved. px0/py0 is the mosaic
+    origin inside the tile canvas (see aoi_service.crop_origin).
+    """
+    from aoi_service import _xy_to_lonlat
+
+    model_path = _resolve_model_path(model_path)
+    if not os.path.exists(model_path):
+        return []
+    if mosaic_bgr is None or mosaic_bgr.size == 0:
+        return []
+    try:
+        session = ort.InferenceSession(model_path)
+        H, W = mosaic_bgr.shape[0], mosaic_bgr.shape[1]
+
+        def to_lonlat(mx: float, my: float):
+            return _xy_to_lonlat(min_tx + (px0 + mx) / 256.0, min_ty + (py0 + my) / 256.0, zoom)
+
+        wkts: list = []
+        for oy in range(0, max(H, 1), TILE_PX):
+            for ox in range(0, max(W, 1), TILE_PX):
+                win = np.zeros((TILE_PX, TILE_PX, 3), dtype=np.uint8)
+                h = min(TILE_PX, H - oy)
+                w = min(TILE_PX, W - ox)
+                if h <= 0 or w <= 0:
+                    continue
+                win[0:h, 0:w] = mosaic_bgr[oy:oy + h, ox:ox + w]
+                gray = _infer_mask(session, win)
+                if gray is None:
+                    continue
+                # Kill the zero-padded margin: YOLO fires on the hard
+                # image-vs-padding edge, producing garbage contours that
+                # would map hundreds of metres outside the AOI.
+                gray[h:, :] = 0
+                gray[:, w:] = 0
+                contours, _ = cv2.findContours(gray, cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_SIMPLE)
+                wkts.extend(_contours_to_wkts(
+                    contours, lambda x, y, _ox=ox, _oy=oy: to_lonlat(_ox + x, _oy + y), 10,
+                ))
+        return wkts
     except Exception:
-        return None
+        return []
 
 
 def extract_batch_building_wkts(
@@ -234,56 +308,17 @@ def extract_batch_building_wkts(
             return []
 
         session = ort.InferenceSession(model_path)
-        rgb_tile = cv2.cvtColor(tile, cv2.COLOR_BGR2RGB)
-        feed = {session.get_inputs()[0].name: rgb_tile.transpose(2, 0, 1)[None].astype(np.float32) / 255.0}
-        outputs = session.run(None, feed)
-
-        mask = np.asarray(outputs[0]).squeeze()
-        if mask.ndim != 2:
-            mask = mask.reshape(mask.shape[-2], mask.shape[-1]) if mask.size == TILE_PX * TILE_PX else None
-            if mask is None:
-                return []
-        gray = (np.clip(mask, 0, 1) * 255).astype(np.uint8)
-        if gray.shape != (TILE_PX, TILE_PX):
-            gray = cv2.resize(gray, (TILE_PX, TILE_PX))
+        gray = _infer_mask(session, tile)
+        if gray is None:
+            return []
 
         contours, _ = cv2.findContours(gray, cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_SIMPLE)
         span_lon = max_lon - min_lon
         span_lat = max_lat - min_lat
-        wkts = []
-        for contour in contours:
-            if cv2.contourArea(contour) <= 10:
-                continue
-            perimeter = cv2.arcLength(contour, True)
-            approx = cv2.approxPolyDP(contour, 0.01 * perimeter, True)
-            if len(approx) < 3:
-                continue
-            pts = approx.squeeze(1).astype(np.float64)
-            coords = [
-                (
-                    min_lon + (float(x) / TILE_PX) * span_lon,
-                    max_lat - (float(y) / TILE_PX) * span_lat,
-                )
-                for x, y in pts
-            ]
-            poly = Polygon(coords)
-            if not poly.is_valid:
-                poly = make_valid(poly)
-                if poly.geom_type == "MultiPolygon":
-                    poly = max(poly.geoms, key=lambda g: g.area)
-                if poly.geom_type != "Polygon":
-                    continue
-            if poly.is_empty or poly.area == 0:
-                continue
-            # Drop slivers: < ~4 m^2 of ground can never be a building and
-            # their extrusions produce invalid PostGIS solids.
-            _clat = sum(y for _, y in coords) / len(coords)
-            if poly.area * (111320.0 ** 2) * math.cos(math.radians(_clat)) < 4.0:
-                continue
-            ring = list(poly.exterior.coords)
-            if len(ring) < 4:
-                continue
-            wkts.append("POLYGON((%s))" % ", ".join(f"{x} {y}" for x, y in ring))
-        return wkts
+        return _contours_to_wkts(
+            contours,
+            lambda x, y: (min_lon + (x / TILE_PX) * span_lon, max_lat - (y / TILE_PX) * span_lat),
+            10,
+        )
     except Exception:
         return []

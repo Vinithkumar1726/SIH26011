@@ -127,6 +127,12 @@ def tile_grid(bounds: dict, zoom: int) -> list:
     return tiles
 
 
+def crop_origin(bounds: dict, zoom: int, min_tx: int, min_ty: int) -> tuple:
+    """Mosaic-pixel (0,0) in canvas pixels (deterministic from bounds)."""
+    fx0, fy0 = _lonlat_to_xy(bounds["min_lon"], bounds["max_lat"], zoom)
+    return int(round((fx0 - min_tx) * 256)), int(round((fy0 - min_ty) * 256))
+
+
 def cache_key(provider: str, zoom: int, bounds: dict) -> str:
     raw = f"{provider}|{zoom}|{bounds['min_lon']:.6f}|{bounds['min_lat']:.6f}|{bounds['max_lon']:.6f}|{bounds['max_lat']:.6f}"
     return hashlib.sha256(raw.encode()).hexdigest()[:16]
@@ -145,10 +151,15 @@ def mosaic_aoi(bounds: dict, zoom: int, provider=None) -> tuple:
     key = cache_key(provider.name, zoom, bounds)
     os.makedirs(CACHE_DIR, exist_ok=True)
     hit_path = os.path.join(CACHE_DIR, f"{key}.png")
+    min_tx = min(t[0] for t in tiles)
+    min_ty = min(t[1] for t in tiles)
+    px0, py0 = crop_origin(bounds, zoom, min_tx, min_ty)
     if os.path.exists(hit_path):
         return cv2.imread(hit_path), {
             "provider": provider.name, "zoom": zoom, "tiles": len(tiles),
             "cache": "hit", "cache_key": key,
+            "min_tx": min_tx, "min_ty": min_ty,
+            "px0": px0, "py0": py0,
         }
 
     min_tx = min(t[0] for t in tiles)
@@ -168,10 +179,7 @@ def mosaic_aoi(bounds: dict, zoom: int, provider=None) -> tuple:
         fetched += 1
 
     # Crop canvas exactly to the AOI geographic box.
-    fx0, fy0 = _lonlat_to_xy(bounds["min_lon"], bounds["max_lat"], zoom)
     fx1, fy1 = _lonlat_to_xy(bounds["max_lon"], bounds["min_lat"], zoom)
-    px0 = int(round((fx0 - min_tx) * W))
-    py0 = int(round((fy0 - min_ty) * H))
     px1 = int(round((fx1 - min_tx) * W))
     py1 = int(round((fy1 - min_ty) * H))
     mosaic = canvas[py0:py1, px0:px1]
@@ -182,5 +190,7 @@ def mosaic_aoi(bounds: dict, zoom: int, provider=None) -> tuple:
     return mosaic, {
         "provider": provider.name, "zoom": zoom, "tiles": fetched,
         "cache": "miss", "cache_key": key,
+        "min_tx": min_tx, "min_ty": min_ty,
+        "px0": px0, "py0": py0,
         "width_px": int(mosaic.shape[1]), "height_px": int(mosaic.shape[0]),
     }
