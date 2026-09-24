@@ -207,6 +207,9 @@ def extract_building_wkt(
                 return None
         if poly.is_empty or poly.area == 0:
             return None
+        _clat = sum(y for _, y in coords) / len(coords)
+        if poly.area * (111320.0 ** 2) * math.cos(math.radians(_clat)) < 4.0:
+            return None
         ring = list(poly.exterior.coords)
         if len(ring) < 4:
             return None
@@ -271,6 +274,11 @@ def extract_batch_building_wkts(
                 if poly.geom_type != "Polygon":
                     continue
             if poly.is_empty or poly.area == 0:
+                continue
+            # Drop slivers: < ~4 m^2 of ground can never be a building and
+            # their extrusions produce invalid PostGIS solids.
+            _clat = sum(y for _, y in coords) / len(coords)
+            if poly.area * (111320.0 ** 2) * math.cos(math.radians(_clat)) < 4.0:
                 continue
             ring = list(poly.exterior.coords)
             if len(ring) < 4:

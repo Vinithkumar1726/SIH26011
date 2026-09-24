@@ -1873,6 +1873,188 @@ async def extract_batch_buildings(payload: BatchExtractionRequest):
     return {"status": "PENDING_REVIEW", "count": len(proposal_ids), "proposal_ids": proposal_ids, "z_base_msl_m": z_base, "source": "vision-batch"}
 
 
+class AOIValidateRequest(BaseModel):
+    aoi: Dict[str, Any]
+
+
+class MosaicRequest(BaseModel):
+    aoi: Dict[str, Any]
+    zoom: int = 19
+    provider: Optional[str] = None
+
+
+class DetectBatchRequest(BaseModel):
+    aoi: Dict[str, Any]
+    zoom: int = 19
+    provider: Optional[str] = None
+    building_height_m: float = 12.0
+
+
+class ProposalEditRequest(BaseModel):
+    height_m: Optional[float] = None
+    floors_override: Optional[int] = None
+    height_source: Optional[str] = None
+
+
+@app.post("/api/aoi/validate")
+async def validate_aoi_endpoint(payload: AOIValidateRequest):
+    """Validate a rectangle/polygon AOI without fetching imagery."""
+    from aoi_service import validate_aoi
+
+    try:
+        normalized = validate_aoi(payload.aoi)
+    except ValueError as e:
+        raise HTTPException(status_code=422, detail=str(e))
+    return {"valid": True, "aoi": normalized}
+
+
+@app.post("/api/imagery/mosaic")
+async def imagery_mosaic(payload: MosaicRequest):
+    """Validate an AOI, fetch provider tiles, and return a base64 mosaic."""
+    import base64
+
+    import cv2 as _cv2
+
+    from aoi_service import mosaic_aoi, tile_grid, validate_aoi
+    from imagery_providers import get_provider
+
+    try:
+        bounds = validate_aoi(payload.aoi)
+    except ValueError as e:
+        raise HTTPException(status_code=422, detail=str(e))
+    provider = get_provider(payload.provider)
+    try:
+        tiles = tile_grid(bounds, payload.zoom)
+        mosaic, meta = mosaic_aoi(bounds, payload.zoom, provider)
+    except (ValueError, RuntimeError) as e:
+        raise HTTPException(status_code=422, detail=str(e))
+    ok, buf = _cv2.imencode(".png", mosaic)
+    if not ok:
+        raise HTTPException(status_code=500, detail="Mosaic PNG encoding failed")
+    span_m = max(
+        (bounds["max_lon"] - bounds["min_lon"]) * 111320.0,
+        (bounds["max_lat"] - bounds["min_lat"]) * 111320.0,
+    )
+    return {
+        "aoi": bounds,
+        "zoom": payload.zoom,
+        "tiles": tiles,
+        "tile_count": len(tiles),
+        "image_base64": base64.b64encode(buf.tobytes()).decode(),
+        "width_px": int(mosaic.shape[1]),
+        "height_px": int(mosaic.shape[0]),
+        "meters_per_pixel": span_m / max(mosaic.shape[0], mosaic.shape[1]),
+        "imagery": meta,
+    }
+
+
+@app.post("/api/ai/detect-batch")
+async def detect_batch(payload: DetectBatchRequest):
+    """Run YOLO batch detection over every AOI grid tile; stage proposals.
+
+    Review-gate compliant: stages REVIEW_REQUIRED AIProposal rows only.
+    """
+    from shapely.wkt import loads as _wkt_loads
+
+    from aoi_service import tile_grid, validate_aoi, _lonlat_to_xy, _xy_to_lonlat
+    from imagery_providers import get_provider
+    from vision_engine import extract_batch_building_wkts
+
+    try:
+        bounds = validate_aoi(payload.aoi)
+    except ValueError as e:
+        raise HTTPException(status_code=422, detail=str(e))
+    provider = get_provider(payload.provider)
+    try:
+        tiles = tile_grid(bounds, payload.zoom)
+    except ValueError as e:
+        raise HTTPException(status_code=422, detail=str(e))
+
+    z_base = fetch_srtm_elevation(
+        (bounds["min_lat"] + bounds["max_lat"]) / 2.0,
+        (bounds["min_lon"] + bounds["max_lon"]) / 2.0,
+    )
+    seen: set = set()
+    staged = []
+    async with async_session() as session:
+        for tx, ty in tiles:
+            clon, clat = _xy_to_lonlat(tx + 0.5, ty + 0.5, payload.zoom)
+            for wkt in extract_batch_building_wkts(clat, clon):
+                try:
+                    centroid = _wkt_loads(wkt).centroid
+                except Exception:
+                    continue
+                # Dedupe detections recurring across adjacent tiles (~1 m).
+                dkey = (round(centroid.x, 5), round(centroid.y, 5))
+                if dkey in seen:
+                    continue
+                seen.add(dkey)
+                ulpin = generate_3d_ulpin(centroid.y, centroid.x, payload.building_height_m)
+                proposal_id = uuid.uuid4().hex
+                session.add(AIProposal(
+                    id=proposal_id,
+                    building_id=None,
+                    model_primary="YOLO11n-seg ONNX (aoi-batch)",
+                    model_verifier=None,
+                    footprint_proposed=None,
+                    footprint_verified=None,
+                    iou_score=None,
+                    agreement_score=None,
+                    status="REVIEW_REQUIRED",
+                    proposal_data={
+                        "wkt": wkt,
+                        "height_m": payload.building_height_m,
+                        "height_source": "ESTIMATED",
+                        "ulpin": ulpin,
+                        "lat": centroid.y,
+                        "lon": centroid.x,
+                        "source": "vision-aoi-batch",
+                        "z_base_msl_m": z_base,
+                        "imagery_provider": provider.name,
+                        "aoi": bounds,
+                        "model": "YOLO11n-seg ONNX",
+                    },
+                ))
+                staged.append(proposal_id)
+        await session.commit()
+    return {
+        "status": "PENDING_REVIEW",
+        "count": len(staged),
+        "proposal_ids": staged,
+        "tiles": len(tiles),
+        "z_base_msl_m": z_base,
+        "source": "vision-aoi-batch",
+    }
+
+
+@app.post("/api/ai/proposal/{proposal_id}/edit")
+async def edit_proposal(proposal_id: str, payload: ProposalEditRequest):
+    """Edit a pending proposal's height/floors before review (gate intact)."""
+    from sqlalchemy import select
+
+    async with async_session() as session:
+        proposal = (await session.execute(
+            select(AIProposal).where(AIProposal.id == proposal_id)
+        )).scalar_one_or_none()
+        if proposal is None:
+            raise HTTPException(status_code=404, detail="Proposal not found")
+        if proposal.status != "REVIEW_REQUIRED":
+            raise HTTPException(status_code=409, detail=f"Proposal already {proposal.status}")
+        data = dict(proposal.proposal_data or {})
+        if payload.height_m is not None:
+            if payload.height_m <= 0:
+                raise HTTPException(status_code=422, detail="height_m must be positive")
+            data["height_m"] = float(payload.height_m)
+            data["height_source"] = payload.height_source or "USER"
+        if payload.floors_override is not None:
+            if payload.floors_override < 1:
+                raise HTTPException(status_code=422, detail="floors_override must be >= 1")
+            data["floors_override"] = int(payload.floors_override)
+        proposal.proposal_data = data
+        await session.commit()
+        return {"status": "REVIEW_REQUIRED", "proposal_id": proposal.id, "proposal_data": data}
+
+
 @app.get("/api/ai/candidates")
 async def get_ai_candidates():
     """Get AI proposals pending review"""
@@ -1917,6 +2099,10 @@ async def get_ai_candidates():
                     "status": p.status,
                     "source": (p.proposal_data or {}).get("source"),
                     "ulpin": (p.proposal_data or {}).get("ulpin"),
+                    "height_m": (p.proposal_data or {}).get("height_m"),
+                    "height_source": (p.proposal_data or {}).get("height_source", "ESTIMATED"),
+                    "floors_override": (p.proposal_data or {}).get("floors_override"),
+                    "z_base_msl_m": (p.proposal_data or {}).get("z_base_msl_m", 0.0),
                     "created_at": p.created_at.isoformat() if p.created_at else None
                 }
                 for p in proposals
@@ -2071,12 +2257,24 @@ async def review_ai_proposal(proposal_id: str, request: dict):
             if not data.get("wkt") or not data.get("ulpin") or data.get("height_m") is None:
                 raise HTTPException(status_code=422, detail="Proposal has no capturable geometry")
             z_base = float(data.get("z_base_msl_m") or 0.0)
+            import json as _meta_json
+
+            source_meta = {
+                "imagery_provider": data.get("imagery_provider"),
+                "aoi": data.get("aoi"),
+                "source": data.get("source"),
+                "model": data.get("model", data.get("source")),
+                "height_source": data.get("height_source", "ESTIMATED"),
+                "z_base_msl_m": z_base,
+            }
             await session.execute(text(
-                "INSERT INTO cadastral_parcels (parcel_id, footprint, solid_geom, height_m) "
+                "INSERT INTO cadastral_parcels (parcel_id, footprint, solid_geom, height_m, source_meta) "
                 "VALUES (:ulpin, ST_GeomFromText(:wkt, 4326), "
-                "ST_Translate(ST_Multi(ST_CollectionExtract(ST_Extrude(ST_Force3D(ST_GeomFromText(:wkt, 4326)), 0, 0, :height), 3)), 0, 0, :z_base), :height) "
+                "ST_Translate(ST_Multi(ST_CollectionExtract(ST_Extrude(ST_Force3D(ST_GeomFromText(:wkt, 4326)), 0, 0, :height), 3)), 0, 0, :z_base), :height, "
+                "CAST(:source_meta AS JSONB)) "
                 "ON CONFLICT (parcel_id) DO NOTHING"
-            ), {"ulpin": data["ulpin"], "wkt": data["wkt"], "height": data["height_m"], "z_base": z_base})
+            ), {"ulpin": data["ulpin"], "wkt": data["wkt"], "height": data["height_m"], "z_base": z_base,
+                "source_meta": _meta_json.dumps(source_meta)})
             # Physical encroachment: does the new solid intersect any other parcel?
             conflict_query = text("""
                 SELECT EXISTS (
@@ -2133,6 +2331,60 @@ async def list_cadastral_parcels():
 # ============================================================================
 # GEOMETRY VERSIONING & AUDIT TRAIL ENDPOINTS
 # ============================================================================
+
+@app.get("/api/cadastral-parcels/{parcel_id}")
+async def cadastral_parcel_detail(parcel_id: str):
+    """Inspector detail: metrics, sources, and derived floor schedule."""
+    from sqlalchemy import select, text
+
+    async with async_session() as session:
+        import json as _json
+
+        row = (await session.execute(text(
+            "SELECT parcel_id, height_m, ST_AsGeoJSON(footprint) AS geom, "
+            "ST_Area(footprint::geography) AS area_sqm, "
+            "ST_Perimeter(footprint::geography) AS perimeter_m, "
+            "ST_AsGeoJSON(ST_Centroid(footprint)) AS centroid, "
+            "ST_ZMin(solid_geom) AS zmin, ST_ZMax(solid_geom) AS zmax, "
+            "CASE WHEN ST_IsValid(solid_geom) THEN ST_Volume(solid_geom) ELSE NULL END AS volume_cum, "
+            "ST_IsValid(solid_geom) AS solid_valid, source_meta "
+            "FROM cadastral_parcels WHERE parcel_id = :pid"
+        ), {"pid": parcel_id})).mappings().first()
+        if row is None:
+            raise HTTPException(status_code=404, detail="Parcel not found")
+        meta = row["source_meta"] or {}
+        height = float(row["height_m"] or 0)
+        floors = max(int(round(height / 3.2)), 1) if height > 0 else 1
+        zmin = float(row["zmin"]) if row["zmin"] is not None else 0.0
+        floor_h = height / floors if floors else 0
+        proposal = (await session.execute(
+            select(AIProposal).where(AIProposal.status == "APPROVED").order_by(AIProposal.created_at.desc())
+        )).scalars().all()
+        ulpin_proposal = next((p for p in proposal if (p.proposal_data or {}).get("ulpin") == parcel_id), None)
+        return {
+            "parcel_id": row["parcel_id"],
+            "height_m": height,
+            "elevation_msl_m": zmin,
+            "roof_elevation_msl_m": float(row["zmax"]) if row["zmax"] is not None else zmin + height,
+            "footprint_area_sqm": float(row["area_sqm"]) if row["area_sqm"] is not None else None,
+            "perimeter_m": float(row["perimeter_m"]) if row["perimeter_m"] is not None else None,
+            "centroid": _json.loads(row["centroid"]) if row["centroid"] else None,
+            "volume_cum": float(row["volume_cum"]) if row["volume_cum"] is not None else None,
+            "solid_valid": bool(row["solid_valid"]),
+            "geometry_version": 1,
+            "height_source": meta.get("height_source", "ESTIMATED"),
+            "geometry_source": meta.get("source", "live-capture"),
+            "imagery_provider": meta.get("imagery_provider"),
+            "model": meta.get("model"),
+            "confidence": (ulpin_proposal.proposal_data or {}).get("confidence") if ulpin_proposal else None,
+            "source_meta": meta,
+            "floors_estimated": floors,
+            "floor_schedule": [
+                {"floor": f"F{i:02d}", "z_min_msl_m": zmin + (i - 1) * floor_h, "z_max_msl_m": zmin + i * floor_h}
+                for i in range(1, floors + 1)
+            ],
+        }
+
 
 @app.put("/api/units/{unit_id}/geometry")
 async def update_unit_geometry(unit_id: str, request: UnitGeometryUpdateRequest):

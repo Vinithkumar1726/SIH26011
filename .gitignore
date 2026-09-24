@@ -28,3 +28,6 @@ backend/test-data/*.onnx
 
 # Tile comparison output (never commit fetched imagery)
 tile_compare_out/
+
+# AOI mosaic disk cache (regenerable fetched imagery)
+backend/.aoi_cache/
