@@ -976,7 +976,7 @@ export default function Explorer3D() {
               <select
                 value={building.id}
                 onChange={(e) => switchBuilding(e.target.value)}
-                className="w-full bg-deep text-[10px] text-slate-200 rounded-md px-2 py-1.5 border border-line outline-none focus:border-emerald-500/30"
+                className="w-full bg-deep text-[10px] text-slate-200 rounded-md px-2 py-1.5 border border-line outline-none focus:border-amber-300/40"
               >
                 {summaries.map((s) => (
                   <option key={s.id} value={s.id}>{s.name} · {s.floorCount}f · {s.unitCount}u</option>
@@ -991,19 +991,19 @@ export default function Explorer3D() {
           <button
             type="button"
             onClick={() => setLiveCaptureMode((v) => !v)}
-            className={`w-full text-[10px] py-1 rounded uppercase tracking-wider mb-2 ${liveCaptureMode ? 'bg-emerald-500/20 text-emerald-300 border border-emerald-400/40' : 'bg-white/5 text-slate-400 border border-transparent hover:text-white'}`}
+            className={`w-full text-[10px] py-1 rounded uppercase tracking-wider mb-2 ${liveCaptureMode ? 'bg-amber-400/15 text-amber-200 border border-amber-300/40' : 'bg-white/5 text-slate-400 border border-transparent hover:text-white'}`}
           >
             {liveCaptureMode ? '◉ Live Capture: ON' : '◎ Live Capture Mode'}
           </button>
           <button
             type="button"
             onClick={() => setLowPower((v) => !v)}
-            className={`w-full text-[10px] py-1 rounded uppercase tracking-wider mb-2 ${lowPower ? 'bg-emerald-500/20 text-emerald-300 border border-emerald-400/40' : 'bg-white/5 text-slate-400 border border-transparent hover:text-white'}`}
+            className={`w-full text-[10px] py-1 rounded uppercase tracking-wider mb-2 ${lowPower ? 'bg-amber-400/15 text-amber-200 border border-amber-300/40' : 'bg-white/5 text-slate-400 border border-transparent hover:text-white'}`}
           >
             {lowPower ? '◉ Low Power: ON' : '◎ Low Power Mode'}
           </button>
           {liveCaptureNotice && (
-            <div className="text-[10px] text-amber-300 bg-amber-500/10 border border-amber-400/20 rounded px-2 py-1 mb-2">
+            <div className="fade-up text-[10px] leading-relaxed text-amber-200 bg-amber-400/10 border border-amber-300/30 rounded-lg px-2.5 py-1.5 mb-2" style={{ boxShadow: '0 4px 16px -8px rgb(251 191 36 / 0.5)' }}>
               {liveCaptureNotice}
             </div>
           )}
@@ -1017,14 +1017,14 @@ export default function Explorer3D() {
               <button
                 type="button"
                 onClick={() => { setLiveSync(false); setHourOfDay(12); }}
-                className={`text-[10px] py-1 rounded uppercase tracking-wider ${!isNight ? 'bg-emerald-500/20 text-emerald-300 border border-emerald-400/40' : 'bg-white/5 text-slate-400 border border-transparent hover:text-white'}`}
+                className={`text-[10px] py-1 rounded uppercase tracking-wider ${!isNight ? 'bg-amber-400/15 text-amber-200 border border-amber-300/40' : 'bg-white/5 text-slate-400 border border-transparent hover:text-white'}`}
               >
                 ☀ DAY
               </button>
               <button
                 type="button"
                 onClick={() => { setLiveSync(false); setHourOfDay(0); }}
-                className={`text-[10px] py-1 rounded uppercase tracking-wider ${isNight ? 'bg-emerald-500/20 text-emerald-300 border border-emerald-400/40' : 'bg-white/5 text-slate-400 border border-transparent hover:text-white'}`}
+                className={`text-[10px] py-1 rounded uppercase tracking-wider ${isNight ? 'bg-amber-400/15 text-amber-200 border border-amber-300/40' : 'bg-white/5 text-slate-400 border border-transparent hover:text-white'}`}
               >
                 ☾ NIGHT
               </button>
@@ -1041,7 +1041,7 @@ export default function Explorer3D() {
               <div>
                 <div className="flex items-center justify-between mb-1">
                   <span className="text-[10px] text-slate-500">TIME OF DAY</span>
-                  <span className="text-[10px] mono text-emerald-300">{formatHour(hourOfDay)} · {isNight ? 'Night' : 'Day'}</span>
+                  <span className="text-[10px] mono text-amber-200">{formatHour(hourOfDay)} · {isNight ? 'Night' : 'Day'}</span>
                 </div>
                 <input
                   type="range"
@@ -1067,7 +1067,7 @@ export default function Explorer3D() {
                       type="button"
                       key={w}
                       onClick={() => setWeather(w)}
-                      className={`text-[10px] py-1 rounded uppercase tracking-wider ${weather === w ? 'bg-emerald-500/20 text-emerald-300 border border-emerald-400/40' : 'bg-white/5 text-slate-400 border border-transparent hover:text-white'}`}
+                      className={`text-[10px] py-1 rounded uppercase tracking-wider ${weather === w ? 'bg-amber-400/15 text-amber-200 border border-amber-300/40' : 'bg-white/5 text-slate-400 border border-transparent hover:text-white'}`}
                     >
                       {w}
                     </button>
@@ -1084,7 +1084,7 @@ export default function Explorer3D() {
                       <button
                         type="button"
                         onClick={() => { flyTo(v); if (v === 'street' || v !== 'orbit') setInteriorTour(false); }}
-                        className={`w-full text-left text-[10px] py-1 px-2 rounded uppercase tracking-wider ${viewPreset === v ? 'bg-emerald-500/20 text-emerald-300 border border-emerald-400/40' : 'bg-white/5 text-slate-400 border border-transparent hover:text-white'}`}
+                        className={`w-full text-left text-[10px] py-1 px-2 rounded uppercase tracking-wider ${viewPreset === v ? 'bg-amber-400/15 text-amber-200 border border-amber-300/40' : 'bg-white/5 text-slate-400 border border-transparent hover:text-white'}`}
                       >
                         {label}
                       </button>
@@ -1131,7 +1131,7 @@ export default function Explorer3D() {
                       type="button"
                       key={q}
                       onClick={() => setQuality(q)}
-                      className={`text-[10px] py-1 rounded uppercase tracking-wider ${quality === q ? 'bg-emerald-500/20 text-emerald-300 border border-emerald-400/40' : 'bg-white/5 text-slate-400 border border-transparent hover:text-white'}`}
+                      className={`text-[10px] py-1 rounded uppercase tracking-wider ${quality === q ? 'bg-amber-400/15 text-amber-200 border border-amber-300/40' : 'bg-white/5 text-slate-400 border border-transparent hover:text-white'}`}
                     >
                       {q}
                     </button>
@@ -1146,13 +1146,13 @@ export default function Explorer3D() {
                     onChange={(e) => setLidarTarget(e.target.value)}
                     placeholder={building.id}
                     aria-label="LIDAR target id"
-                    className="flex-1 min-w-0 bg-deep text-[10px] text-slate-200 rounded-md px-2 py-1 border border-line outline-none focus:border-emerald-500/30"
+                    className="flex-1 min-w-0 bg-deep text-[10px] text-slate-200 rounded-md px-2 py-1 border border-line outline-none focus:border-amber-300/40"
                   />
                   <button
                     type="button"
                     onClick={() => void runLidar()}
                     disabled={lidarRunning}
-                    className="text-[10px] px-2 py-1 rounded uppercase tracking-wider bg-emerald-500/15 text-emerald-300 border border-emerald-400/20 hover:bg-emerald-500/25 disabled:opacity-50 shrink-0"
+                    className="text-[10px] px-2 py-1 rounded uppercase tracking-wider bg-amber-400/10 text-amber-200 border border-amber-300/25 hover:bg-amber-400/20 disabled:opacity-50 shrink-0"
                   >
                     Run
                   </button>
@@ -1174,9 +1174,12 @@ export default function Explorer3D() {
             </div>
           </CollapsePanel>
           {buildingPipes.length > 0 && (
-            <div className="glass rounded-lg pointer-events-auto">
+            <div className="glass glass-gold rounded-xl pointer-events-auto">
               <div className="p-3">
-                <div className="text-[10px] font-semibold text-white uppercase tracking-wider mb-1">Underground utilities · synthetic</div>
+                <div className="flex items-center justify-between mb-1">
+                  <div className="text-[10px] font-semibold text-white uppercase tracking-wider">Underground utilities · synthetic</div>
+                  <span className="chip" style={{ background: 'transparent', fontSize: 8 }}>{pipeStatus.length} RUNS</span>
+                </div>
                 <div className="space-y-1">
                   {pipeStatus.map((p) => (
                     <div key={p.id} className="flex items-center justify-between gap-2 text-[10px]">
@@ -1199,7 +1202,7 @@ export default function Explorer3D() {
             open={openPanels.floor}
             onToggle={() => togglePanel('floor')}
             extra={(
-              <span className="text-[9px] text-emerald-300 mono">
+              <span className="text-[9px] text-amber-200 mono">
                 {selectedFloorId ? floors.find((fl) => fl.id === selectedFloorId)?.code : 'ALL'}
               </span>
             )}
@@ -1208,7 +1211,7 @@ export default function Explorer3D() {
             <button
               type="button"
               onClick={() => { setSelectedFloorId(null); setSelected(null); setSelectedScope(null); }}
-              className={`w-full flex items-center gap-2 text-left text-[11px] py-1 px-2 rounded transition-colors ${selectedFloorId === null ? 'bg-emerald-500/15 text-emerald-300' : 'text-slate-300 hover:bg-white/5 hover:text-white'}`}
+              className={`w-full flex items-center gap-2 text-left text-[11px] py-1 px-2 rounded transition-colors ${selectedFloorId === null ? 'bg-amber-400/10 text-amber-200' : 'text-slate-300 hover:bg-white/5 hover:text-white'}`}
             >
               <span className="w-3 h-3 rounded-full border border-current flex items-center justify-center">
                 {selectedFloorId === null && <span className="w-1.5 h-1.5 rounded-full bg-current" />}
@@ -1221,7 +1224,7 @@ export default function Explorer3D() {
                 type="button"
                 key={fl.id}
                 onClick={() => { setSelectedFloorId(fl.id); setSelected(null); setSelectedScope('floor'); }}
-                className={`w-full flex items-center gap-2 text-left text-[11px] py-1 px-2 rounded transition-colors ${selectedFloorId === fl.id ? 'bg-emerald-500/15 text-emerald-300' : 'text-slate-300 hover:bg-white/5 hover:text-white'}`}
+                className={`w-full flex items-center gap-2 text-left text-[11px] py-1 px-2 rounded transition-colors ${selectedFloorId === fl.id ? 'bg-amber-400/10 text-amber-200' : 'text-slate-300 hover:bg-white/5 hover:text-white'}`}
               >
                 <span className="w-3 h-3 rounded-full border border-current flex items-center justify-center">
                   {selectedFloorId === fl.id && <span className="w-1.5 h-1.5 rounded-full bg-current" />}
@@ -1240,14 +1243,14 @@ export default function Explorer3D() {
               <span className="text-[9px] text-amber-300 mono">{matchingFloorIds.size}/{floors.length}</span>
             )}
           >
-          <input value={reportSearch} onChange={(e) => setReportSearch(e.target.value)} placeholder="Search floor or owner…" className="w-full bg-deep text-[10px] text-slate-200 rounded-md px-2 py-1.5 border border-line outline-none focus:border-emerald-500/30 mb-2" />
+          <input value={reportSearch} onChange={(e) => setReportSearch(e.target.value)} placeholder="Search floor or owner…" className="w-full bg-deep text-[10px] text-slate-200 rounded-md px-2 py-1.5 border border-line outline-none focus:border-amber-300/40 mb-2" />
           <select value={ownershipFilter} onChange={(e) => setOwnershipFilter(e.target.value)} className="w-full bg-deep text-[10px] text-slate-300 rounded-md px-2 py-1.5 border border-line outline-none mb-2">
             {ownershipOptions.map((option) => <option key={option} value={option}>{option === 'ALL' ? 'All ownership types' : option}</option>)}
           </select>
           <label className="text-[9px] text-slate-500 block mb-1">{source === 'live' ? 'Minimum market value · — (no backend source)' : `Minimum market value · ₹${minimumMarketValue.toLocaleString('en-IN')}`}</label>
           <input type="range" min={0} max={60000000} step={1000000} value={minimumMarketValue} disabled={source === 'live'} onChange={(e) => setMinimumMarketValue(Number(e.target.value))} className="w-full" />
           <div className="grid grid-cols-2 gap-1 mt-2">
-            <button type="button" onClick={() => downloadCsv(building, floors)} className="text-[9px] py-1.5 rounded bg-emerald-500/15 text-emerald-300 border border-emerald-400/20 hover:bg-emerald-500/25">CSV REPORT</button>
+            <button type="button" onClick={() => downloadCsv(building, floors)} className="text-[9px] py-1.5 rounded bg-amber-400/10 text-amber-200 border border-amber-300/25 hover:bg-amber-400/20">CSV REPORT</button>
             <button type="button" onClick={async () => { setPopupBlocked(false); setPopupBlocked(!(await printPdfReport(building, floors, units, spatialIDs))); }} className="text-[9px] py-1.5 rounded bg-white/5 text-slate-300 border border-white/10 hover:bg-white/10">Generate 3D Bhu-Aadhaar</button>
           </div>
           {popupBlocked && <div className="text-[9px] text-amber-300 mt-2">Pop-up blocked — allow pop-ups for this site to generate the record.</div>}
@@ -1319,7 +1322,7 @@ export default function Explorer3D() {
                             setSelectedScope('floor');
                           }
                         }}
-                        className={`text-[10px] mono py-1 px-2 rounded border ${selectedFloorId === fl.id ? 'bg-emerald-500/20 text-emerald-300 border-emerald-400/40' : 'bg-white/5 text-slate-400 border-transparent hover:text-white'}`}
+                        className={`text-[10px] mono py-1 px-2 rounded border ${selectedFloorId === fl.id ? 'bg-amber-400/20 text-amber-200 border-amber-300/40' : 'bg-white/5 text-slate-400 border-transparent hover:text-white'}`}
                       >
                         {fl.code}
                       </button>
@@ -1337,10 +1340,10 @@ export default function Explorer3D() {
                           <div
                             key={u.id}
                             onClick={() => { setSelected(u); setSelectedScope(null); setSelectedFloorId(u.floor_id); }}
-                            className={`px-2 py-1.5 rounded border cursor-pointer ${isSel ? 'bg-emerald-500/15 border-emerald-500/30' : 'bg-white/[0.02] border-transparent hover:bg-white/5'}`}
+                            className={`px-2 py-1.5 rounded border cursor-pointer ${isSel ? 'bg-amber-400/10 border-amber-300/30' : 'bg-white/[0.02] border-transparent hover:bg-white/5'}`}
                           >
                             <div className="flex items-center justify-between gap-2 text-[11px]">
-                              <span className={isSel ? 'text-emerald-300' : 'text-slate-200'}>{u.label}</span>
+                              <span className={isSel ? 'text-amber-200' : 'text-slate-200'}>{u.label}</span>
                               <span className="text-slate-500 capitalize">{u.type}</span>
                             </div>
                             <div className="flex items-center justify-between gap-2 text-[9px] mono text-slate-500">
@@ -1383,7 +1386,7 @@ export default function Explorer3D() {
                       target="_blank"
                       rel="noopener noreferrer"
                       onClick={(e) => e.stopPropagation()}
-                      className="ml-2 text-emerald-300 hover:underline"
+                      className="ml-2 text-amber-200 hover:underline"
                     >
                       Open in OSM
                     </a>
@@ -1449,14 +1452,14 @@ export default function Explorer3D() {
           <button
             type="button"
             onClick={() => setMobilePanel((p) => (p === 'hierarchy' ? null : 'hierarchy'))}
-            className={`glass rounded-lg px-3 py-2 text-[10px] font-semibold uppercase tracking-wider ${mobilePanel === 'hierarchy' ? 'text-emerald-300' : 'text-slate-200'}`}
+            className={`glass rounded-lg px-3 py-2 text-[10px] font-semibold uppercase tracking-wider ${mobilePanel === 'hierarchy' ? 'text-amber-200' : 'text-slate-200'}`}
           >
             🏢 Hierarchy
           </button>
           <button
             type="button"
             onClick={() => setMobilePanel((p) => (p === 'inspector' ? null : 'inspector'))}
-            className={`glass rounded-lg px-3 py-2 text-[10px] font-semibold uppercase tracking-wider ${mobilePanel === 'inspector' ? 'text-emerald-300' : 'text-slate-200'}`}
+            className={`glass rounded-lg px-3 py-2 text-[10px] font-semibold uppercase tracking-wider ${mobilePanel === 'inspector' ? 'text-amber-200' : 'text-slate-200'}`}
           >
             📋 Inspector
           </button>
@@ -1492,7 +1495,7 @@ export default function Explorer3D() {
                 type="button"
                 title={`Graphics quality: ${q}`}
                 onClick={() => setQuality(q)}
-                className={`text-[9px] font-semibold uppercase tracking-wider px-1.5 py-0.5 rounded ${quality === q ? 'bg-emerald-500/20 text-emerald-300' : 'text-slate-500 hover:text-slate-300'}`}
+                className={`text-[9px] font-semibold uppercase tracking-wider px-1.5 py-0.5 rounded ${quality === q ? 'bg-amber-400/15 text-amber-200' : 'text-slate-500 hover:text-slate-300'}`}
               >
                 {q === 'medium' ? 'Med' : q === 'high' ? 'High' : 'Low'}
               </button>
@@ -1571,7 +1574,7 @@ export default function Explorer3D() {
         <div className="p-4 border-b border-line">
           <div className="flex items-center justify-between">
             <h3 className="text-sm font-semibold text-white flex items-center gap-2">
-              <i className="fas fa-circle-info text-emerald-400 text-xs"></i>
+              <i className="fas fa-circle-info text-amber-300 text-xs"></i>
               Inspector
             </h3>
             <button
@@ -1653,7 +1656,7 @@ export default function Explorer3D() {
               placeholder="Search units, IDs…"
               value={search}
               onChange={(e) => setSearch(e.target.value)}
-              className="w-full bg-deep text-xs text-slate-200 rounded-md pl-9 pr-3 py-2 border border-line focus:border-emerald-500/30 outline-none placeholder-slate-600"
+              className="w-full bg-deep text-xs text-slate-200 rounded-md pl-9 pr-3 py-2 border border-line focus:border-amber-300/40 outline-none placeholder-slate-600"
             />
           </div>
         </div>
@@ -1666,11 +1669,11 @@ export default function Explorer3D() {
                 key={u.id}
                 onClick={() => { setSelected(u); setSelectedScope(null); setSelectedFloorId(u.floor_id); }}
                 className={`w-full text-left px-3 py-2 rounded-md text-xs transition-all ${
-                  isSelected ? 'bg-emerald-500/10 border border-emerald-500/20' : 'hover:bg-white/5 border border-transparent'
+                  isSelected ? 'bg-amber-400/10 border border-amber-300/25' : 'hover:bg-white/5 border border-transparent'
                 }`}
               >
                 <div className="flex items-center justify-between">
-                  <span className={`truncate ${isSelected ? 'text-emerald-300' : 'text-slate-300'}`}>{u.label}</span>
+                  <span className={`truncate ${isSelected ? 'text-amber-200' : 'text-slate-300'}`}>{u.label}</span>
                   <span className="text-[9px] text-slate-600 ml-2 flex-shrink-0">{u.area_sqm}m²</span>
                 </div>
                 {sid && <div className="text-[9px] mono text-slate-600 truncate mt-0.5">{sid.full}</div>}
@@ -2344,7 +2347,7 @@ function InspectorEntityPanel({ kind, title, subtitle, ownership, valuation }: {
       <div className="bg-deep rounded-lg p-3">
         <div className="flex items-center justify-between mb-2">
           <div className="text-[9px] text-slate-500 uppercase tracking-wider">Property Valuation</div>
-          <span className="text-[9px] text-emerald-300 mono">{valuation?.valuationYear ?? dash}</span>
+          <span className="text-[9px] text-amber-200 mono">{valuation?.valuationYear ?? dash}</span>
         </div>
         <div className="grid grid-cols-2 gap-2 mb-2">
           <InfoCell label="Market Value" value={valuation ? currency.format(valuation.marketValue) : dash} />
