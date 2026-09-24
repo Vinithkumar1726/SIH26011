@@ -106,9 +106,10 @@ export default function LiveMapPanel({ apiBase, origin, footprints, selectedParc
       const latlngs = ring.map(([lo, la]) => [la, lo] as [number, number]);
       const sel = fp.parcel_id === selectedParcelId;
       L.polygon(latlngs, {
-        color: fp.encroachment ? '#ef4444' : sel ? '#fbbf24' : '#4FB8AC',
-        weight: sel ? 3 : 1.5,
-        fillOpacity: sel ? 0.35 : 0.12,
+        color: fp.encroachment ? '#D92D20' : sel ? '#111111' : '#F5C400',
+        weight: sel ? 4 : 2,
+        fillColor: fp.encroachment ? '#D92D20' : '#F5C400',
+        fillOpacity: sel ? 0.45 : 0.15,
       })
         .bindTooltip(`${fp.parcel_id}${fp.encroachment ? ' · ENCROACHMENT' : ''}`)
         .on('click', (e) => {
@@ -123,7 +124,7 @@ export default function LiveMapPanel({ apiBase, origin, footprints, selectedParc
     if (aoiLayerRef.current) { map.removeLayer(aoiLayerRef.current); aoiLayerRef.current = null; }
     const pts = drawPtsRef.current;
     if (pts.length < 2) return;
-    aoiLayerRef.current = L.polygon(pts, { color: '#C99A45', weight: 2, dashArray: '6 4', fillOpacity: 0.08 }).addTo(map);
+    aoiLayerRef.current = L.polygon(pts, { color: '#111111', weight: 3, dashArray: '8 4', fillColor: '#F5C400', fillOpacity: 0.15 }).addTo(map);
   }
 
   function finishRectangle(map: L.Map, a: L.LatLng, b: L.LatLng) {
@@ -153,7 +154,7 @@ export default function LiveMapPanel({ apiBase, origin, footprints, selectedParc
       setAoi(norm);
       if (aoiLayerRef.current) map.removeLayer(aoiLayerRef.current);
       const latlngs = norm.polygon.map(([lo, la]: number[]) => [la, lo] as [number, number]);
-      aoiLayerRef.current = L.polygon(latlngs, { color: '#C99A45', weight: 2, fillOpacity: 0.06 }).addTo(map);
+      aoiLayerRef.current = L.polygon(latlngs, { color: '#111111', weight: 3, fillColor: '#F5C400', fillOpacity: 0.12 }).addTo(map);
       map.fitBounds(L.polygon(latlngs).getBounds().pad(0.1));
       mark(1, 'done');
       setStats((s) => ({ ...s, 'AOI area': `${norm.area_sqm.toFixed(0)} m²` }));
@@ -260,7 +261,7 @@ export default function LiveMapPanel({ apiBase, origin, footprints, selectedParc
   return (
     <div className="flex flex-col h-full min-h-0">
       {/* Toolbar */}
-      <div className="flex items-center gap-2 px-3 py-2 shrink-0 border-b border-white/10 flex-wrap">
+      <div className="flex items-center gap-2 px-3 py-2 shrink-0 flex-wrap" style={{ background: '#FFFFFF', borderBottom: '3px solid #111111' }}>
         <div className="input-icon" style={{ flex: 1, minWidth: 140 }}>
           <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><circle cx="11" cy="11" r="8" /><line x1="21" y1="21" x2="16.65" y2="16.65" /></svg>
           <input
@@ -276,7 +277,8 @@ export default function LiveMapPanel({ apiBase, origin, footprints, selectedParc
           <button
             key={m}
             onClick={() => { drawPtsRef.current = []; setDrawMode(m); }}
-            className={`text-[10px] py-1 px-2 rounded uppercase tracking-wider ${drawMode === m ? 'bg-amber-400/15 text-amber-200 border border-amber-300/40' : 'bg-white/5 text-slate-400 border border-transparent hover:text-white'}`}
+            className={`brutal-tab ${drawMode === m ? 'active' : ''}`}
+            style={{ fontSize: 9, padding: '5px 10px' }}
           >
             {m === 'none' ? 'Pan' : m === 'rectangle' ? '▭ AOI' : '⬠ Polygon'}
           </button>
@@ -284,18 +286,20 @@ export default function LiveMapPanel({ apiBase, origin, footprints, selectedParc
         <button
           onClick={() => void acquire()}
           disabled={!aoi || !!busy}
-          className="text-[10px] py-1 px-2 rounded uppercase tracking-wider bg-amber-400/15 text-amber-200 border border-amber-300/40 disabled:opacity-40"
+          className="brutal-btn brutal-btn-gold"
+          style={{ fontSize: 9, padding: '5px 10px' }}
         >
           Acquire
         </button>
         <button
           onClick={() => void detect()}
           disabled={!mosaic || !!busy}
-          className="text-[10px] py-1 px-2 rounded uppercase tracking-wider bg-amber-400/15 text-amber-200 border border-amber-300/40 disabled:opacity-40"
+          className="brutal-btn brutal-btn-primary"
+          style={{ fontSize: 9, padding: '5px 10px' }}
         >
           Detect
         </button>
-        <span className="chip" style={{ background: 'transparent', fontSize: 8 }}>ESRI SATELLITE</span>
+        <span className="brutal-badge" style={{ fontSize: 8 }}>ESRI SATELLITE</span>
       </div>
 
       {/* Map */}

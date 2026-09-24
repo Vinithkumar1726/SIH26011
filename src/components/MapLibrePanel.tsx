@@ -123,15 +123,15 @@ export default function MapLibrePanel({ apiBase, initial, target, footprints, se
           m.addSource(SRC_REGISTRY, { type: 'geojson', data: fc });
           m.addLayer({
             id: 'sih-reg-fill', type: 'fill', source: SRC_REGISTRY,
-            paint: { 'fill-color': '#C99A45', 'fill-opacity': 0.08 },
+            paint: { 'fill-color': '#F5C400', 'fill-opacity': 0.12 },
           });
           m.addLayer({
             id: 'sih-reg-line', type: 'line', source: SRC_REGISTRY,
-            paint: { 'line-color': '#C99A45', 'line-width': 1, 'line-opacity': 0.7 },
+            paint: { 'line-color': '#111111', 'line-width': 1.5, 'line-opacity': 0.85 },
           });
           m.addLayer({
             id: 'sih-reg-sel', type: 'line', source: SRC_REGISTRY,
-            paint: { 'line-color': '#fbbf24', 'line-width': 2.5 },
+            paint: { 'line-color': '#111111', 'line-width': 4 },
             filter: ['==', ['get', 'parcel_id'], ''],
           });
         };
@@ -162,13 +162,13 @@ export default function MapLibrePanel({ apiBase, initial, target, footprints, se
       m.addSource(SRC_LIVE, { type: 'geojson', data: fc });
       m.addLayer({
         id: 'sih-live-fill', type: 'fill', source: SRC_LIVE,
-        paint: { 'fill-color': '#4FB8AC', 'fill-opacity': 0.22 },
+        paint: { 'fill-color': '#F5C400', 'fill-opacity': 0.45 },
       });
       m.addLayer({
         id: 'sih-live-line', type: 'line', source: SRC_LIVE,
         paint: {
-          'line-color': ['case', ['get', 'encroachment'], '#ef4444', '#e2e8f0'],
-          'line-width': 1.2,
+          'line-color': ['case', ['get', 'encroachment'], '#D92D20', '#111111'],
+          'line-width': 2,
         },
       });
     };
@@ -192,7 +192,7 @@ export default function MapLibrePanel({ apiBase, initial, target, footprints, se
         if (!mm.getLayer('sih-live-sel')) {
           mm.addLayer({
             id: 'sih-live-sel', type: 'line', source: SRC_LIVE,
-            paint: { 'line-color': '#fbbf24', 'line-width': 3 },
+            paint: { 'line-color': '#111111', 'line-width': 4 },
             filter: ['==', ['get', 'parcel_id'], ''],
           });
         }
@@ -218,11 +218,11 @@ export default function MapLibrePanel({ apiBase, initial, target, footprints, se
   }, []);
 
   return (
-    <div className="flex flex-col h-full min-h-0">
-      <div className="flex items-center gap-2 px-3 py-2 shrink-0 border-b border-white/10">
-        <span className="font-mono text-[9px] tracking-[0.12em] text-slate-400">MAPTILER VECTOR</span>
-        <span className="chip" style={{ background: 'transparent', fontSize: 8 }}>{registryCount} REGISTRY</span>
-        <span className="chip" style={{ background: 'transparent', fontSize: 8 }}>{footprints.length} LIVE</span>
+    <div className="flex flex-col h-full min-h-0" style={{ background: '#F4F1E8' }}>
+      <div className="flex items-center gap-2 px-3 py-2 shrink-0" style={{ background: '#FFFFFF', borderBottom: '3px solid #111111' }}>
+        <span className="brutal-badge brutal-badge-black" style={{ fontSize: 8 }}>MAPTILER VECTOR</span>
+        <span className="brutal-badge" style={{ fontSize: 8 }}>{registryCount} REGISTRY</span>
+        <span className="brutal-badge brutal-badge-gold" style={{ fontSize: 8 }}>{footprints.length} LIVE</span>
       </div>
       <div className="relative flex-1 min-h-0">
         <div ref={divRef} className="absolute inset-0" />
