@@ -1715,7 +1715,7 @@ export default function Explorer3D() {
                 className={`brutal-tab ${map2DMode === m ? 'active' : ''}`}
                 style={{ fontSize: 9 }}
               >
-                {m === 'satellite' ? '▭ Satellite AOI' : '▦ Vector Map'}
+                {m === 'satellite' ? '▭ Satellite AOI' : '◉ Satellite 3D'}
               </button>
             ))}
           </div>
@@ -1731,6 +1731,7 @@ export default function Explorer3D() {
           ) : (
           <MapLibrePanel
             apiBase={(import.meta.env.VITE_API_URL || 'http://127.0.0.1:8000').replace(/\/$/, '')}
+            basemap="satellite"
             footprints={liveParcels}
             selectedParcelId={selectedLiveParcelId}
             onSelectParcel={setSelectedLiveParcelId}

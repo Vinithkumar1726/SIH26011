@@ -16,13 +16,19 @@ interface Props {
   footprints: LiveFootprint[];
   selectedParcelId: string | null;
   onSelectParcel: (id: string | null) => void;
+  basemap?: 'streets' | 'satellite';
 }
+
+const STYLE_URL = {
+  streets: 'https://api.maptiler.com/maps/streets-v2/style.json',
+  satellite: 'https://api.maptiler.com/maps/satellite/style.json',
+} as const;
 
 const COIMBATORE = { lon: 76.9558, lat: 11.0168, zoom: 15 };
 const SRC_LIVE = 'sih-live-parcels';
 const SRC_REGISTRY = 'sih-registry-parcels';
 
-function toFeatureCollection(items: Array<{ id: string; footprint: any; encroachment?: boolean }>) {
+function toFeatureCollection(items: Array<{ id: string; footprint: any; encroachment?: boolean; height_m?: number }>) {
   return {
     type: 'FeatureCollection' as const,
     features: items
@@ -30,13 +36,63 @@ function toFeatureCollection(items: Array<{ id: string; footprint: any; encroach
       .map((p) => ({
         type: 'Feature' as const,
         id: p.id,
-        properties: { parcel_id: p.id, encroachment: !!p.encroachment },
+        properties: { parcel_id: p.id, encroachment: !!p.encroachment, height_m: p.height_m ?? 12 },
         geometry: p.footprint,
       })),
   };
 }
 
-export default function MapLibrePanel({ apiBase, initial, target, footprints, selectedParcelId, onSelectParcel }: Props) {
+function addExtrusions(m: maplibregl.Map) {
+  // MapTiler planet buildings (when the style carries the vector source).
+  try {
+    const style = m.getStyle();
+    const hasPlanet = !!style?.sources && Object.keys(style.sources).some((s) => /planet|openmaptiles/i.test(s));
+    const srcName = style && Object.keys(style.sources).find((s) => /planet|openmaptiles/i.test(s));
+    if (hasPlanet && srcName && !m.getLayer('sih-3d-buildings')) {
+      const layers = style.layers ?? [];
+      const labelIdx = layers.findIndex((l: any) => l.type === 'symbol' && /label/i.test(l.id ?? ''));
+      const before = labelIdx >= 0 ? layers[labelIdx].id : undefined;
+      m.addLayer({
+        id: 'sih-3d-buildings',
+        source: srcName,
+        'source-layer': 'building',
+        filter: ['==', 'extrude', 'true'],
+        type: 'fill-extrusion',
+        minzoom: 15,
+        paint: {
+          'fill-extrusion-color': '#F4F1E8',
+          'fill-extrusion-height': ['interpolate', ['linear'], ['zoom'], 15, 0, 15.05, ['get', 'render_height']],
+          'fill-extrusion-base': ['interpolate', ['linear'], ['zoom'], 15, 0, 15.05, ['get', 'render_min_height']],
+          'fill-extrusion-opacity': 0.85,
+        },
+      }, before);
+    }
+  } catch {
+    /* planet source absent in this style: cadastral extrusions still render */
+  }
+  // Our cadastral parcels as solid brutalist blocks (always available).
+  if (!m.getLayer('sih-live-extrude') && m.getSource(SRC_LIVE)) {
+    m.addLayer({
+      id: 'sih-live-extrude',
+      type: 'fill-extrusion',
+      source: SRC_LIVE,
+      paint: {
+        'fill-extrusion-color': [
+          'case',
+          ['==', ['get', 'parcel_id'], ''],
+          '#F4F1E8',
+          ['get', 'encroachment'], '#D92D20',
+          '#F4F1E8',
+        ],
+        'fill-extrusion-height': ['get', 'height_m'],
+        'fill-extrusion-base': 0,
+        'fill-extrusion-opacity': 0.9,
+      },
+    });
+  }
+}
+
+export default function MapLibrePanel({ apiBase, initial, target, footprints, selectedParcelId, onSelectParcel, basemap = 'streets' }: Props) {
   const divRef = useRef<HTMLDivElement>(null);
   const mapRef = useRef<maplibregl.Map | null>(null);
   const [cursor, setCursor] = useState('');
@@ -57,9 +113,11 @@ export default function MapLibrePanel({ apiBase, initial, target, footprints, se
     try {
       map = new maplibregl.Map({
         container: divRef.current,
-        style: `https://api.maptiler.com/maps/streets-v2/style.json?key=${key}`,
+        style: `${STYLE_URL[basemap]}?key=${key}`,
         center: [center0.lon, center0.lat],
         zoom: center0.zoom ?? 15,
+        pitch: basemap === 'satellite' ? 60 : 0,
+        bearing: 0,
         attributionControl: { compact: true },
       });
       map.addControl(new maplibregl.NavigationControl({ visualizePitch: true }), 'top-right');
@@ -149,7 +207,7 @@ export default function MapLibrePanel({ apiBase, initial, target, footprints, se
     const map = mapRef.current;
     if (!map || !key) return;
     const fc = toFeatureCollection(
-      footprints.map((p) => ({ id: p.parcel_id, footprint: p.footprint, encroachment: p.encroachment })),
+      footprints.map((p) => ({ id: p.parcel_id, footprint: p.footprint, encroachment: p.encroachment, height_m: p.height_m })),
     );
     const apply = () => {
       const m = mapRef.current;
@@ -157,6 +215,7 @@ export default function MapLibrePanel({ apiBase, initial, target, footprints, se
       const src = m.getSource(SRC_LIVE) as maplibregl.GeoJSONSource | undefined;
       if (src) {
         src.setData(fc);
+        addExtrusions(m);
         return;
       }
       m.addSource(SRC_LIVE, { type: 'geojson', data: fc });

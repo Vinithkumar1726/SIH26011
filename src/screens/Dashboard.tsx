@@ -1,8 +1,9 @@
 import { useEffect, useState } from 'react';
 import { motion } from 'framer-motion';
-import { Upload, Box, MapPin, Building2, Layers, ShieldCheck, ChevronRight, Activity } from 'lucide-react';
+import { Upload, Box, MapPin, Building2, Layers, ShieldCheck, Activity } from 'lucide-react';
 import type { Screen } from '../types';
 import { api, type DashboardStats } from '../api';
+import DashboardCityPreview from '../components/DashboardCityPreview';
 
 interface Props {
   onNav: (s: Screen) => void;
@@ -31,74 +32,17 @@ const HEALTH = [
   { label: 'Spatial IDs', value: 100 },
 ];
 
-// Isometric building SVG
-function IsoBuildingPreview() {
-  return (
-    <svg viewBox="0 0 420 320" className="w-full h-full" style={{ fontFamily: 'IBM Plex Mono' }}>
-      <defs>
-        <pattern id="bgGrid" width="20" height="20" patternUnits="userSpaceOnUse">
-          <path d="M 20 0 L 0 0 0 20" fill="none" stroke="#111111" strokeOpacity="0.12" strokeWidth="0.5" />
-        </pattern>
-      </defs>
-      <rect width="420" height="320" fill="#FFFFFF" />
-      <rect width="420" height="320" fill="url(#bgGrid)" />
-
-      {/* Parcel boundary */}
-      <polygon points="60,260 210,190 360,260 210,330" fill="none" stroke="#111111" strokeWidth="2" strokeDasharray="6,3" />
-      <text x="210" y="345" fill="#111111" fontSize="8" fontWeight="700" textAnchor="middle" letterSpacing="1">ULPIN: 29384756102934</text>
-
-      {/* Floor 1 */}
-      <polygon points="90,230 210,162 330,230 210,298" fill="#F4F1E8" stroke="#111111" strokeWidth="1.5" />
-      <polygon points="90,230 90,206 210,138 210,162" fill="#E4DFD2" stroke="#111111" strokeWidth="1.5" />
-      <polygon points="330,230 330,206 210,138 210,162" fill="#FFFFFF" stroke="#111111" strokeWidth="1.5" />
-      {/* F1 units */}
-      <line x1="150" y1="246" x2="150" y2="178" stroke="#111111" strokeWidth="1" />
-      <text x="125" y="222" fill="#111111" fontSize="7" fontWeight="700" letterSpacing="1">U01</text>
-      <text x="220" y="222" fill="#111111" fontSize="7" fontWeight="700" letterSpacing="1">U02</text>
-
-      {/* Floor 2 */}
-      <polygon points="90,206 210,138 330,206 210,274" fill="#F4F1E8" stroke="#111111" strokeWidth="1.5" />
-      <polygon points="90,206 90,182 210,114 210,138" fill="#E4DFD2" stroke="#111111" strokeWidth="1.5" />
-      <polygon points="330,206 330,182 210,114 210,138" fill="#FFFFFF" stroke="#111111" strokeWidth="1.5" />
-      <line x1="150" y1="222" x2="150" y2="154" stroke="#111111" strokeWidth="1" />
-      <text x="125" y="198" fill="#111111" fontSize="7" fontWeight="700" letterSpacing="1">U03</text>
-      <text x="220" y="198" fill="#111111" fontSize="7" fontWeight="700" letterSpacing="1">U04</text>
-
-      {/* Floor 3 */}
-      <polygon points="100,182 210,118 320,182 210,246" fill="#F5C400" stroke="#111111" strokeWidth="2" />
-      <polygon points="100,182 100,158 210,94 210,118" fill="#E0A800" stroke="#111111" strokeWidth="2" />
-      <polygon points="320,182 320,158 210,94 210,118" fill="#FFD23F" stroke="#111111" strokeWidth="2" />
-
-      {/* Elevation markers */}
-      <line x1="40" y1="258" x2="56" y2="258" stroke="#555555" strokeWidth="1" />
-      <line x1="40" y1="234" x2="56" y2="234" stroke="#555555" strokeWidth="1" />
-      <line x1="40" y1="210" x2="56" y2="210" stroke="#555555" strokeWidth="1" />
-      <line x1="40" y1="186" x2="56" y2="186" stroke="#555555" strokeWidth="1" />
-      <line x1="40" y1="258" x2="40" y2="186" stroke="#555555" strokeWidth="1" />
-      <text x="36" y="261" fill="#555555" fontSize="7" textAnchor="end">+0.00</text>
-      <text x="36" y="237" fill="#555555" fontSize="7" textAnchor="end">+3.20</text>
-      <text x="36" y="213" fill="#555555" fontSize="7" textAnchor="end">+6.40</text>
-      <text x="36" y="189" fill="#555555" fontSize="7" textAnchor="end">+9.60</text>
-      <text x="38" y="175" fill="#555555" fontSize="7" textAnchor="end">M</text>
-
-      {/* Selected unit highlight */}
-      <polygon points="90,230 150,198 150,174 90,206" fill="#F5C400" fillOpacity="0.45" stroke="#111111" strokeWidth="2" />
-      <text x="105" y="215" fill="#111111" fontSize="8" fontWeight="700" letterSpacing="1">U01</text>
-
-      {/* Labels */}
-      <text x="210" y="86" fill="#111111" fontSize="10" fontWeight="700" textAnchor="middle" letterSpacing="2">BUILDING B01</text>
-      <text x="210" y="97" fill="#555555" fontSize="7" textAnchor="middle" letterSpacing="1">3 FLOORS · 4 UNITS</text>
-    </svg>
-  );
-}
-
 export default function Dashboard({ onNav }: Props) {
   const [stats, setStats] = useState<DashboardStats | null>(null);
+  const [aiPending, setAiPending] = useState<number | null>(null);
 
   useEffect(() => {
     let active = true;
     api.getDashboardStats().then((result) => {
       if (active && result.success && result.data) setStats(result.data);
+    });
+    api.getAICandidates().then((result) => {
+      if (active && result.success && result.data) setAiPending(result.data.total ?? 0);
     });
     return () => { active = false; };
   }, []);
@@ -176,25 +120,39 @@ export default function Dashboard({ onNav }: Props) {
 
         {/* Main area */}
         <div className="flex flex-col xl:flex-row gap-6 min-w-0">
-          {/* 3D Preview */}
-          <div className="brutal-panel min-w-0 flex-1" style={{ padding: 0, overflow: 'hidden' }}>
-            <div className="brutal-header">
-              <span className="brutal-title">3D Preview</span>
-              <button
-                className="brutal-btn brutal-btn-gold"
-                style={{ fontSize: 9, padding: '4px 10px' }}
-                onClick={() => onNav('explorer')}
-              >
-                OPEN EXPLORER →
-              </button>
-            </div>
-            <div className="blueprint-bg min-h-[280px] p-4" style={{ height: 320, background: '#fff' }}>
-              <IsoBuildingPreview />
-            </div>
+          {/* 3D city preview */}
+          <div className="min-w-0 flex-1">
+            <DashboardCityPreview onLaunch={() => onNav('explorer')} />
           </div>
 
           {/* Right panel */}
           <div className="flex flex-col gap-6 w-full xl:w-72 shrink-0 min-w-0">
+            {/* Recent alerts (live backend data only) */}
+            <div className="brutal-panel" style={{ padding: 0, overflow: 'hidden' }}>
+              <div className="brutal-header brutal-header-gold">
+                <span className="brutal-title">Recent Alerts</span>
+              </div>
+              <div className="p-3 flex flex-col gap-2">
+                {stats && stats.conflicts > 0 && (
+                  <div className="brutal-notice brutal-notice-red" style={{ fontSize: 11 }}>
+                    ▲ {stats.conflicts} spatial conflict(s) need review
+                  </div>
+                )}
+                {aiPending !== null && aiPending > 0 && (
+                  <div className="brutal-notice brutal-notice-gold" style={{ fontSize: 11 }}>
+                    ◎ {aiPending} AI proposal(s) awaiting review
+                  </div>
+                )}
+                {stats && stats.conflicts === 0 && (
+                  <div className="brutal-notice brutal-notice-green" style={{ fontSize: 11 }}>
+                    ● Validation clean — no overlaps
+                  </div>
+                )}
+                {(stats === null && aiPending === null) && (
+                  <div className="brutal-skeleton" style={{ height: 60 }} />
+                )}
+              </div>
+            </div>
             {/* Activity */}
             <div className="brutal-panel" style={{ padding: 0, overflow: 'hidden' }}>
               <div className="brutal-header">
