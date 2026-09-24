@@ -25,28 +25,28 @@ export default function Topbar({ screen, onNav, apiOnline }: Props) {
   const [mobileNavOpen, setMobileNavOpen] = useState(false);
 
   return (
-    <header className="flex items-center gap-3 px-4 h-14 shrink-0 bg-slate-950 border-b border-white/10">
+    <header className="flex items-center gap-3 px-4 h-14 shrink-0 border-b border-white/10" style={{ background: 'linear-gradient(180deg, #0d152e 0%, #0B132B 100%)' }}>
       {/* Left: mobile menu button + logo */}
       <div className="flex items-center gap-3 min-w-0">
         <button
-          className="lg:hidden shrink-0 rounded-lg p-2 text-slate-300 hover:bg-white/5 hover:text-white"
+          className="lg:hidden shrink-0 rounded-lg p-2 text-slate-300 hover:bg-white/5 hover:text-white transition-colors"
           onClick={() => setMobileNavOpen(true)}
           aria-label="Open navigation menu"
         >
           <Menu size={20} />
         </button>
         <div
-          className="flex items-center gap-3 cursor-pointer min-w-0"
+          className="flex items-center gap-3 cursor-pointer min-w-0 group"
           onClick={() => onNav('dashboard')}
         >
-          <div className="flex items-center justify-center font-display font-bold text-xs tracking-widest w-9 h-9 shrink-0 bg-slate-900 border border-emerald-400/40 text-emerald-400 rounded-lg">
+          <div className="flex items-center justify-center font-display font-bold text-xs tracking-widest w-9 h-9 shrink-0 rounded-lg text-[#0B132B] transition-transform group-hover:scale-105" style={{ background: 'linear-gradient(135deg, var(--color-gold-300), var(--color-gold-600))', boxShadow: 'var(--shadow-gold)' }}>
             3D
           </div>
           <div className="min-w-0">
             <div className="font-display font-semibold leading-none text-[13px] text-white tracking-[0.04em] truncate">
               3D ULPIN
             </div>
-            <div className="text-[8px] text-slate-500 leading-none mt-0.5 truncate">
+            <div className="text-[8px] text-amber-200/60 leading-none mt-1 truncate tracking-[0.14em]">
               CADASTRAL GIS WORKSTATION
             </div>
           </div>
@@ -54,8 +54,10 @@ export default function Topbar({ screen, onNav, apiOnline }: Props) {
       </div>
 
       {/* Center: breadcrumb */}
-      <div className="hidden sm:block flex-1 text-center font-mono text-[10px] text-slate-500 tracking-[0.1em] truncate px-2">
-        {BREADCRUMBS[screen]}
+      <div className="hidden sm:flex flex-1 justify-center px-2 min-w-0">
+        <span className="font-mono text-[10px] text-slate-400 tracking-[0.12em] truncate px-3 py-1 rounded-full border border-white/10 bg-white/[0.03]">
+          {BREADCRUMBS[screen]}
+        </span>
       </div>
 
       {/* Right: status + user */}
@@ -80,10 +82,10 @@ export default function Topbar({ screen, onNav, apiOnline }: Props) {
         <div className="hidden md:block w-px h-5 bg-white/10" />
 
         <button
-          className="flex items-center gap-1.5 rounded-lg px-2 py-1 text-slate-300 hover:bg-white/5 hover:text-white min-w-0 max-w-[140px]"
+          className="flex items-center gap-1.5 rounded-lg px-2 py-1 text-slate-300 hover:bg-white/5 hover:text-white transition-colors min-w-0 max-w-[140px]"
           title="VINITH K"
         >
-          <div className="flex items-center justify-center font-display font-semibold w-6 h-6 shrink-0 bg-slate-800 border border-white/10 rounded-md text-[10px] text-amber-300">
+          <div className="flex items-center justify-center font-display font-semibold w-6 h-6 shrink-0 rounded-md text-[10px] text-[#0B132B]" style={{ background: 'linear-gradient(135deg, var(--color-gold-300), var(--color-gold-600))' }}>
             VK
           </div>
           <span className="hidden sm:inline truncate text-[11px]" style={{ fontFamily: 'var(--font-body)' }}>

@@ -73,12 +73,12 @@ export default function SearchModal({ onClose, onNav }: Props) {
       onClick={(e) => { if (e.target === e.currentTarget) onClose(); }}
     >
       <div
-        className="fade-in w-full flex flex-col"
+        className="fade-up w-full flex flex-col"
         style={{
           maxWidth: 640,
           background: 'var(--color-bg-surface)',
           border: '1px solid var(--color-border-primary)',
-          borderRadius: 4,
+          borderRadius: 'var(--radius-lg)',
           overflow: 'hidden',
           boxShadow: 'var(--shadow-lg)',
         }}

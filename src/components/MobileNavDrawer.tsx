@@ -129,7 +129,7 @@ export default function MobileNavDrawer({ isOpen, onClose, active, onNav }: Prop
                       key={item.id}
                       onClick={() => { onNav(item.id); onClose(); }}
                       layout
-                      className="w-full flex items-center gap-3 px-3 py-2.5 rounded-md transition-colors"
+                      className="w-full flex items-center gap-3 px-3 py-2.5 rounded-lg transition-colors"
                       style={{
                         background: isActive ? 'var(--color-primary-bg)' : 'transparent',
                         color: isActive ? 'var(--color-primary)' : 'var(--color-text-tertiary)',
@@ -139,7 +139,6 @@ export default function MobileNavDrawer({ isOpen, onClose, active, onNav }: Prop
                       }}
                       whileHover={{ x: 4, backgroundColor: isActive ? 'var(--color-primary-bg)' : 'var(--color-bg-hover)' }}
                       whileTap={{ scale: 0.98 }}
-                      onClick={() => { onNav(item.id); onClose(); }}
                     >
                       <span style={{ 
                         color: isActive ? 'var(--color-accent)' : 'var(--color-text-quaternary)',

@@ -49,10 +49,13 @@ export default function CadastralHierarchy({ className = 'hidden md:flex w-72' }
     return (
       <div className={`bg-surface border-l border-border flex flex-col shrink-0 ${className}`}>
         <div className="px-4 py-3 border-b border-border">
+          <div className="page-eyebrow">Registry</div>
           <h3 className="font-display font-semibold text-sm text-text-primary">HIERARCHY</h3>
         </div>
-        <div className="flex-1 flex items-center justify-center">
-          <div className="w-6 h-6 border-2 border-primary border-t-transparent rounded-full animate-spin" />
+        <div className="flex-1 flex flex-col gap-2 p-4">
+          {[0, 1, 2, 3].map((i) => (
+            <div key={i} className="skeleton" style={{ height: 34 }} />
+          ))}
         </div>
       </div>
     );
@@ -62,10 +65,14 @@ export default function CadastralHierarchy({ className = 'hidden md:flex w-72' }
     return (
       <div className={`bg-surface border-l border-border flex flex-col shrink-0 ${className}`}>
         <div className="px-4 py-3 border-b border-border">
+          <div className="page-eyebrow">Registry</div>
           <h3 className="font-display font-semibold text-sm text-text-primary">HIERARCHY</h3>
         </div>
         <div className="flex-1 flex items-center justify-center p-4">
-          <p className="text-text-tertiary text-sm text-center">No parcels found. Import data to begin.</p>
+          <div className="empty-state">
+            <div className="empty-title">No parcels yet</div>
+            <div className="empty-sub">Import cadastral data to populate the registry tree.</div>
+          </div>
         </div>
       </div>
     );
@@ -76,17 +83,20 @@ export default function CadastralHierarchy({ className = 'hidden md:flex w-72' }
       {/* Header */}
       <div className="px-4 py-3 border-b border-border">
         <div className="flex items-center justify-between mb-2">
-          <h3 className="font-display font-semibold text-sm text-text-primary">CADASTRAL HIERARCHY</h3>
-          <span className="font-mono text-xs text-text-tertiary">{parcels.length} parcel(s)</span>
+          <div>
+            <div className="page-eyebrow">Registry</div>
+            <h3 className="font-display font-semibold text-sm text-text-primary">CADASTRAL HIERARCHY</h3>
+          </div>
+          <span className="chip">{parcels.length} parcel(s)</span>
         </div>
-        <div className="relative">
-          <Search size={14} className="absolute left-2 top-1/2 -translate-y-1/2 text-text-tertiary" />
+        <div className="input-icon">
+          <Search size={14} />
           <input
             type="text"
-            placeholder="Search..."
+            placeholder="Search parcels..."
             value={search}
             onChange={(e) => setSearch(e.target.value)}
-            className="w-full pl-8 pr-2 py-1.5 bg-muted border border-border rounded text-sm text-text-primary placeholder-text-tertiary outline-none focus:border-primary"
+            className="text-sm text-text-primary placeholder-text-tertiary outline-none focus:border-primary"
           />
         </div>
       </div>
@@ -103,11 +113,8 @@ export default function CadastralHierarchy({ className = 'hidden md:flex w-72' }
           <button
             key={f.id}
             onClick={() => setFilter(f.id as any)}
-            className={`flex items-center gap-1 px-2 py-1 text-xs font-medium rounded whitespace-nowrap transition-colors ${
-              filter === f.id
-                ? 'bg-primary text-white'
-                : 'text-text-tertiary hover:bg-muted hover:text-text-primary'
-            }`}
+            className={`chip transition-all ${filter === f.id ? 'chip-gold' : ''}`}
+            style={{ cursor: 'pointer' }}
           >
             {f.icon && <f.icon size={10} />}
             {f.label}
@@ -207,8 +214,8 @@ function HierarchyNode({ node, isExpanded, onToggle, onSelect, selectedNode, lev
           if (hasChildren) onToggle();
           onSelect(node.type, node.id, e);
         }}
-        className={`w-full flex items-center gap-2 px-2 py-1.5 rounded transition-colors ${
-          isSelected ? 'bg-primary/10 border border-primary' : 'hover:bg-muted'
+        className={`w-full flex items-center gap-2 px-2 py-1.5 rounded-lg transition-all ${
+          isSelected ? 'bg-primary/10 border border-accent shadow-[var(--shadow-gold)]' : 'border border-transparent hover:bg-muted'
         }`}
         style={{ paddingLeft: `${8 + level * 12}px` }}
       >

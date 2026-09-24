@@ -41,7 +41,7 @@ export default function StatusBar() {
           className="font-mono hidden sm:inline"
           style={{ fontSize: 9, color: 'var(--color-text-quaternary)', letterSpacing: '0.08em' }}
         >
-          4 UNITS · 1 PARCEL · 1 BUILDING
+          LIVE SCENE · EPSG:4326
         </span>
         <span
           className="font-mono"
