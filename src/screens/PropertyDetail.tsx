@@ -123,7 +123,7 @@ export default function PropertyDetail({ unitId, onBack }: Props) {
         {activeTab === 'record' && <RecordTab unit={unit} spatialId={spatialId} onCopy={copyToClipboard} copied={copied} />}
         {activeTab === 'geometry' && <GeometryTab unit={unit} onCopy={copyToClipboard} copied={copied} />}
         {activeTab === 'validation' && <ValidationTab unit={unit} />}
-        {activeTab === 'history' && <HistoryTab unit={unit} />}
+        {activeTab === 'history' && <HistoryTab unitId={unitId} unit={unit} />}
       </div>
     </div>
   );
@@ -340,10 +340,62 @@ function ValidationTab({ unit }: any) {
   );
 }
 
-function HistoryTab({ unit }: any) {
-  const versions = [
-    { v: `V${String(unit.geometry_version).padStart(2, '0')}`, date: unit.created_at ? new Date(unit.created_at).toLocaleDateString() : '—', user: 'SYSTEM', change: 'Initial registration', status: 'ACTIVE', hash: unit.geometry_hash?.slice(0, 12) + '...' || '—' },
-  ];
+function HistoryTab({ unitId, unit }: any) {
+  const [entries, setEntries] = useState<any[] | null>(null);
+  const [loadError, setLoadError] = useState<string | null>(null);
+
+  useEffect(() => {
+    let active = true;
+    api.getUnitHistory(unitId).then((result) => {
+      if (!active) return;
+      if (result.success && result.data && Array.isArray(result.data.history)) {
+        setEntries([...result.data.history].reverse());
+      } else {
+        setLoadError(result.error || 'Failed to load version history');
+      }
+    });
+    return () => { active = false; };
+  }, [unitId]);
+
+  if (loadError) {
+    return (
+      <div className="max-w-2xl">
+        <h3 className="font-display font-semibold mb-6 text-text-primary">VERSION HISTORY</h3>
+        <div className="bg-surface border border-border rounded-lg p-4 text-sm text-text-secondary">{loadError}</div>
+      </div>
+    );
+  }
+
+  if (!entries) {
+    return (
+      <div className="max-w-2xl">
+        <h3 className="font-display font-semibold mb-6 text-text-primary">VERSION HISTORY</h3>
+        <div className="flex items-center gap-3 text-text-tertiary font-mono text-sm">
+          <div className="w-5 h-5 border-2 border-primary border-t-transparent rounded-full animate-spin" />
+          Loading version history...
+        </div>
+      </div>
+    );
+  }
+
+  if (entries.length === 0) {
+    return (
+      <div className="max-w-2xl">
+        <h3 className="font-display font-semibold mb-6 text-text-primary">VERSION HISTORY</h3>
+        <div className="bg-surface border border-border rounded-lg p-4 text-sm text-text-secondary">No prior versions recorded for this unit.</div>
+      </div>
+    );
+  }
+
+  const versions = entries.map((h: any, idx: number) => ({
+    v: `V${String(h.version).padStart(2, '0')}`,
+    date: h.changed_at ? new Date(h.changed_at).toLocaleDateString() : '—',
+    user: h.changed_by || 'SYSTEM',
+    change: h.reason || (idx === entries.length - 1 ? 'Initial registration' : 'Geometry update'),
+    status: idx === 0 ? 'ACTIVE' : 'RETIRED',
+    hash: h.geometry_hash ? h.geometry_hash.slice(0, 12) + '...' : '—',
+    z: (h.z_min !== undefined && h.z_max !== undefined) ? `${h.z_min} / ${h.z_max} m` : '—',
+  }));
 
   return (
     <div className="max-w-2xl">
@@ -365,6 +417,8 @@ function HistoryTab({ unit }: any) {
                 <SmallRow label="ACTOR" value={v.user} />
                 <SmallRow label="STATUS" value={v.status} />
                 <SmallRow label="HASH" value={v.hash} />
+                <SmallRow label="Z-RANGE" value={v.z} />
+                <SmallRow label="CHANGE" value={v.change} />
               </div>
             </div>
           </div>

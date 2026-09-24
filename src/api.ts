@@ -234,6 +234,10 @@ class ApiClient {
     return this.request(`/api/units/${id}`);
   }
 
+  async getUnitHistory(id: string): Promise<ApiResponse<any>> {
+    return this.request(`/api/units/${id}/history`);
+  }
+
   // Statistics
   async getStatistics(): Promise<ApiResponse<any>> {
     return this.request('/api/statistics');
