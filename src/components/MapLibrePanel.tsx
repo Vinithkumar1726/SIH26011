@@ -102,6 +102,7 @@ export default function MapLibrePanel({ apiBase, initial, target, footprints, se
   const [cursor, setCursor] = useState('');
   const [error, setError] = useState<string | null>(null);
   const [registryCount, setRegistryCount] = useState(0);
+  const [diag, setDiag] = useState('STYLE: …');
 
   const key = import.meta.env.VITE_MAPTILER_API_KEY as string | undefined;
   const center0 = initial ?? COIMBATORE;
@@ -135,7 +136,13 @@ export default function MapLibrePanel({ apiBase, initial, target, footprints, se
         const hit = feats.find((f: any) => f.properties && typeof f.properties.parcel_id === 'string');
         onSelectParcel(hit ? String((hit.properties as any).parcel_id) : null);
       });
-      map.on('error', () => setError('MapTiler request failed — check the API key and network connection.'));
+      map.on('error', (ev: any) => {
+        const msg = ev?.error?.message ?? ev?.error?.status ?? 'tile/style error';
+        setDiag((d) => `${d} | ERR: ${String(msg).slice(0, 60)}`);
+        setError('MapTiler request failed — check the API key and network connection.');
+      });
+      map.on('load', () => setDiag('STYLE: loaded'));
+      map.on('idle', () => setDiag((d) => (d.startsWith('STYLE: loaded') ? 'STYLE: loaded · TILES: idle' : d)));
       mapRef.current = map;
     } catch {
       setError('Map initialization failed in this browser.');
@@ -284,6 +291,7 @@ export default function MapLibrePanel({ apiBase, initial, target, footprints, se
     <div className="flex flex-col h-full min-h-0" style={{ background: '#F4F1E8' }}>
       <div className="flex items-center gap-2 px-3 py-2 shrink-0" style={{ background: '#FFFFFF', borderBottom: '3px solid #111111' }}>
         <span className="brutal-badge brutal-badge-black" style={{ fontSize: 8 }}>MAPTILER VECTOR</span>
+        <span className="font-mono" style={{ fontSize: 8, color: '#555' }}>{diag}</span>
         <span className="brutal-badge" style={{ fontSize: 8 }}>{registryCount} REGISTRY</span>
         <span className="brutal-badge brutal-badge-gold" style={{ fontSize: 8 }}>{footprints.length} LIVE</span>
       </div>
