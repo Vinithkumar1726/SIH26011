@@ -125,28 +125,19 @@ def _mercator_bbox(lat: float, lon: float, half_m: float = TILE_HALF_M):
 
 
 def _fetch_satellite_tile(lat: float, lon: float, zoom: int = 19) -> np.ndarray | None:
-    """Fetches a live satellite tile from Google Maps and resizes it for YOLO."""
+    """Fetches a live satellite tile via the configured imagery provider."""
     try:
+        from imagery_providers import get_provider
+
         lat_rad = math.radians(lat)
         n = 2.0 ** zoom
         x = int((lon + 180.0) / 360.0 * n)
         y = int((1.0 - math.asinh(math.tan(lat_rad)) / math.pi) / 2.0 * n)
 
-        # lyrs=s requests high-res satellite imagery without street labels
-        url = f"https://mt1.google.com/vt/lyrs=s&x={x}&y={y}&z={zoom}"
-
-        # Google requires a standard browser User-Agent
-        req = urllib.request.Request(
-            url,
-            headers={'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36'}
-        )
-
-        with urllib.request.urlopen(req, timeout=5) as resp:
-            arr = np.frombuffer(resp.read(), np.uint8)
-            img = cv2.imdecode(arr, cv2.IMREAD_COLOR)
-            if img is not None:
-                # Resize to the 640x640 resolution expected by YOLOv11
-                return cv2.resize(img, (TILE_PX, TILE_PX))
+        img = get_provider().fetch_tile(x, y, zoom)
+        if img is not None:
+            # Resize to the 640x640 resolution expected by YOLOv11
+            return cv2.resize(img, (TILE_PX, TILE_PX))
     except Exception:
         pass
     return None
