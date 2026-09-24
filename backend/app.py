@@ -2108,7 +2108,8 @@ async def list_cadastral_parcels():
         rows = (await session.execute(text(
             "SELECT p.parcel_id, p.height_m, ST_AsGeoJSON(p.footprint) AS geom, "
             "EXISTS (SELECT 1 FROM cadastral_parcels q WHERE q.parcel_id != p.parcel_id "
-            "AND ST_3DIntersects(q.solid_geom, p.solid_geom)) AS encroachment "
+            "AND ST_3DIntersects(q.solid_geom, p.solid_geom)) AS encroachment, "
+            "ST_ZMin(p.solid_geom) AS elevation "
             "FROM cadastral_parcels p ORDER BY p.parcel_id"
         ))).all()
         return [
@@ -2117,6 +2118,7 @@ async def list_cadastral_parcels():
                 "height_m": r[1],
                 "footprint": _json.loads(r[2]) if r[2] else None,
                 "encroachment": bool(r[3]),
+                "elevation_msl_m": float(r[4]) if r[4] is not None else 0.0,
             }
             for r in rows
         ]
