@@ -219,6 +219,7 @@ export default function Explorer3D() {
   const [minimumMarketValue, setMinimumMarketValue] = useState(0);
   const [popupBlocked, setPopupBlocked] = useState(false);
   const [liveCaptureMode, setLiveCaptureMode] = useState(false);
+  const [lowPower, setLowPower] = useState(false);
   const [liveCaptureLoading, setLiveCaptureLoading] = useState(false);
   const [liveCaptureNotice, setLiveCaptureNotice] = useState<string | null>(null);
   const [liveData, setLiveData] = useState<LiveHierarchy | null>(null);
@@ -904,6 +905,7 @@ export default function Explorer3D() {
               key={p.parcel_id}
               parcel={p}
               origin={origin}
+              lowPower={lowPower}
               onHover={(name) => setHoverBlock(name)}
             />
           ))}
@@ -989,6 +991,13 @@ export default function Explorer3D() {
             className={`w-full text-[10px] py-1 rounded uppercase tracking-wider mb-2 ${liveCaptureMode ? 'bg-emerald-500/20 text-emerald-300 border border-emerald-400/40' : 'bg-white/5 text-slate-400 border border-transparent hover:text-white'}`}
           >
             {liveCaptureMode ? '◉ Live Capture: ON' : '◎ Live Capture Mode'}
+          </button>
+          <button
+            type="button"
+            onClick={() => setLowPower((v) => !v)}
+            className={`w-full text-[10px] py-1 rounded uppercase tracking-wider mb-2 ${lowPower ? 'bg-emerald-500/20 text-emerald-300 border border-emerald-400/40' : 'bg-white/5 text-slate-400 border border-transparent hover:text-white'}`}
+          >
+            {lowPower ? '◉ Low Power: ON' : '◎ Low Power Mode'}
           </button>
           {liveCaptureNotice && (
             <div className="text-[10px] text-amber-300 bg-amber-500/10 border border-amber-400/20 rounded px-2 py-1 mb-2">
@@ -2066,9 +2075,10 @@ function NeighbourBlock({ nb, origin, onSelect, onHover }: {
   );
 }
 
-function LiveCapturedBlock({ parcel, origin, onHover }: {
+function LiveCapturedBlock({ parcel, origin, lowPower, onHover }: {
   parcel: { parcel_id: string; height_m: number; footprint: { type: string; coordinates: number[][][] } | null; encroachment?: boolean };
   origin: [number, number];
+  lowPower: boolean;
   onHover: (label: string | null) => void;
 }) {
   const [hovered, setHovered] = useState(false);
@@ -2109,11 +2119,13 @@ function LiveCapturedBlock({ parcel, origin, onHover }: {
       onPointerOut={() => { setHovered(false); onHover(null); document.body.style.cursor = 'default'; }}
     >
       <primitive object={geom} attach="geometry" />
-      <meshStandardMaterial color={encroached ? '#ef4444' : '#a855f7'} transparent opacity={hovered ? 0.8 : 0.55} side={THREE.DoubleSide} />
+      <meshStandardMaterial color={encroached ? '#ef4444' : '#a855f7'} transparent={!lowPower} opacity={lowPower ? 1 : (hovered ? 0.8 : 0.55)} side={THREE.DoubleSide} />
+      {!lowPower && (
       <lineSegments>
         <primitive object={edges} attach="geometry" />
         <lineBasicMaterial color={encroached ? '#fecaca' : hovered ? '#ffffff' : '#e9d5ff'} transparent opacity={0.6} />
       </lineSegments>
+      )}
     </mesh>
   );
 }
