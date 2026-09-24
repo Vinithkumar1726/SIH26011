@@ -71,24 +71,28 @@ function addExtrusions(m: maplibregl.Map) {
     /* planet source absent in this style: cadastral extrusions still render */
   }
   // Our cadastral parcels as solid brutalist blocks (always available).
-  if (!m.getLayer('sih-live-extrude') && m.getSource(SRC_LIVE)) {
-    m.addLayer({
-      id: 'sih-live-extrude',
-      type: 'fill-extrusion',
-      source: SRC_LIVE,
-      paint: {
-        'fill-extrusion-color': [
-          'case',
-          ['==', ['get', 'parcel_id'], ''],
-          '#F4F1E8',
-          ['get', 'encroachment'], '#D92D20',
-          '#F4F1E8',
-        ],
-        'fill-extrusion-height': ['get', 'height_m'],
-        'fill-extrusion-base': 0,
-        'fill-extrusion-opacity': 0.9,
-      },
-    });
+  try {
+    if (!m.getLayer('sih-live-extrude') && m.getSource(SRC_LIVE)) {
+      m.addLayer({
+        id: 'sih-live-extrude',
+        type: 'fill-extrusion',
+        source: SRC_LIVE,
+        paint: {
+          'fill-extrusion-color': [
+            'case',
+            ['==', ['get', 'parcel_id'], ''],
+            '#F4F1E8',
+            ['get', 'encroachment'], '#D92D20',
+            '#F4F1E8',
+          ],
+          'fill-extrusion-height': ['get', 'height_m'],
+          'fill-extrusion-base': 0,
+          'fill-extrusion-opacity': 0.9,
+        },
+      });
+    }
+  } catch {
+    /* extrusion layer must never break the basemap */
   }
 }
 
