@@ -8,7 +8,7 @@
 
 import type {
   Parcel, Building, Floor, Unit, SpatialID,
-  ValidationCheck, AIProposal, ImportAudit, AppUser, SpatialConfig
+  ValidationCheck, ImportAudit, AppUser, SpatialConfig
 } from './types';
 
 // ─── Geometry helpers ──────────────────────────────────────────
@@ -254,18 +254,6 @@ export const validationChecks: ValidationCheck[] = [
   { id: 'vc-07', code: 'AREA_POSITIVE', label: 'Area > 0 ∀ units', severity: 'MEDIUM', passed: true, detail: 'All unit areas positive and non-degenerate' },
   { id: 'vc-08', code: 'SOLID_CLOSED', label: 'PolyhedralSurface closure', severity: 'MEDIUM', passed: true, detail: 'All solids are watertight (2 caps + N walls)' },
 ];
-
-// ─── AI proposal ───────────────────────────────────────────────
-export const aiProposal: AIProposal = {
-  id: 'aip-001',
-  primary_model: 'SegFormer / MiT-B0',
-  verifier_model: 'DeepLabV3 / ResNet-50',
-  iou: 0.94,
-  agreement: 0.91,
-  status: 'REVIEW_REQUIRED',
-  footprint_proposed: rectFootprint(CLon, CLat, BDx, BDy),
-  footprint_verified: rectFootprint(CLon, CLat, BDx * 0.97, BDy * 0.97),
-};
 
 // ─── Import audit ──────────────────────────────────────────────
 export const importAudit: ImportAudit = {
