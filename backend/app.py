@@ -8,6 +8,7 @@ import json
 import math
 import hashlib
 import uuid
+import urllib.request
 from datetime import datetime
 from typing import List, Optional, Dict, Any
 from pathlib import Path
@@ -1666,6 +1667,23 @@ class LiveExtractionRequest(BaseModel):
     building_height_m: float = 12.0
 
 
+def fetch_srtm_elevation(lat: float, lon: float) -> float:
+    """Fetch true ground elevation in meters MSL (NASA SRTM 30m).
+
+    Returns 0.0 (flat ground) on any failure so capture never blocks.
+    """
+    try:
+        url = f"https://api.opentopodata.org/v1/srtm30m?locations={lat},{lon}"
+        req = urllib.request.Request(url, headers={'User-Agent': 'CadastralAI/1.0'})
+        with urllib.request.urlopen(req, timeout=5) as resp:
+            data = json.loads(resp.read().decode())
+            if data['results'] and data['results'][0]['elevation']:
+                return float(data['results'][0]['elevation'])
+    except Exception:
+        pass
+    return 0.0  # Fallback to flat ground
+
+
 def generate_3d_ulpin(lat: float, lon: float, z_max: float) -> str:
     """Synthetic 14-char Bhu-Aadhaar-style parcel id (NOT an official ULPIN).
 
@@ -1766,6 +1784,9 @@ async def extract_live_building(payload: LiveExtractionRequest):
         source = "vision"
         model_primary = "YOLO11n-seg ONNX"
     ulpin = generate_3d_ulpin(lat, lon, height)
+    # True terrain altitude for the eventual 3D extrusion (stored as
+    # provenance; applied at APPROVED materialization time).
+    z_base = fetch_srtm_elevation(lat, lon)
     proposal_id = uuid.uuid4().hex
     async with async_session() as session:
         session.add(AIProposal(
@@ -1785,6 +1806,7 @@ async def extract_live_building(payload: LiveExtractionRequest):
                 "lat": lat,
                 "lon": lon,
                 "source": source,
+                "z_base_msl_m": z_base,
             },
         ))
         await session.commit()
@@ -1988,12 +2010,13 @@ async def review_ai_proposal(proposal_id: str, request: dict):
         if decision == "APPROVED":
             if not data.get("wkt") or not data.get("ulpin") or data.get("height_m") is None:
                 raise HTTPException(status_code=422, detail="Proposal has no capturable geometry")
+            z_base = float(data.get("z_base_msl_m") or 0.0)
             await session.execute(text(
                 "INSERT INTO cadastral_parcels (parcel_id, footprint, solid_geom, height_m) "
                 "VALUES (:ulpin, ST_GeomFromText(:wkt, 4326), "
-                "ST_Multi(ST_CollectionExtract(ST_Extrude(ST_Force3D(ST_GeomFromText(:wkt, 4326)), 0, 0, :height), 3)), :height) "
+                "ST_Translate(ST_Multi(ST_CollectionExtract(ST_Extrude(ST_Force3D(ST_GeomFromText(:wkt, 4326)), 0, 0, :height), 3)), 0, 0, :z_base), :height) "
                 "ON CONFLICT (parcel_id) DO NOTHING"
-            ), {"ulpin": data["ulpin"], "wkt": data["wkt"], "height": data["height_m"]})
+            ), {"ulpin": data["ulpin"], "wkt": data["wkt"], "height": data["height_m"], "z_base": z_base})
             proposal.status = "APPROVED"
         else:
             proposal.status = "REJECTED"
