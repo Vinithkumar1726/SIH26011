@@ -83,24 +83,25 @@ export default function MobileNavDrawer({ isOpen, onClose, active, onNav }: Prop
           transition={{ type: 'spring', damping: 25, stiffness: 300 }}
           className="flex flex-col h-full w-72 max-w-[85vw]"
           style={{
-            background: 'var(--color-bg-surface)',
-            borderRight: '1px solid var(--color-border-secondary)',
+            background: '#111111',
+            borderRight: '3px solid #000000',
+            boxShadow: '8px 0 0 rgba(0,0,0,0.35)',
           }}
         >
           {/* Header */}
-          <div className="flex items-center justify-between p-4 border-b" style={{ borderColor: 'var(--color-border-secondary)' }}>
-            <h3 className="font-display font-semibold text-sm" style={{ color: 'var(--color-text-primary)', letterSpacing: '0.04em' }}>
-              NAVIGATION
-            </h3>
+          <div className="flex items-center justify-between p-4" style={{ borderBottom: '2px solid #F5C400' }}>
+            <div>
+              <div className="font-display font-bold text-white" style={{ fontSize: 15 }}>SIH26011</div>
+              <div className="font-mono" style={{ fontSize: 8, letterSpacing: '0.18em', color: '#F5C400' }}>NAVIGATION</div>
+            </div>
             <motion.button
               onClick={onClose}
-              className="btn-ghost p-2"
-              style={{ padding: 8 }}
-              whileHover={{ scale: 1.1 }}
-              whileTap={{ scale: 0.9 }}
+              className="p-2 text-white hover:bg-[#F5C400] hover:text-black"
+              style={{ padding: 8, border: '2px solid #F5C400' }}
+              whileTap={{ scale: 0.92 }}
               aria-label="Close navigation"
             >
-              <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" style={{ color: 'var(--color-text-tertiary)' }}>
+              <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
                 <line x1="18" y1="6" x2="6" y2="18"></line>
                 <line x1="6" y1="6" x2="18" y2="18"></line>
               </svg>
@@ -108,17 +109,16 @@ export default function MobileNavDrawer({ isOpen, onClose, active, onNav }: Prop
           </div>
 
           {/* Navigation items */}
-          <div className="flex-1 overflow-y-auto p-4">
+          <div className="flex-1 overflow-y-auto p-3">
             {SECTIONS.map((section) => (
-              <div key={section.title} className="mb-6">
-                <div className="px-2 mb-2" style={{
+              <div key={section.title} className="mb-5">
+                <div className="px-2 mb-1.5" style={{
                   fontSize: 9,
-                  fontWeight: 600,
-                  letterSpacing: '0.12em',
-                  color: 'var(--color-text-quaternary)',
-                  fontFamily: 'var(--font-body)',
+                  fontWeight: 700,
+                  letterSpacing: '0.16em',
+                  color: '#8a8a8a',
+                  fontFamily: 'var(--brutal-font-body)',
                   textTransform: 'uppercase',
-                  letterSpacing: '0.12em',
                 }}>
                   {section.title}
                 </div>
@@ -129,19 +129,17 @@ export default function MobileNavDrawer({ isOpen, onClose, active, onNav }: Prop
                       key={item.id}
                       onClick={() => { onNav(item.id); onClose(); }}
                       layout
-                      className="w-full flex items-center gap-3 px-3 py-2.5 rounded-lg transition-colors"
+                      className="w-full flex items-center gap-3 px-3 py-2.5 transition-all duration-100"
                       style={{
-                        background: isActive ? 'var(--color-primary-bg)' : 'transparent',
-                        color: isActive ? 'var(--color-primary)' : 'var(--color-text-tertiary)',
-                        fontWeight: isActive ? 500 : 400,
-                        borderLeft: `3px solid ${isActive ? 'var(--color-accent)' : 'transparent'}`,
-                        paddingLeft: isActive ? '13px' : '16px',
+                        background: isActive ? '#F5C400' : 'transparent',
+                        color: isActive ? '#111111' : '#d4d4d4',
+                        fontWeight: isActive ? 700 : 500,
+                        border: '2px solid transparent',
                       }}
-                      whileHover={{ x: 4, backgroundColor: isActive ? 'var(--color-primary-bg)' : 'var(--color-bg-hover)' }}
                       whileTap={{ scale: 0.98 }}
                     >
                       <span style={{ 
-                        color: isActive ? 'var(--color-accent)' : 'var(--color-text-quaternary)',
+                        color: isActive ? '#111111' : '#F5C400',
                         display: 'flex',
                         alignItems: 'center',
                         justifyContent: 'center',

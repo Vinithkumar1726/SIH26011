@@ -44,11 +44,15 @@ interface Props {
 
 export default function Sidebar({ active, onNav }: Props) {
   return (
-    <aside className="hidden lg:flex flex-col shrink-0 w-60 h-full px-3 py-4" style={{ background: 'linear-gradient(180deg, #0B132B 0%, #111c38 60%, #0B132B 100%)', borderRight: '1px solid rgb(201 154 69 / 0.18)' }}>
-      <div className="flex-1 overflow-y-auto">
-        {SECTIONS.map((section, si) => (
-          <div key={section.title} className={`mb-5 fade-up stagger-${Math.min(si + 1, 3)}`}>
-            <div className="px-4 mb-1.5 text-[9px] font-semibold tracking-[0.16em] text-slate-500">
+    <aside className="hidden lg:flex flex-col shrink-0 w-60 h-full px-0 py-0" style={{ background: '#111111', borderRight: '3px solid #000000' }}>
+      <div className="px-4 pt-4 pb-3" style={{ borderBottom: '2px solid var(--accent-primary)' }}>
+        <div className="font-display font-bold text-white tracking-[0.06em]" style={{ fontSize: 17 }}>SIH26011</div>
+        <div className="font-mono text-[9px] tracking-[0.18em]" style={{ color: 'var(--accent-primary)' }}>3D CADASTRAL SYSTEM</div>
+      </div>
+      <div className="flex-1 overflow-y-auto px-3 py-3">
+        {SECTIONS.map((section) => (
+          <div key={section.title} className="mb-4">
+            <div className="px-2 mb-1.5 text-[9px] font-bold tracking-[0.18em] text-neutral-500">
               {section.title}
             </div>
             {section.items.map((item) => {
@@ -57,16 +61,18 @@ export default function Sidebar({ active, onNav }: Props) {
                 <button
                   key={item.id}
                   onClick={() => onNav(item.id)}
-                  className={`relative w-full flex items-center gap-3 px-4 py-2.5 rounded-lg text-[13px] transition-all duration-150 ${
-                    isActive
-                      ? 'bg-white/[0.07] text-amber-200 font-medium shadow-[inset_0_1px_0_rgb(255_255_255/0.06)]'
-                      : 'text-slate-400 hover:bg-white/5 hover:text-slate-100 hover:translate-x-0.5'
-                  }`}
+                  className="relative w-full flex items-center gap-3 px-3 py-2 text-[13px] font-medium transition-all duration-100"
+                  style={{
+                    background: isActive ? 'var(--accent-primary)' : 'transparent',
+                    color: isActive ? '#111111' : '#d4d4d4',
+                    border: '2px solid transparent',
+                    borderRadius: 0,
+                    fontWeight: isActive ? 700 : 500,
+                  }}
+                  onMouseEnter={(e) => { if (!isActive) { e.currentTarget.style.background = '#222'; e.currentTarget.style.transform = 'translateX(3px)'; } }}
+                  onMouseLeave={(e) => { if (!isActive) { e.currentTarget.style.background = 'transparent'; e.currentTarget.style.transform = 'none'; } }}
                 >
-                  {isActive && (
-                    <span className="absolute left-0 top-2 bottom-2 w-[3px] rounded-full" style={{ background: 'linear-gradient(180deg, var(--color-gold-400), var(--color-gold-600))' }} />
-                  )}
-                  <span className={`flex shrink-0 transition-colors ${isActive ? 'text-amber-300' : 'text-slate-500'}`}>
+                  <span className="flex shrink-0" style={{ color: isActive ? '#111111' : 'var(--accent-primary)' }}>
                     {item.icon}
                   </span>
                   {item.label}
@@ -78,8 +84,8 @@ export default function Sidebar({ active, onNav }: Props) {
       </div>
 
       {/* System status footer */}
-      <div className="px-4 py-4 border-t border-white/10">
-        <div className="text-[9px] font-semibold tracking-[0.16em] text-slate-500 mb-2">
+      <div className="px-4 py-3" style={{ borderTop: '2px solid var(--accent-primary)' }}>
+        <div className="text-[9px] font-bold tracking-[0.18em] text-neutral-500 mb-2">
           SYSTEM STATUS
         </div>
         {[
@@ -89,13 +95,13 @@ export default function Sidebar({ active, onNav }: Props) {
           { label: 'VERSION', status: '2.4.1', tone: null },
         ].map((row) => (
           <div key={row.label} className="flex justify-between items-center mb-1.5">
-            <span className="font-mono text-[9px] tracking-[0.08em] text-slate-500 flex items-center gap-1.5">
+            <span className="font-mono text-[9px] tracking-[0.08em] text-neutral-400 flex items-center gap-1.5">
               {row.tone && <span className={`status-led ${row.tone}`} />}
               {row.label}
             </span>
             <span
               className={`font-mono text-[9px] tracking-[0.08em] ${
-                row.tone === null ? 'text-slate-500' : row.tone === 'online' ? 'text-emerald-400' : 'text-red-400'
+                row.tone === null ? 'text-neutral-500' : row.tone === 'online' ? 'text-emerald-400' : 'text-red-400'
               }`}
             >
               {row.status}

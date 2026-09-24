@@ -7,45 +7,37 @@ export default function StatusBar() {
 
   return (
     <footer
-      className="flex items-center justify-between px-4 shrink-0"
+      className="flex items-center justify-between px-3 shrink-0"
       style={{
-        height: 26,
-        background: 'var(--color-bg-surface)',
-        borderTop: '1px solid var(--color-border-secondary)',
+        height: 32,
+        background: '#111111',
+        borderTop: '2px solid #000000',
       }}
     >
-      <div className="flex items-center gap-4">
+      <div className="flex items-center gap-3">
         <span
           className="font-mono"
-          style={{ fontSize: 9, color: 'var(--color-text-quaternary)', letterSpacing: '0.08em' }}
+          style={{ fontSize: 9, color: '#F5C400', letterSpacing: '0.08em', fontWeight: 700 }}
         >
-          SIH26011 · 3D ULPIN CADASTRAL GIS WORKSTATION · v2.4.1
+          SYS: ONLINE
         </span>
         <span
-          style={{
-            width: 1,
-            height: 10,
-            background: 'var(--color-border-primary)',
-            display: 'inline-block',
-          }}
-        />
-        <span
           className="font-mono hidden md:inline"
-          style={{ fontSize: 9, color: 'var(--color-text-quaternary)', letterSpacing: '0.08em' }}
+          style={{ fontSize: 9, color: '#a3a3a3', letterSpacing: '0.08em' }}
         >
           EPSG:4326 · WGS84
         </span>
       </div>
-      <div className="flex items-center gap-4">
+      <div className="flex items-center gap-3">
         <span
           className="font-mono hidden sm:inline"
-          style={{ fontSize: 9, color: 'var(--color-text-quaternary)', letterSpacing: '0.08em' }}
+          style={{ fontSize: 9, color: '#a3a3a3', letterSpacing: '0.08em' }}
         >
-          LIVE SCENE · EPSG:4326
+          LIVE SCENE
         </span>
         <span
           className="font-mono"
-          style={{ fontSize: 9, color: 'var(--color-text-quaternary)', letterSpacing: '0.08em' }}
+          style={{ fontSize: 9, color: '#F4F1E8', letterSpacing: '0.08em', fontVariantNumeric: 'tabular-nums' }}
         >
           {date} · {ts}
         </span>

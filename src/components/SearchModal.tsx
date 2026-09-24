@@ -73,41 +73,41 @@ export default function SearchModal({ onClose, onNav }: Props) {
       onClick={(e) => { if (e.target === e.currentTarget) onClose(); }}
     >
       <div
-        className="fade-up w-full flex flex-col"
+        className="w-full flex flex-col"
         style={{
-          maxWidth: 640,
-          background: 'var(--color-bg-surface)',
-          border: '1px solid var(--color-border-primary)',
-          borderRadius: 'var(--radius-lg)',
-          overflow: 'hidden',
-          boxShadow: 'var(--shadow-lg)',
+          maxWidth: 680,
+          background: '#111111',
+          border: '3px solid #000000',
+          boxShadow: '8px 8px 0 #000000',
         }}
       >
         {/* Input */}
         <div
           className="flex items-center gap-3 px-4"
-          style={{ borderBottom: '1px solid var(--color-border-primary)', height: 52 }}
+          style={{ borderBottom: '2px solid #F5C400', minHeight: 60 }}
         >
-          <Search size={14} style={{ color: 'var(--color-text-quaternary)' }} />
+          <Search size={16} style={{ color: '#F5C400' }} />
           <input
             ref={inputRef}
             value={query}
             onChange={(e) => setQuery(e.target.value)}
-            placeholder="SEARCH CADASTRAL DATABASE..."
+            placeholder="> Type to search ULPIN, parcel, unit…"
             className="flex-1"
+            aria-label="Global cadastral search"
             style={{
               background: 'transparent',
               border: 'none',
               outline: 'none',
-              color: 'var(--color-text-primary)',
-              fontFamily: 'var(--font-mono)',
-              fontSize: 12,
-              letterSpacing: '0.04em',
+              color: '#FFFFFF',
+              fontFamily: 'var(--brutal-font-mono)',
+              fontSize: 15,
+              fontWeight: 700,
+              letterSpacing: '0.02em',
               padding: 0,
             }}
           />
-          <button onClick={onClose} className="btn-ghost" style={{ padding: 4 }}>
-            <X size={12} style={{ color: 'var(--color-text-quaternary)' }} />
+          <button onClick={onClose} className="brutal-btn-gold brutal-btn" style={{ padding: '4px 10px', fontSize: 10 }} aria-label="Close search">
+            <X size={12} />
           </button>
         </div>
 
@@ -117,16 +117,16 @@ export default function SearchModal({ onClose, onNav }: Props) {
             <div key={group.group}>
               <div
                 className="px-4 py-2 flex items-center gap-2"
-                style={{ borderBottom: '1px solid var(--color-border-secondary)' }}
+                style={{ borderBottom: '2px solid #F5C400', background: '#1c1c1c' }}
               >
-                <span style={{ color: 'var(--color-text-quaternary)' }}>{group.icon}</span>
+                <span style={{ color: '#F5C400' }}>{group.icon}</span>
                 <span
                   style={{
-                    fontSize: 9,
-                    fontWeight: 600,
-                    letterSpacing: '0.12em',
-                    color: 'var(--color-text-quaternary)',
-                    fontFamily: 'var(--font-body)',
+                    fontSize: 10,
+                    fontWeight: 700,
+                    letterSpacing: '0.14em',
+                    color: '#FFFFFF',
+                    fontFamily: 'var(--brutal-font-body)',
                   }}
                 >
                   {group.group}
@@ -135,21 +135,22 @@ export default function SearchModal({ onClose, onNav }: Props) {
               {group.items.map((item) => (
                 <button
                   key={item.id}
-                  className="w-full flex flex-col px-5 py-3 text-left transition-colors"
-                  style={{ background: 'transparent', border: 'none', cursor: 'pointer', borderBottom: '1px solid var(--color-border-secondary)' }}
-                  onMouseEnter={(e) => (e.currentTarget.style.background = 'var(--color-bg-hover)')}
-                  onMouseLeave={(e) => (e.currentTarget.style.background = 'transparent')}
+                  className="w-full flex flex-col px-5 py-3 text-left"
+                  style={{ background: '#111111', border: 'none', borderBottom: '1px solid #333', cursor: 'pointer' }}
+                  onMouseEnter={(e) => { e.currentTarget.style.background = '#F5C400'; const l = e.currentTarget.querySelector('[data-label]'); if (l) (l as HTMLElement).style.color = '#111111'; }}
+                  onMouseLeave={(e) => { e.currentTarget.style.background = '#111111'; const l = e.currentTarget.querySelector('[data-label]'); if (l) (l as HTMLElement).style.color = '#FFFFFF'; }}
                   onClick={() => { onNav('records'); onClose(); }}
                 >
                   <span
+                    data-label
                     className="font-mono"
-                    style={{ fontSize: 11, color: 'var(--color-text-primary)', letterSpacing: '0.02em' }}
+                    style={{ fontSize: 12, fontWeight: 700, color: '#FFFFFF', letterSpacing: '0.02em' }}
                   >
                     {item.label}
                   </span>
                   <span
                     className="font-mono"
-                    style={{ fontSize: 9, color: 'var(--color-text-quaternary)', marginTop: 2, letterSpacing: '0.04em' }}
+                    style={{ fontSize: 9, color: '#999', marginTop: 2, letterSpacing: '0.04em' }}
                   >
                     {item.sub}
                   </span>

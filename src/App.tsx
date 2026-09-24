@@ -313,7 +313,7 @@ function AppInner() {
         height: '100vh',
         display: 'flex',
         flexDirection: 'column',
-        background: '#020617',
+        background: '#F4F1E8',
         overflow: 'hidden',
       }}
     >
@@ -323,7 +323,7 @@ function AppInner() {
         <div style={{ flex: 1, minWidth: 0, display: 'flex', flexDirection: 'column', minHeight: 0 }}>
           <Topbar screen={screen} onNav={setScreen} apiOnline={apiOnline} />
 
-          <main style={{ flex: 1, minHeight: 0, minWidth: 0, overflow: 'auto', display: 'flex', flexDirection: 'column' }}>
+          <main style={{ flex: 1, minHeight: 0, minWidth: 0, overflow: 'auto', display: 'flex', flexDirection: 'column', background: '#F4F1E8' }}>
             {renderScreen()}
           </main>
         </div>

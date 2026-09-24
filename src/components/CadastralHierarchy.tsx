@@ -2,6 +2,7 @@ import { useState, useEffect } from 'react';
 import { ChevronRight, ChevronDown, MapPin, Building2, Layers, Box, Copy, Search } from 'lucide-react';
 import { api } from '../api';
 import { useAuth } from '../App';
+import { BrutalEmpty } from './brutal';
 
 export default function CadastralHierarchy({ className = 'hidden md:flex w-72' }: { className?: string }) {
   const { user } = useAuth();
@@ -47,14 +48,14 @@ export default function CadastralHierarchy({ className = 'hidden md:flex w-72' }
 
   if (loading) {
     return (
-      <div className={`bg-surface border-l border-border flex flex-col shrink-0 ${className}`}>
-        <div className="px-4 py-3 border-b border-border">
-          <div className="page-eyebrow">Registry</div>
-          <h3 className="font-display font-semibold text-sm text-text-primary">HIERARCHY</h3>
+      <div className={`bg-white flex flex-col shrink-0 ${className}`} style={{ borderLeft: '3px solid #111111' }}>
+        <div className="px-4 py-3" style={{ borderBottom: '3px solid #111111', background: '#111111' }}>
+          <div className="brutal-eyebrow" style={{ color: '#F5C400' }}>Registry</div>
+          <h3 className="font-display font-bold text-sm text-white">HIERARCHY</h3>
         </div>
         <div className="flex-1 flex flex-col gap-2 p-4">
           {[0, 1, 2, 3].map((i) => (
-            <div key={i} className="skeleton" style={{ height: 34 }} />
+            <div key={i} className="brutal-skeleton" style={{ height: 34 }} />
           ))}
         </div>
       </div>
@@ -63,31 +64,28 @@ export default function CadastralHierarchy({ className = 'hidden md:flex w-72' }
 
   if (parcels.length === 0) {
     return (
-      <div className={`bg-surface border-l border-border flex flex-col shrink-0 ${className}`}>
-        <div className="px-4 py-3 border-b border-border">
-          <div className="page-eyebrow">Registry</div>
-          <h3 className="font-display font-semibold text-sm text-text-primary">HIERARCHY</h3>
+      <div className={`bg-white flex flex-col shrink-0 ${className}`} style={{ borderLeft: '3px solid #111111' }}>
+        <div className="px-4 py-3" style={{ borderBottom: '3px solid #111111', background: '#111111' }}>
+          <div className="brutal-eyebrow" style={{ color: '#F5C400' }}>Registry</div>
+          <h3 className="font-display font-bold text-sm text-white">HIERARCHY</h3>
         </div>
         <div className="flex-1 flex items-center justify-center p-4">
-          <div className="empty-state">
-            <div className="empty-title">No parcels yet</div>
-            <div className="empty-sub">Import cadastral data to populate the registry tree.</div>
-          </div>
+          <BrutalEmpty title="No parcels yet" sub="Import cadastral data to populate the registry tree." />
         </div>
       </div>
     );
   }
 
   return (
-    <div className={`bg-surface border-l border-border flex flex-col shrink-0 ${className}`}>
+    <div className={`bg-white flex flex-col shrink-0 ${className}`} style={{ borderLeft: '3px solid #111111' }}>
       {/* Header */}
-      <div className="px-4 py-3 border-b border-border">
+      <div className="px-4 py-3" style={{ borderBottom: '3px solid #111111', background: '#111111' }}>
         <div className="flex items-center justify-between mb-2">
           <div>
-            <div className="page-eyebrow">Registry</div>
-            <h3 className="font-display font-semibold text-sm text-text-primary">CADASTRAL HIERARCHY</h3>
+            <div className="brutal-eyebrow" style={{ color: '#F5C400' }}>Registry</div>
+            <h3 className="font-display font-bold text-sm text-white">CADASTRAL HIERARCHY</h3>
           </div>
-          <span className="chip">{parcels.length} parcel(s)</span>
+          <span className="brutal-badge brutal-badge-gold">{parcels.length} parcel(s)</span>
         </div>
         <div className="input-icon">
           <Search size={14} />
@@ -96,7 +94,8 @@ export default function CadastralHierarchy({ className = 'hidden md:flex w-72' }
             placeholder="Search parcels..."
             value={search}
             onChange={(e) => setSearch(e.target.value)}
-            className="text-sm text-text-primary placeholder-text-tertiary outline-none focus:border-primary"
+            className="brutal-input"
+            style={{ background: '#fff' }}
           />
         </div>
       </div>
@@ -208,16 +207,18 @@ function HierarchyNode({ node, isExpanded, onToggle, onSelect, selectedNode, lev
   const hasChildren = node.children && node.children.length > 0;
 
   return (
-    <div className="select-none">
+    <div className="select-none" style={level > 0 ? { borderLeft: '2px solid #111111', marginLeft: 11, paddingLeft: 4 } : undefined}>
       <button
         onClick={(e) => {
           if (hasChildren) onToggle();
           onSelect(node.type, node.id, e);
         }}
-        className={`w-full flex items-center gap-2 px-2 py-1.5 rounded-lg transition-all ${
-          isSelected ? 'bg-primary/10 border border-accent shadow-[var(--shadow-gold)]' : 'border border-transparent hover:bg-muted'
-        }`}
-        style={{ paddingLeft: `${8 + level * 12}px` }}
+        className="w-full flex items-center gap-2 px-2 py-1.5 transition-all duration-100"
+        style={isSelected
+          ? { background: '#F5C400', border: '2px solid #111111', boxShadow: '3px 3px 0 #111111' }
+          : { border: '2px solid transparent' }}
+        onMouseEnter={(e) => { if (!isSelected) e.currentTarget.style.background = '#F4F1E8'; }}
+        onMouseLeave={(e) => { if (!isSelected) e.currentTarget.style.background = 'transparent'; }}
       >
         {hasChildren && (
           <span className="flex items-center justify-center w-5 text-text-tertiary">

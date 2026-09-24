@@ -25,86 +25,77 @@ export default function Topbar({ screen, onNav, apiOnline }: Props) {
   const [mobileNavOpen, setMobileNavOpen] = useState(false);
 
   return (
-    <header className="flex items-center gap-3 px-4 h-14 shrink-0 border-b border-white/10" style={{ background: 'linear-gradient(180deg, #0d152e 0%, #0B132B 100%)' }}>
+    <header className="flex items-center gap-3 px-4 shrink-0" style={{ height: 56, background: '#FFFFFF', borderBottom: '3px solid #111111' }}>
       {/* Left: mobile menu button + logo */}
       <div className="flex items-center gap-3 min-w-0">
         <button
-          className="lg:hidden shrink-0 rounded-lg p-2 text-slate-300 hover:bg-white/5 hover:text-white transition-colors"
+          className="lg:hidden shrink-0 p-2 text-[#111] hover:bg-[#F5C400]"
+          style={{ border: '2px solid #111111' }}
           onClick={() => setMobileNavOpen(true)}
           aria-label="Open navigation menu"
         >
-          <Menu size={20} />
+          <Menu size={18} strokeWidth={2.5} />
         </button>
         <div
-          className="flex items-center gap-3 cursor-pointer min-w-0 group"
+          className="flex items-center gap-2 cursor-pointer min-w-0"
           onClick={() => onNav('dashboard')}
         >
-          <div className="flex items-center justify-center font-display font-bold text-xs tracking-widest w-9 h-9 shrink-0 rounded-lg text-[#0B132B] transition-transform group-hover:scale-105" style={{ background: 'linear-gradient(135deg, var(--color-gold-300), var(--color-gold-600))', boxShadow: 'var(--shadow-gold)' }}>
-            3D
+          <div className="flex items-center justify-center font-display font-bold text-xs tracking-widest w-9 h-9 shrink-0 text-[#111]" style={{ background: 'var(--accent-primary)', border: '2px solid #111111', boxShadow: '3px 3px 0 #111111' }}>
+            SIH
           </div>
           <div className="min-w-0">
-            <div className="font-display font-semibold leading-none text-[13px] text-white tracking-[0.04em] truncate">
-              3D ULPIN
+            <div className="font-display font-bold leading-none text-[14px] text-[#111] tracking-[0.02em] truncate">
+              SIH26011
             </div>
-            <div className="text-[8px] text-amber-200/60 leading-none mt-1 truncate tracking-[0.14em]">
-              CADASTRAL GIS WORKSTATION
+            <div className="font-mono text-[8px] text-[#555] leading-none mt-1 truncate tracking-[0.14em]">
+              3D CADASTRAL COMMAND
             </div>
           </div>
         </div>
       </div>
 
       {/* Center: breadcrumb */}
-      <div className="hidden sm:flex flex-1 justify-center px-2 min-w-0">
-        <span className="font-mono text-[10px] text-slate-400 tracking-[0.12em] truncate px-3 py-1 rounded-full border border-white/10 bg-white/[0.03]">
+      <nav aria-label="Breadcrumb" className="hidden sm:flex flex-1 justify-center px-2 min-w-0">
+        <span className="font-mono text-[10px] text-[#111] tracking-[0.12em] truncate px-3 py-1" style={{ border: '2px solid #111111', background: '#F4F1E8' }}>
           {BREADCRUMBS[screen]}
         </span>
-      </div>
+      </nav>
 
       {/* Right: status + user */}
-      <div className="flex items-center gap-3 sm:gap-4 justify-end shrink-0 ml-auto">
-        <div className="hidden md:flex items-center gap-3">
-          <div className="flex items-center gap-1.5">
-            <span className="status-led online" />
-            <span className="font-mono text-[9px] text-emerald-400 tracking-[0.08em]">
-              DATABASE
-            </span>
-          </div>
-          <div className="flex items-center gap-1.5">
-            <span className={`status-led ${apiOnline ? 'online' : 'warning'}`} />
-            <span
-              className={`font-mono text-[9px] tracking-[0.08em] ${apiOnline ? 'text-emerald-400' : 'text-amber-400'}`}
-            >
-              {apiOnline ? 'API' : 'API OFFLINE'}
-            </span>
-          </div>
+      <div className="flex items-center gap-2 justify-end shrink-0 ml-auto">
+        <div className="hidden md:flex items-center gap-2">
+          <span className="brutal-badge brutal-badge-green" style={{ borderRadius: 0 }}>
+            <span className="status-led online" />API
+          </span>
+          <span className={`brutal-badge ${apiOnline ? 'brutal-badge-green' : 'brutal-badge-red'}`} style={{ borderRadius: 0 }}>
+            <span className={`status-led ${apiOnline ? 'online' : 'error'}`} />{apiOnline ? 'POSTGIS' : 'OFFLINE'}
+          </span>
+          <span className="brutal-badge" style={{ borderRadius: 0 }}>
+            <span className="status-led online" />MAP
+          </span>
         </div>
 
-        <div className="hidden md:block w-px h-5 bg-white/10" />
-
         <button
-          className="flex items-center gap-1.5 rounded-lg px-2 py-1 text-slate-300 hover:bg-white/5 hover:text-white transition-colors min-w-0 max-w-[140px]"
+          className="hidden sm:flex items-center gap-1.5 px-2 py-1 text-[#111] hover:bg-[#F5C400] min-w-0 max-w-[140px]"
+          style={{ border: '2px solid #111111' }}
           title="VINITH K"
         >
-          <div className="flex items-center justify-center font-display font-semibold w-6 h-6 shrink-0 rounded-md text-[10px] text-[#0B132B]" style={{ background: 'linear-gradient(135deg, var(--color-gold-300), var(--color-gold-600))' }}>
-            VK
-          </div>
-          <span className="hidden sm:inline truncate text-[11px]" style={{ fontFamily: 'var(--font-body)' }}>
-            VINITH K
-          </span>
-          <ChevronDown size={10} className="shrink-0 text-slate-500" />
+          <span className="truncate text-[11px] font-bold">VINITH K</span>
+          <ChevronDown size={10} className="shrink-0" />
         </button>
 
         <button
-          className="rounded-lg p-1.5 text-slate-500 hover:bg-white/5 hover:text-slate-200 shrink-0"
+          className="p-1.5 text-[#111] hover:bg-[#F5C400] shrink-0"
+          style={{ border: '2px solid #111111' }}
           onClick={() => onNav('settings')}
           aria-label="Settings"
         >
           <Settings size={14} />
         </button>
 
-        <button className="relative rounded-lg p-1.5 text-slate-500 hover:bg-white/5 hover:text-slate-200 shrink-0" aria-label="Notifications">
+        <button className="relative p-1.5 text-[#111] hover:bg-[#F5C400] shrink-0" style={{ border: '2px solid #111111' }} aria-label="Notifications">
           <Bell size={14} />
-          <span className="absolute top-1 right-1 w-[5px] h-[5px] bg-amber-400 rounded-full" />
+          <span className="absolute top-0.5 right-0.5 w-[7px] h-[7px] bg-[#D92D20] rounded-none border border-[#111]" />
         </button>
       </div>
       <MobileNavDrawer
