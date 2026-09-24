@@ -655,6 +655,12 @@ async def db_new_solid_conflicts(session, unit_id, floor_id, wkt, z_min, z_max):
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
+    try:
+        async with engine.begin() as conn:
+            await conn.run_sync(Base.metadata.create_all)
+        print("Database initialized successfully")
+    except Exception as e:
+        print(f"Database initialization failed: {e}")
     yield
     await engine.dispose()
 
@@ -2465,18 +2471,8 @@ async def get_unit_history(unit_id: str):
 
 
 # ============================================================================
-# STARTUP
+# STARTUP (handled by the lifespan context above)
 # ============================================================================
-
-@app.on_event("startup")
-async def startup():
-    """Initialize database on startup"""
-    try:
-        async with engine.begin() as conn:
-            await conn.run_sync(Base.metadata.create_all)
-        print("Database initialized successfully")
-    except Exception as e:
-        print(f"Database initialization failed: {e}")
 
 if __name__ == "__main__":
     import uvicorn
