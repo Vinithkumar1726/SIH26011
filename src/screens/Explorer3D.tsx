@@ -81,6 +81,8 @@ async function printPdfReport(bldg: Building, flrs: Floor[], units: Unit[], sids
   height_m: number;
   lat: number;
   lon: number;
+  elevation_msl_m?: number;
+  encroachment?: boolean;
 } | null) {
   const dash = '—';
   const printWindow = window.open('', '_blank', 'noopener,noreferrer');
@@ -110,7 +112,7 @@ async function printPdfReport(bldg: Building, flrs: Floor[], units: Unit[], sids
     `<h1>3D Bhu-Aadhaar</h1><p>Generated ${new Date().toLocaleDateString('en-IN')}</p>`,
     `<h2>Building · ${bldg.name}</h2><p><b>Owner:</b> ${bldg.ownership?.ownerName ?? dash}<br><b>Ownership:</b> ${bldg.ownership?.ownershipType ?? dash}<br><b>Market value:</b> ${bMarket}<br><b>Assessed value:</b> ${bAssessed}</p>`,
     ...(live
-      ? [`<h2>Live-captured structure</h2><p><b>Bhu-Aadhaar:</b> ${live.ulpin}<br><b>Height:</b> ${live.height_m}m<br><b>Location:</b> ${live.lat.toFixed(6)}, ${live.lon.toFixed(6)}</p>`]
+      ? [`<h2>Live-captured structure</h2><p><b>Bhu-Aadhaar:</b> ${live.ulpin}<br><b>Height:</b> ${live.height_m}m<br><b>Location:</b> ${live.lat.toFixed(6)}, ${live.lon.toFixed(6)}<br><b>Elevation (MSL):</b> ${live.elevation_msl_m !== undefined ? `${live.elevation_msl_m}m (NASA SRTM)` : dash}<br><b>Encroachment Check:</b> ${live.encroachment === undefined ? dash : live.encroachment ? '<span style="color: red; font-weight: bold;">CONFLICT DETECTED</span>' : '<span style="color: green;">CLEAR</span>'}</p>`]
       : []),
     '<h2>Floor valuation schedule</h2><table><thead><tr><th>Floor</th><th>Owner</th><th>Ownership</th><th>Market value</th><th>Assessed value</th><th>Year</th></tr></thead><tbody>',
     ...flrs.map((floor) => {
@@ -231,6 +233,7 @@ export default function Explorer3D() {
     height_m: number;
     footprint: { type: string; coordinates: number[][][] } | null;
     encroachment?: boolean;
+    elevation_msl_m?: number;
   }>>([]);
   const [hoverBlock, setHoverBlock] = useState<string | null>(null);
   const [showCity, setShowCity] = useState(true);
@@ -2076,7 +2079,7 @@ function NeighbourBlock({ nb, origin, onSelect, onHover }: {
 }
 
 function LiveCapturedBlock({ parcel, origin, lowPower, onHover }: {
-  parcel: { parcel_id: string; height_m: number; footprint: { type: string; coordinates: number[][][] } | null; encroachment?: boolean };
+  parcel: { parcel_id: string; height_m: number; footprint: { type: string; coordinates: number[][][] } | null; encroachment?: boolean; elevation_msl_m?: number };
   origin: [number, number];
   lowPower: boolean;
   onHover: (label: string | null) => void;
