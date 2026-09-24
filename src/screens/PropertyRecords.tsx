@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { Copy, CheckCircle, Clock } from 'lucide-react';
+import { Copy } from 'lucide-react';
 
 const VERSIONS = [
   {

@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useState } from 'react';
-import { Sparkles, CheckCircle, X, Edit2, ArrowRight } from 'lucide-react';
+import { ArrowRight } from 'lucide-react';
 import { api } from '../api';
 
 const PROPOSALS = [
