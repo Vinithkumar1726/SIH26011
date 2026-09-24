@@ -229,6 +229,7 @@ export default function Explorer3D() {
     parcel_id: string;
     height_m: number;
     footprint: { type: string; coordinates: number[][][] } | null;
+    encroachment?: boolean;
   }>>([]);
   const [hoverBlock, setHoverBlock] = useState<string | null>(null);
   const [showCity, setShowCity] = useState(true);
@@ -2066,12 +2067,18 @@ function NeighbourBlock({ nb, origin, onSelect, onHover }: {
 }
 
 function LiveCapturedBlock({ parcel, origin, onHover }: {
-  parcel: { parcel_id: string; height_m: number; footprint: { type: string; coordinates: number[][][] } | null };
+  parcel: { parcel_id: string; height_m: number; footprint: { type: string; coordinates: number[][][] } | null; encroachment?: boolean };
   origin: [number, number];
   onHover: (label: string | null) => void;
 }) {
   const [hovered, setHovered] = useState(false);
-  const label = `Live-captured (approved) · ${parcel.parcel_id}`;
+  const encroached = parcel.encroachment === true;
+  const label = encroached
+    ? `Live-captured (approved) · ${parcel.parcel_id} · ENCROACHMENT`
+    : `Live-captured (approved) · ${parcel.parcel_id}`;
+  useEffect(() => {
+    if (encroached) console.warn(`Encroachment: approved parcel ${parcel.parcel_id} intersects an existing parcel solid`);
+  }, [encroached, parcel.parcel_id]);
   const geom = useMemo(() => {
     const ring0 = parcel.footprint?.coordinates?.[0] ?? [];
     const pts = footprintToLocal(ring0, origin[0], origin[1]);
@@ -2102,10 +2109,10 @@ function LiveCapturedBlock({ parcel, origin, onHover }: {
       onPointerOut={() => { setHovered(false); onHover(null); document.body.style.cursor = 'default'; }}
     >
       <primitive object={geom} attach="geometry" />
-      <meshStandardMaterial color="#a855f7" transparent opacity={hovered ? 0.8 : 0.55} side={THREE.DoubleSide} />
+      <meshStandardMaterial color={encroached ? '#ef4444' : '#a855f7'} transparent opacity={hovered ? 0.8 : 0.55} side={THREE.DoubleSide} />
       <lineSegments>
         <primitive object={edges} attach="geometry" />
-        <lineBasicMaterial color={hovered ? '#ffffff' : '#e9d5ff'} transparent opacity={0.6} />
+        <lineBasicMaterial color={encroached ? '#fecaca' : hovered ? '#ffffff' : '#e9d5ff'} transparent opacity={0.6} />
       </lineSegments>
     </mesh>
   );

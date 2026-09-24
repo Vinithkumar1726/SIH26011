@@ -44,6 +44,7 @@ export default function AIReview() {
   const [live, setLive] = useState<LiveProposal[]>([]);
   const [liveLoading, setLiveLoading] = useState(true);
   const [liveError, setLiveError] = useState<string | null>(null);
+  const [encroachNote, setEncroachNote] = useState<string | null>(null);
 
   const refreshLive = useCallback(async () => {
     setLiveLoading(true);
@@ -60,8 +61,16 @@ export default function AIReview() {
 
   const decide = async (id: string, decision: 'APPROVED' | 'REJECTED') => {
     const res = await api.reviewAIProposal(id, decision);
-    if (res.success) await refreshLive();
-    else setLiveError(res.error || 'Review failed');
+    if (res.success) {
+      const encroached = decision === 'APPROVED' && (res.data as any)?.encroachment === true;
+      if (encroached) {
+        console.warn(`Encroachment: approved parcel ${(res.data as any)?.ulpin ?? id} intersects an existing parcel solid`);
+        setEncroachNote(`Approved with ENCROACHMENT warning — ${(res.data as any)?.ulpin ?? id} physically intersects an existing parcel.`);
+      } else {
+        setEncroachNote(null);
+      }
+      await refreshLive();
+    } else setLiveError(res.error || 'Review failed');
   };
   const [statuses, setStatuses] = useState<Record<string, Status>>(
     Object.fromEntries(PROPOSALS.map((p) => [p.id, 'pending']))
@@ -110,6 +119,9 @@ export default function AIReview() {
           )}
           {liveError && (
             <div style={{ fontSize: 11, color: '#C85C5C' }}>{liveError}</div>
+          )}
+          {encroachNote && (
+            <div style={{ fontSize: 11, color: '#E5484D', border: '1px solid #E5484D', borderRadius: 3, padding: '6px 10px' }}>{encroachNote}</div>
           )}
           {!liveLoading && !liveError && live.length === 0 && (
             <div style={{ fontSize: 11, color: '#6E7783' }}>

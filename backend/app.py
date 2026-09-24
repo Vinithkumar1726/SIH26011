@@ -2017,6 +2017,15 @@ async def review_ai_proposal(proposal_id: str, request: dict):
                 "ST_Translate(ST_Multi(ST_CollectionExtract(ST_Extrude(ST_Force3D(ST_GeomFromText(:wkt, 4326)), 0, 0, :height), 3)), 0, 0, :z_base), :height) "
                 "ON CONFLICT (parcel_id) DO NOTHING"
             ), {"ulpin": data["ulpin"], "wkt": data["wkt"], "height": data["height_m"], "z_base": z_base})
+            # Physical encroachment: does the new solid intersect any other parcel?
+            conflict_query = text("""
+                SELECT EXISTS (
+                    SELECT 1 FROM cadastral_parcels
+                    WHERE parcel_id != :ulpin
+                    AND ST_3DIntersects(solid_geom, (SELECT solid_geom FROM cadastral_parcels WHERE parcel_id = :ulpin))
+                )
+            """)
+            has_encroachment = bool((await session.execute(conflict_query, {"ulpin": data["ulpin"]})).scalar())
             proposal.status = "APPROVED"
         else:
             proposal.status = "REJECTED"
@@ -2026,6 +2035,7 @@ async def review_ai_proposal(proposal_id: str, request: dict):
             "status": proposal.status,
             "proposal_id": proposal.id,
             "ulpin": data.get("ulpin"),
+            "encroachment": has_encroachment if decision == "APPROVED" else False,
             "reviewed_at": datetime.utcnow().isoformat()
         }
 
@@ -2042,14 +2052,17 @@ async def list_cadastral_parcels():
         from sqlalchemy import text
 
         rows = (await session.execute(text(
-            "SELECT parcel_id, height_m, ST_AsGeoJSON(footprint) AS geom "
-            "FROM cadastral_parcels ORDER BY parcel_id"
+            "SELECT p.parcel_id, p.height_m, ST_AsGeoJSON(p.footprint) AS geom, "
+            "EXISTS (SELECT 1 FROM cadastral_parcels q WHERE q.parcel_id != p.parcel_id "
+            "AND ST_3DIntersects(q.solid_geom, p.solid_geom)) AS encroachment "
+            "FROM cadastral_parcels p ORDER BY p.parcel_id"
         ))).all()
         return [
             {
                 "parcel_id": r[0],
                 "height_m": r[1],
                 "footprint": _json.loads(r[2]) if r[2] else None,
+                "encroachment": bool(r[3]),
             }
             for r in rows
         ]
