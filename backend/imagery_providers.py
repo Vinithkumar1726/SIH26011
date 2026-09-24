@@ -53,21 +53,56 @@ class EsriWorldImageryProvider(ImageryProvider):
 
 
 class GoogleOfficialProvider(ImageryProvider):
-    """Google Maps tiles via official API key (env GOOGLE_MAPS_API_KEY).
+    """Google Map Tiles API v1 via official API key (env GOOGLE_MAPS_API_KEY).
 
-    Raises at construction when no key is configured so the pipeline can
-    fall back instead of scraping tile servers.
+    Flow: createSession (mapType=satellite) -> session token (cached until
+    expiry) -> 2dtiles/{z}/{x}/{y}?session=&key=. Raises at construction
+    when no key is configured so the pipeline can fall back.
     """
 
     name = "google-official"
+    _session_token: str | None = None
+    _session_expiry: float = 0.0
 
     def __init__(self, api_key: str | None = None):
         self.api_key = api_key or os.getenv("GOOGLE_MAPS_API_KEY")
         if not self.api_key:
             raise RuntimeError("GOOGLE_MAPS_API_KEY is not configured")
 
+    def _session(self) -> str:
+        import json as _json
+        import time as _time
+
+        if (GoogleOfficialProvider._session_token
+                and _time.time() < GoogleOfficialProvider._session_expiry - 60):
+            return GoogleOfficialProvider._session_token
+        body = _json.dumps({
+            "mapType": "satellite",
+            "language": "en-US",
+            "region": "IN",
+        }).encode()
+        req = urllib.request.Request(
+            f"https://tile.googleapis.com/v1/createSession?key={self.api_key}",
+            data=body,
+            headers={'Content-Type': 'application/json', 'User-Agent': _BROWSER_UA},
+        )
+        with urllib.request.urlopen(req, timeout=15) as resp:
+            data = _json.loads(resp.read().decode())
+        token = data.get("session")
+        if not token:
+            raise RuntimeError(f"Map Tiles session creation failed: {str(data)[:160]}")
+        self_token = token
+        GoogleOfficialProvider._session_token = self_token
+        try:
+            GoogleOfficialProvider._session_expiry = float(data.get("expiry", 0)) or (_time.time() + 1700)
+        except (TypeError, ValueError):
+            GoogleOfficialProvider._session_expiry = _time.time() + 1700
+        return self_token
+
     def tile_url(self, x: int, y: int, zoom: int) -> str:
-        return f"https://mt1.google.com/vt/lyrs=s&x={x}&y={y}&z={zoom}&key={self.api_key}"
+        token = GoogleOfficialProvider._session_token or self._session()
+        return (f"https://tile.googleapis.com/v1/2dtiles/{zoom}/{x}/{y}"
+                f"?session={token}&key={self.api_key}")
 
 
 def get_provider(name: str | None = None) -> ImageryProvider:
