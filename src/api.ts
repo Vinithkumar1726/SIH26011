@@ -249,7 +249,7 @@ class ApiClient {
 
   // Search
   async search(query: string): Promise<ApiResponse<any[]>> {
-    return this.request(`/api/search?q=${encodeURIComponent(query)}`);
+    return this.request(`/api/search?query=${encodeURIComponent(query)}`);
   }
 
   // AI Candidates
