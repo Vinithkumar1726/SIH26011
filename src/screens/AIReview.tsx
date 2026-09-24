@@ -37,6 +37,10 @@ interface LiveProposal {
   status: string;
   source: string | null;
   ulpin: string | null;
+  height_m: number | null;
+  height_source: string | null;
+  floors_override: number | null;
+  z_base_msl_m: number | null;
   created_at: string | null;
 }
 
@@ -58,6 +62,25 @@ export default function AIReview() {
   useEffect(() => {
     void refreshLive();
   }, [refreshLive]);
+
+  const [editingId, setEditingId] = useState<string | null>(null);
+  const [draftHeight, setDraftHeight] = useState('');
+  const [draftFloors, setDraftFloors] = useState('');
+  const [editMsg, setEditMsg] = useState<string | null>(null);
+
+  const saveEdit = async (id: string) => {
+    const patch: { height_m?: number; floors_override?: number; height_source?: string } = {};
+    if (draftHeight.trim() !== '') patch.height_m = Number(draftHeight);
+    if (draftFloors.trim() !== '') patch.floors_override = Number(draftFloors);
+    if (patch.height_m !== undefined) patch.height_source = 'USER';
+    if (Object.keys(patch).length === 0) { setEditMsg('Nothing to save.'); return; }
+    const editRes = await api.editAIProposal(id, patch);
+    if (editRes.success) {
+      setEditMsg(null);
+      setEditingId(null);
+      await refreshLive();
+    } else setEditMsg(editRes.error || 'Edit failed');
+  };
 
   const decide = async (id: string, decision: 'APPROVED' | 'REJECTED') => {
     const res = await api.reviewAIProposal(id, decision);
@@ -178,6 +201,70 @@ export default function AIReview() {
                 <p style={{ fontSize: 11, color: '#D6A84F', margin: '0 0 4px 0' }}>
                   Synthetic 10 m box — NOT a detected building.
                 </p>
+              )}
+              <div className="flex items-center gap-2 flex-wrap" style={{ margin: '4px 0' }}>
+                <span className="chip" style={{ background: 'transparent', fontSize: 9 }}>
+                  H {p.height_m ?? '—'} m
+                </span>
+                <span
+                  className="chip"
+                  style={{
+                    background: 'transparent', fontSize: 9,
+                    borderColor: (p.height_source ?? 'ESTIMATED') === 'USER' ? 'rgb(79 184 172 / 0.5)' : 'rgb(201 154 69 / 0.4)',
+                    color: (p.height_source ?? 'ESTIMATED') === 'USER' ? '#4FB8AC' : '#D6A84F',
+                  }}
+                  title="Height provenance: ESTIMATED is not survey-grade"
+                >
+                  {(p.height_source ?? 'ESTIMATED') === 'USER' ? 'USER-SET' : 'ESTIMATED'}
+                </span>
+                {p.floors_override != null && (
+                  <span className="chip" style={{ background: 'transparent', fontSize: 9 }}>
+                    {p.floors_override} FLOORS (USER)
+                  </span>
+                )}
+                {p.z_base_msl_m != null && (
+                  <span className="chip" style={{ background: 'transparent', fontSize: 9 }}>
+                    BASE {Number(p.z_base_msl_m).toFixed(1)} m MSL
+                  </span>
+                )}
+                <button
+                  className="btn-ghost"
+                  style={{ fontSize: 9, padding: '2px 8px' }}
+                  onClick={() => {
+                    setEditingId(editingId === p.id ? null : p.id);
+                    setDraftHeight(p.height_m != null ? String(p.height_m) : '');
+                    setDraftFloors(p.floors_override != null ? String(p.floors_override) : '');
+                    setEditMsg(null);
+                  }}
+                >
+                  {editingId === p.id ? 'CANCEL EDIT' : 'EDIT H/FLOORS'}
+                </button>
+              </div>
+              {editingId === p.id && (
+                <div className="flex items-center gap-2 flex-wrap" style={{ margin: '4px 0 8px 0' }}>
+                  <input
+                    value={draftHeight}
+                    onChange={(e) => setDraftHeight(e.target.value)}
+                    placeholder="Height m"
+                    type="number"
+                    min="0"
+                    step="0.5"
+                    style={{ width: 110, background: '#151B23', border: '1px solid #28313C', borderRadius: 6, padding: '4px 8px', fontFamily: 'IBM Plex Mono', fontSize: 10, color: '#F1F3F5', outline: 'none' }}
+                  />
+                  <input
+                    value={draftFloors}
+                    onChange={(e) => setDraftFloors(e.target.value)}
+                    placeholder="Floors"
+                    type="number"
+                    min="1"
+                    step="1"
+                    style={{ width: 90, background: '#151B23', border: '1px solid #28313C', borderRadius: 6, padding: '4px 8px', fontFamily: 'IBM Plex Mono', fontSize: 10, color: '#F1F3F5', outline: 'none' }}
+                  />
+                  <button className="btn-accent" style={{ fontSize: 9, padding: '4px 12px' }} onClick={() => void saveEdit(p.id)}>
+                    SAVE
+                  </button>
+                  {editMsg && <span style={{ fontSize: 10, color: '#E5484D' }}>{editMsg}</span>}
+                </div>
               )}
               <div className="flex gap-2 mt-3 pt-3" style={{ borderTop: '1px solid #1B222C' }}>
                 <button

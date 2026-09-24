@@ -8,6 +8,8 @@ import type { Building, Floor, SpatialID, Unit } from '../workspace3d/types';
 import { building as demoBuilding, floors as demoFloors, footprintToLocal, parcel as demoParcel, spatialIDs as demoSpatialIDs, units as demoUnits } from '../workspace3d/data';
 import QRCode from 'qrcode';
 import CollapsePanel from '../components/CollapsePanel';
+import LiveMapPanel from '../components/LiveMapPanel';
+import { api } from '../api';
 import CadastralHierarchy from '../components/CadastralHierarchy';
 import { loadLiveHierarchy, fetchCityBuildings, isCadastralBuilding, type BuildingSummary, type CityBuilding, type LiveHierarchy } from '../workspace3d/api';
 import { startAiJob, pollAiJob } from '../workspace3d/aiAnalysisService';
@@ -222,7 +224,8 @@ export default function Explorer3D() {
   const [popupBlocked, setPopupBlocked] = useState(false);
   const [liveCaptureMode, setLiveCaptureMode] = useState(false);
   const [lowPower, setLowPower] = useState(false);
-  const [liveCaptureLoading, setLiveCaptureLoading] = useState(false);
+  const [splitView, setSplitView] = useState(false);
+  const [selectedLiveParcelId, setSelectedLiveParcelId] = useState<string | null>(null);  const [liveCaptureLoading, setLiveCaptureLoading] = useState(false);
   const [liveCaptureNotice, setLiveCaptureNotice] = useState<string | null>(null);
   const [liveData, setLiveData] = useState<LiveHierarchy | null>(null);
   const [source, setSource] = useState<'loading' | 'live' | 'demo'>('loading');
@@ -238,6 +241,8 @@ export default function Explorer3D() {
   const [hoverBlock, setHoverBlock] = useState<string | null>(null);
   const [showCity, setShowCity] = useState(true);
   const [showPipes, setShowPipes] = useState(true);
+  const [showTerrain, setShowTerrain] = useState(true);
+  const [showLiveParcels, setShowLiveParcels] = useState(true);
   const [lidarTarget, setLidarTarget] = useState('');
   const [lidarRunning, setLidarRunning] = useState(false);
   const [lidarJob, setLidarJob] = useState<{
@@ -838,7 +843,7 @@ export default function Explorer3D() {
 
   return (
     <div className="h-full flex">
-      <div ref={canvasRef} className="flex-1 relative bg-void">
+      <div ref={canvasRef} className={`${splitView ? 'w-1/2' : 'flex-1'} relative bg-void`}>
         <Canvas
           camera={{ position: [70, 60, 70], fov: 50 }}
           frameloop={weather === 'monsoon' ? 'always' : 'demand'}
@@ -854,11 +859,13 @@ export default function Explorer3D() {
           <directionalLight position={[50, 80, 30]} intensity={sky.sun} color={sky.sunColor} castShadow={quality !== 'low'} shadow-mapSize={quality === 'high' ? [2048, 2048] : [1024, 1024]} />
           <directionalLight position={[-30, 40, -20]} intensity={sky.ambient} color={sky.sunColor} />
           <hemisphereLight args={[sky.hemiSky, sky.hemiGround, sky.ambient]} />
+          {showTerrain && (
           <Ground
             seeThrough={viewPreset === 'cutaway'}
             size={cityVisible && cityMeta ? 3 * cityMeta.radiusM : 200 * fh}
             onGroundClick={handleGroundClick}
           />
+          )}
           {showGrid && !cityVisible && <GridFloor size={200 * fh} />}
           {showParcel && (parcel.footprint || source === 'demo') && <ParcelOutline footprint={parcel.footprint} origin={origin} />}
           {cityVisible && cityOffset && (
@@ -903,12 +910,14 @@ export default function Explorer3D() {
               onHover={(name) => setHoverBlock(name)}
             />
           ))}
-          {cityVisible && liveParcels.map((p) => (
+          {cityVisible && showLiveParcels && liveParcels.map((p) => (
             <LiveCapturedBlock
               key={p.parcel_id}
               parcel={p}
               origin={origin}
               lowPower={lowPower}
+              selected={p.parcel_id === selectedLiveParcelId}
+              onSelect={() => setSelectedLiveParcelId((prev) => (prev === p.parcel_id ? null : p.parcel_id))}
               onHover={(name) => setHoverBlock(name)}
             />
           ))}
@@ -1001,6 +1010,13 @@ export default function Explorer3D() {
             className={`w-full text-[10px] py-1 rounded uppercase tracking-wider mb-2 ${lowPower ? 'bg-amber-400/15 text-amber-200 border border-amber-300/40' : 'bg-white/5 text-slate-400 border border-transparent hover:text-white'}`}
           >
             {lowPower ? '◉ Low Power: ON' : '◎ Low Power Mode'}
+          </button>
+          <button
+            type="button"
+            onClick={() => setSplitView((v) => !v)}
+            className={`w-full text-[10px] py-1 rounded uppercase tracking-wider mb-2 ${splitView ? 'bg-amber-400/15 text-amber-200 border border-amber-300/40' : 'bg-white/5 text-slate-400 border border-transparent hover:text-white'}`}
+          >
+            {splitView ? '◉ Split 2D/3D: ON' : '◎ Split 2D/3D View'}
           </button>
           {liveCaptureNotice && (
             <div className="fade-up text-[10px] leading-relaxed text-amber-200 bg-amber-400/10 border border-amber-300/30 rounded-lg px-2.5 py-1.5 mb-2" style={{ boxShadow: '0 4px 16px -8px rgb(251 191 36 / 0.5)' }}>
@@ -1103,6 +1119,8 @@ export default function Explorer3D() {
                     [showParcel, setShowParcel, 'Parcel boundary'],
                     [showFloors, setShowFloors, 'Floor slabs'],
                     [showUnits, setShowUnits, 'Property units'],
+                    [showTerrain, setShowTerrain, 'Terrain surface'],
+                    [showLiveParcels, setShowLiveParcels, 'Live-captured parcels'],
                   ] as const).map(([val, setVal, label]) => (
                     <label key={label} className="flex items-center gap-2 text-xs text-slate-300 cursor-pointer">
                       <input type="checkbox" checked={val} onChange={(e) => setVal(e.target.checked)} />
@@ -1571,6 +1589,12 @@ export default function Explorer3D() {
       </div>
 
       <div className={`${mobilePanel === 'inspector' ? 'fixed' : 'hidden'} md:static md:flex inset-x-0 bottom-0 z-40 md:z-auto w-auto md:w-80 max-h-[70vh] md:max-h-none overflow-y-auto md:overflow-visible flex-shrink-0 bg-abyss border-t md:border-t-0 md:border-l border-line flex-col`}>
+        {selectedLiveParcelId && (
+          <LiveParcelInspector
+            parcelId={selectedLiveParcelId}
+            onClose={() => setSelectedLiveParcelId(null)}
+          />
+        )}
         <div className="p-4 border-b border-line">
           <div className="flex items-center justify-between">
             <h3 className="text-sm font-semibold text-white flex items-center gap-2">
@@ -1682,6 +1706,17 @@ export default function Explorer3D() {
           })}
         </div>
       </div>
+      {splitView && (
+        <div className="w-1/2 border-l border-white/10 bg-[#070b14] flex flex-col min-h-0">
+          <LiveMapPanel
+            apiBase={(import.meta.env.VITE_API_URL || 'http://127.0.0.1:8000').replace(/\/$/, '')}
+            origin={cityMeta?.origin ?? { lon: origin[0], lat: origin[1] }}
+            footprints={liveParcels}
+            selectedParcelId={selectedLiveParcelId}
+            onSelectParcel={setSelectedLiveParcelId}
+          />
+        </div>
+      )}
     </div>
   );
 }
@@ -2081,10 +2116,60 @@ function NeighbourBlock({ nb, origin, onSelect, onHover }: {
   );
 }
 
-function LiveCapturedBlock({ parcel, origin, lowPower, onHover }: {
+function LiveParcelInspector({ parcelId, onClose }: { parcelId: string; onClose: () => void }) {
+  const [detail, setDetail] = useState<any | null>(null);
+  const [failed, setFailed] = useState(false);
+  useEffect(() => {
+    let active = true;
+    setDetail(null);
+    setFailed(false);
+    api.getCadastralParcel(parcelId).then((res) => {
+      if (!active) return;
+      if (res.success && res.data) setDetail(res.data);
+      else setFailed(true);
+    });
+    return () => { active = false; };
+  }, [parcelId]);
+  const rows: Array<[string, string]> = detail ? [
+    ['BUILDING ID', detail.parcel_id],
+    ['3D ULPIN', detail.parcel_id],
+    ['FOOTPRINT AREA', detail.footprint_area_sqm != null ? `${detail.footprint_area_sqm.toFixed(1)} m²` : '—'],
+    ['PERIMETER', detail.perimeter_m != null ? `${detail.perimeter_m.toFixed(1)} m` : '—'],
+    ['CENTROID', detail.centroid ? detail.centroid.coordinates.map((v: number) => v.toFixed(6)).join(', ') : '—'],
+    ['HEIGHT', `${detail.height_m} m`],
+    ['FLOORS (EST)', String(detail.floors_estimated)],
+    ['VOLUME', detail.volume_cum != null ? `${detail.volume_cum.toFixed(1)} m³` : detail.solid_valid === false ? 'INVALID SOLID' : '—'],
+    ['ELEVATION MSL', `${detail.elevation_msl_m} m`],
+    ['GEOMETRY VERSION', `V01 (parcel record)`],
+    ['GEOMETRY SOURCE', detail.geometry_source ?? '—'],
+    ['IMAGERY PROVIDER', detail.imagery_provider ?? '—'],
+    ['AI CONFIDENCE', detail.confidence != null ? String(detail.confidence) : '—'],
+    ['HEIGHT SOURCE', `${detail.height_source ?? 'ESTIMATED'}${detail.height_source === 'ESTIMATED' ? ' — NOT SURVEY-GRADE' : ''}`],
+  ] : [];
+  return (
+    <div className="p-4 border-b border-amber-300/25" style={{ background: 'rgb(201 154 69 / 0.06)' }}>
+      <div className="flex items-center justify-between mb-2">
+        <h3 className="text-sm font-semibold text-amber-200">Live Parcel Inspector</h3>
+        <button type="button" onClick={onClose} aria-label="Close parcel inspector" className="text-slate-400 hover:text-white text-xs px-2 py-1">✕</button>
+      </div>
+      {failed && <div className="text-[11px] text-red-300">Inspector detail unavailable.</div>}
+      {!detail && !failed && <div className="text-[11px] text-slate-400">Loading parcel metrics…</div>}
+      {rows.map(([k, v]) => (
+        <div key={k} className="flex items-start justify-between gap-2 py-0.5">
+          <span className="text-[9px] text-slate-500 uppercase tracking-wider shrink-0">{k}</span>
+          <span className="text-[10px] mono text-slate-200 text-right break-all">{v}</span>
+        </div>
+      ))}
+    </div>
+  );
+}
+
+function LiveCapturedBlock({ parcel, origin, lowPower, selected, onSelect, onHover }: {
   parcel: { parcel_id: string; height_m: number; footprint: { type: string; coordinates: number[][][] } | null; encroachment?: boolean; elevation_msl_m?: number };
   origin: [number, number];
   lowPower: boolean;
+  selected: boolean;
+  onSelect: () => void;
   onHover: (label: string | null) => void;
 }) {
   const [hovered, setHovered] = useState(false);
@@ -2120,12 +2205,12 @@ function LiveCapturedBlock({ parcel, origin, lowPower, onHover }: {
     <mesh
       position={[0, 0.02, 0]}
       rotation={[-Math.PI / 2, 0, 0]}
-      onClick={(e) => { e.stopPropagation(); onHover(label); }}
+      onClick={(e) => { e.stopPropagation(); onSelect(); onHover(label); }}
       onPointerOver={(e) => { e.stopPropagation(); setHovered(true); onHover(label); document.body.style.cursor = 'pointer'; }}
       onPointerOut={() => { setHovered(false); onHover(null); document.body.style.cursor = 'default'; }}
     >
       <primitive object={geom} attach="geometry" />
-      <meshStandardMaterial color={encroached ? '#ef4444' : '#a855f7'} transparent={!lowPower} opacity={lowPower ? 1 : (hovered ? 0.8 : 0.55)} side={THREE.DoubleSide} />
+      <meshStandardMaterial color={encroached ? '#ef4444' : selected ? '#fbbf24' : '#a855f7'} transparent={!lowPower} opacity={lowPower ? 1 : (hovered || selected ? 0.85 : 0.55)} side={THREE.DoubleSide} />
       {!lowPower && (
       <lineSegments>
         <primitive object={edges} attach="geometry" />

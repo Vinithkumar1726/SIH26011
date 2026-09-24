@@ -198,6 +198,19 @@ class ApiClient {
     });
   }
 
+  // AI: Edit a pending proposal's height/floors before review
+  async editAIProposal(proposalId: string, patch: { height_m?: number; floors_override?: number; height_source?: string }): Promise<ApiResponse<any>> {
+    return this.request(`/api/ai/proposal/${proposalId}/edit`, {
+      method: 'POST',
+      body: JSON.stringify(patch),
+    });
+  }
+
+  // Live-captured parcel inspector detail
+  async getCadastralParcel(parcelId: string): Promise<ApiResponse<any>> {
+    return this.request(`/api/cadastral-parcels/${encodeURIComponent(parcelId)}`);
+  }
+
   // Parcels
   async getParcels(): Promise<ApiResponse<any[]>> {
     return this.request('/api/parcels');
