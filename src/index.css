@@ -717,6 +717,11 @@ td.numeric, th.numeric { text-align: right; font-variant-numeric: tabular-nums; 
 /* Divider */
 .divider { height: 1px; background: linear-gradient(90deg, transparent, var(--color-border-secondary), transparent); border: none; margin: 4px 0; }
 
+/* Dark tables (audit / identifiers / dark rails) */
+.table-dark tr { transition: background 0.12s ease; }
+.table-dark tbody tr:hover { background: rgb(255 255 255 / 0.03); }
+.table-dark tbody tr:hover td { background: transparent; }
+
 /* Skeleton shimmer */
 @keyframes shimmer {
   0% { background-position: -400px 0; }

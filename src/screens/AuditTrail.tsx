@@ -28,6 +28,7 @@ export default function AuditTrail() {
   return (
     <div className="flex flex-col h-full overflow-hidden" style={{ background: '#0A0D12' }}>
       <div className="px-6 py-4 shrink-0" style={{ borderBottom: '1px solid #28313C' }}>
+        <div className="font-mono text-[10px] tracking-[0.2em] text-amber-300/70 mb-1">SYSTEM · IMMUTABLE LOG</div>
         <h1 className="font-display font-semibold" style={{ fontSize: 18, color: '#F1F3F5', letterSpacing: '0.04em' }}>
           AUDIT TRAIL
         </h1>
@@ -41,28 +42,30 @@ export default function AuditTrail() {
         className="flex items-center gap-3 px-5 py-3 shrink-0"
         style={{ borderBottom: '1px solid #28313C', background: '#10151C' }}
       >
-        <Search size={12} color="#6E7783" />
-        <input
-          value={query}
-          onChange={(e) => setQuery(e.target.value)}
-          placeholder="FILTER EVENTS..."
-          style={{
-            background: 'transparent',
-            border: 'none',
-            outline: 'none',
-            fontFamily: 'IBM Plex Mono',
-            fontSize: 11,
-            color: '#F1F3F5',
-            letterSpacing: '0.04em',
-            flex: 1,
-          }}
-        />
-        <span className="font-mono" style={{ fontSize: 9, color: '#6E7783' }}>
+        <div className="input-icon" style={{ flex: 1, maxWidth: 360 }}>
+          <Search size={12} color="#6E7783" />
+          <input
+            value={query}
+            onChange={(e) => setQuery(e.target.value)}
+            placeholder="FILTER EVENTS..."
+            style={{
+              background: 'transparent',
+              border: 'none',
+              outline: 'none',
+              fontFamily: 'IBM Plex Mono',
+              fontSize: 11,
+              color: '#F1F3F5',
+              letterSpacing: '0.04em',
+            }}
+          />
+        </div>
+        <span className="chip" style={{ background: 'transparent' }}>
           {filtered.length} EVENTS
         </span>
       </div>
 
-      <div className="flex-1 overflow-y-auto">
+      <div className="flex-1 overflow-y-auto p-4">
+        <div className="table-container table-dark fade-up" style={{ background: 'transparent', borderColor: '#28313C' }}>
         <table className="w-full">
           <thead style={{ position: 'sticky', top: 0, background: '#10151C', zIndex: 1 }}>
             <tr style={{ borderBottom: '1px solid #28313C' }}>
@@ -77,9 +80,8 @@ export default function AuditTrail() {
             {filtered.map((e, i) => (
               <tr
                 key={i}
-                style={{ borderBottom: '1px solid #151B23' }}
-                onMouseEnter={(ev) => (ev.currentTarget.style.background = '#10151C')}
-                onMouseLeave={(ev) => (ev.currentTarget.style.background = 'transparent')}
+                className="fade-up"
+                style={{ borderBottom: '1px solid #151B23', animationDelay: `${Math.min(i * 30, 300)}ms` }}
               >
                 <td className="px-5 py-3 font-mono" style={{ fontSize: 9, color: '#6E7783', letterSpacing: '0.04em', whiteSpace: 'nowrap' }}>
                   {e.ts}
@@ -94,6 +96,7 @@ export default function AuditTrail() {
             ))}
           </tbody>
         </table>
+        </div>
       </div>
     </div>
   );

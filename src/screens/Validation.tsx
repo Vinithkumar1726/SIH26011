@@ -26,8 +26,9 @@ export default function Validation() {
   return (
     <div className="flex flex-col h-full overflow-hidden" style={{ background: 'var(--color-bg-primary)' }}>
       <div className="px-6 py-4 shrink-0" style={{ borderBottom: '1px solid var(--color-border-primary)' }}>
+        <div className="page-eyebrow">Analysis · Topology</div>
         <h1 className="font-display font-semibold" style={{ fontSize: 18, color: 'var(--color-text-primary)', letterSpacing: '0.04em' }}>
-          TOPOLOGY & GEOMETRY VALIDATION
+          TOPOLOGY &amp; GEOMETRY VALIDATION
         </h1>
         <p style={{ fontSize: 11, color: 'var(--color-text-tertiary)', marginTop: 4 }}>
           Execute spatial validation including topology, volumetric overlap, and identifier integrity checks.
@@ -39,33 +40,31 @@ export default function Validation() {
         <div className={ran ? 'grid gap-4 grid-cols-1 md:grid-cols-2 lg:grid-cols-4' : 'grid gap-4 grid-cols-1'}>
           {!ran && !running && (
             <div
-              className="flex flex-col items-center justify-center"
-              style={{ background: 'var(--color-bg-tertiary)', border: '1px solid var(--color-border-primary)', borderRadius: 3, padding: '48px 32px' }}
+              className="empty-state fade-up"
+              style={{ background: 'var(--color-bg-tertiary)', border: '1px solid var(--color-border-primary)', borderRadius: 'var(--radius-lg)', padding: '48px 32px' }}
             >
-              <ShieldCheck size={40} color="var(--color-border-primary)" style={{ marginBottom: 16 }} />
-              <div className="font-display font-semibold" style={{ fontSize: 14, color: 'var(--color-text-quaternary)', letterSpacing: '0.1em' }}>
+              <ShieldCheck size={40} color="var(--color-border-primary)" style={{ marginBottom: 8 }} />
+              <div className="empty-title" style={{ letterSpacing: '0.1em' }}>
                 VALIDATION ENGINE
               </div>
-              <div className="font-mono" style={{ fontSize: 11, color: 'var(--color-accent)', marginTop: 8, letterSpacing: '0.1em' }}>
-                READY
-              </div>
-              <button className="btn-primary mt-6" onClick={run}>RUN VALIDATION</button>
+              <span className="chip chip-gold">Ready</span>
+              <button className="btn-accent mt-6" onClick={run}>RUN VALIDATION</button>
             </div>
           )}
 
           {running && (
-            <div style={{ background: 'var(--color-bg-tertiary)', border: '1px solid var(--color-border-primary)', borderRadius: 3, padding: 24 }}>
+            <div className="section fade-up" style={{ background: 'var(--color-bg-tertiary)', padding: 24 }}>
               <div className="flex items-center gap-3 mb-4">
                 <div className="status-led warning led-pulse" />
                 <span className="font-mono" style={{ fontSize: 11, color: 'var(--color-accent)', letterSpacing: '0.06em' }}>
                   VALIDATION IN PROGRESS
                 </span>
+                <span className="font-mono ml-auto" style={{ fontSize: 11, color: 'var(--color-text-secondary)', fontVariantNumeric: 'tabular-nums' }}>{progress}%</span>
               </div>
-              <div className="progress-bar" style={{ height: 4, marginBottom: 8 }}>
-                <div className="fill" style={{ width: `${progress}%`, background: 'var(--color-accent)' }} />
+              <div className="progress-bar" style={{ height: 6, marginBottom: 8 }}>
+                <div className="fill" style={{ width: `${progress}%`, background: 'linear-gradient(90deg, var(--color-gold-600), var(--color-gold-300))' }} />
               </div>
-              <div className="font-mono" style={{ fontSize: 9, color: 'var(--color-text-tertiary)', marginBottom: 16 }}>{progress}%</div>
-              <div className="font-mono" style={{ fontSize: 10, color: 'var(--color-text-quaternary)', letterSpacing: '0.04em' }}>
+              <div className="font-mono pulse-soft" style={{ fontSize: 10, color: 'var(--color-text-quaternary)', letterSpacing: '0.04em' }}>
                 {progress < 30 ? 'CHECKING GEOMETRY...' :
                  progress < 50 ? 'CHECKING FLOOR LEVELS...' :
                  progress < 70 ? 'CHECKING UNIT BOUNDARIES...' :
@@ -93,7 +92,7 @@ export default function Validation() {
                     initial={{ opacity: 0, y: 20 }}
                     animate={{ opacity: 1, y: 0 }}
                     transition={{ duration: 0.2, delay: index * 0.05 }}
-                    style={{ background: 'var(--color-bg-tertiary)', border: `1px solid ${m.color === 'var(--color-warning)' ? 'var(--color-warning)' : 'var(--color-border-primary)'}`, borderTop: `2px solid ${m.color}`, borderRadius: 3, padding: '14px 16px' }}
+                    style={{ background: 'var(--color-bg-surface)', border: `1px solid ${m.color === 'var(--color-warning)' ? 'var(--color-warning)' : 'var(--color-border-secondary)'}`, borderTop: `3px solid ${m.color}`, borderRadius: 'var(--radius-lg)', padding: '14px 16px', boxShadow: 'var(--shadow-sm)' }}
                   >
                     <div className="flex items-center justify-between mb-2">
                       <span style={{ fontSize: 9, fontWeight: 600, letterSpacing: '0.12em', color: 'var(--color-text-tertiary)', fontFamily: 'IBM Plex Sans' }}>
@@ -114,7 +113,7 @@ export default function Validation() {
         {ran && (
           <>
             {/* Check log */}
-            <div style={{ background: 'var(--color-bg-tertiary)', border: '1px solid var(--color-border-primary)', borderRadius: 3, padding: 16 }}>
+            <div className="section fade-up stagger-1" style={{ background: 'var(--color-bg-tertiary)', padding: 16 }}>
               <div style={{ fontSize: 10, fontWeight: 600, letterSpacing: '0.08em', color: 'var(--color-text-primary)', marginBottom: 12 }}>
                 VALIDATION LOG
               </div>
@@ -140,11 +139,12 @@ export default function Validation() {
             </div>
 
             {/* Issues table */}
-            <div style={{ background: 'var(--color-bg-tertiary)', border: '1px solid var(--color-border-primary)', borderRadius: 3, overflow: 'hidden' }}>
-              <div className="px-4 py-2" style={{ borderBottom: '1px solid var(--color-border-primary)' }}>
+            <div className="section fade-up stagger-2" style={{ background: 'var(--color-bg-tertiary)', overflow: 'hidden' }}>
+              <div className="px-4 py-2 flex items-center justify-between" style={{ borderBottom: '1px solid var(--color-border-primary)' }}>
                 <span style={{ fontSize: 10, fontWeight: 600, letterSpacing: '0.08em', color: 'var(--color-text-primary)' }}>
-                  VALIDATION ISSUES — {ISSUES.length} FOUND
+                  VALIDATION ISSUES
                 </span>
+                <span className="chip chip-gold">{ISSUES.length} FOUND</span>
               </div>
               <table className="w-full">
                 <thead>

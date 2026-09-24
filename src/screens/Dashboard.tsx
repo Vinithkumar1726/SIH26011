@@ -114,6 +114,7 @@ export default function Dashboard({ onNav }: Props) {
       {/* Header */}
       <div className="flex items-start justify-between gap-3 px-6 py-5 shrink-0">
         <div className="min-w-0">
+          <div className="font-mono text-[10px] tracking-[0.2em] text-amber-300/80 mb-1">COMMAND OVERVIEW</div>
           <h1 className="font-display font-semibold text-xl text-white tracking-[0.04em]">
             CADASTRAL OVERVIEW
           </h1>
@@ -124,29 +125,30 @@ export default function Dashboard({ onNav }: Props) {
         <div className="flex gap-2 shrink-0">
           <button
             onClick={() => onNav('import')}
-            className="rounded-xl border border-white/15 px-4 py-2 text-[11px] font-semibold tracking-[0.08em] text-slate-300 transition-colors hover:border-white/30 hover:text-white"
+            className="rounded-lg border border-white/15 px-4 py-2 text-[11px] font-semibold tracking-[0.08em] text-slate-300 transition-all hover:border-amber-300/50 hover:text-white hover:-translate-y-px"
           >
             IMPORT DATA
           </button>
           <button
             onClick={() => onNav('explorer')}
-            className="rounded-xl px-4 py-2 text-[11px] font-semibold tracking-[0.08em] text-slate-950 transition-colors hover:brightness-110"
-            style={{ background: '#C99A45' }}
+            className="rounded-lg px-4 py-2 text-[11px] font-bold tracking-[0.08em] text-[#0B132B] transition-all hover:brightness-110 hover:-translate-y-px"
+            style={{ background: 'linear-gradient(180deg, var(--color-gold-300), var(--color-gold-600))', boxShadow: 'var(--shadow-gold)' }}
           >
             OPEN 3D EXPLORER
           </button>
         </div>
       </div>
 
-      <section id="hero-particle-container" aria-label="3D Particle Visualization" className="glass-panel mx-6 mb-2 px-6 py-10 text-center shrink-0">
+      <section id="hero-particle-container" aria-label="3D Particle Visualization" className="glass-panel glass-gold mx-6 mb-2 px-6 py-10 text-center shrink-0">
+        <div className="font-mono text-[10px] tracking-[0.24em] text-amber-300/70 mb-2">LIVE REGISTRY · COIMBATORE TILE</div>
         <h2 className="font-display font-semibold text-white tracking-[0.04em] mb-3" style={{ fontSize: 'clamp(18px, 3vw, 24px)' }}>
           3D CADASTRAL VISUALIZATION
         </h2>
         <p className="mx-auto mb-6 max-w-[600px] text-slate-400" style={{ fontSize: 'clamp(12px, 1.5vw, 14px)', lineHeight: 1.6 }}>
           Interactive 3D particle visualization of cadastral data streams. Real-time volumetric rendering with WebGL.
         </p>
-        <div className="inline-flex items-center gap-2 rounded-lg border border-amber-400/30 bg-amber-400/10 px-4 py-2 font-mono text-[11px] font-medium uppercase tracking-[0.1em] text-amber-200/80">
-          <span>●</span>
+        <div className="inline-flex items-center gap-2 rounded-full border border-amber-400/30 bg-amber-400/10 px-4 py-2 font-mono text-[11px] font-medium uppercase tracking-[0.1em] text-amber-200/80">
+          <span className="status-led online led-pulse" />
           <span>Particle effect container — populated separately</span>
         </div>
       </section>
@@ -166,9 +168,9 @@ export default function Dashboard({ onNav }: Props) {
                 <span className="text-[9px] font-semibold tracking-[0.12em] text-slate-400" style={{ fontFamily: 'IBM Plex Sans' }}>
                   {card.label}
                 </span>
-                <span style={{ color: card.color }}>{card.icon}</span>
+                <span className="flex items-center justify-center w-8 h-8 rounded-full border" style={{ color: card.color, borderColor: `${card.color}55`, background: `${card.color}14` }}>{card.icon}</span>
               </div>
-              <div className="font-display font-light text-5xl text-white tracking-tight leading-none">
+              <div className="font-display font-light text-5xl text-white tracking-tight leading-none" style={{ fontVariantNumeric: 'tabular-nums' }}>
                 {card.value}
               </div>
               <div className="flex items-center justify-between mt-3">
@@ -212,9 +214,14 @@ export default function Dashboard({ onNav }: Props) {
                   SYSTEM ACTIVITY
                 </span>
               </div>
-              <div className="px-4 py-3">
+              <div className="px-4 py-3 relative">
+                <span className="absolute left-[22px] top-4 bottom-4 w-px bg-white/10" aria-hidden />
                 {ACTIVITY.map((a, i) => (
-                  <div key={i} className="flex gap-3 items-start mb-2.5">
+                  <div key={i} className="relative flex gap-3 items-start mb-2.5 pl-1">
+                    <span
+                      className="relative z-10 mt-1 w-[7px] h-[7px] rounded-full shrink-0"
+                      style={{ background: a.ok === true ? '#4FB8AC' : a.ok === false ? '#C85C5C' : '#6E7783', boxShadow: a.ok === true ? '0 0 6px #4FB8AC' : 'none' }}
+                    />
                     <span
                       className="font-mono text-slate-500"
                       style={{ fontSize: 9, letterSpacing: '0.04em', minWidth: 38 }}

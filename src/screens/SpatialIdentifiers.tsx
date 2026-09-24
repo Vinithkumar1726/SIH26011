@@ -28,6 +28,7 @@ export default function SpatialIdentifiers() {
   return (
     <div className="flex flex-col h-full overflow-hidden" style={{ background: '#0A0D12' }}>
       <div className="px-6 py-4 shrink-0" style={{ borderBottom: '1px solid #28313C' }}>
+        <div className="font-mono text-[10px] tracking-[0.2em] text-amber-300/70 mb-1">ANALYSIS · IDENTIFIERS</div>
         <h1 className="font-display font-semibold" style={{ fontSize: 18, color: '#F1F3F5', letterSpacing: '0.04em' }}>
           SPATIAL IDENTIFIER REGISTRY
         </h1>
@@ -41,7 +42,7 @@ export default function SpatialIdentifiers() {
         className="flex items-center gap-3 px-5 py-3 shrink-0"
         style={{ borderBottom: '1px solid #28313C', background: '#10151C' }}
       >
-        <div className="flex items-center gap-2" style={{ flex: 1 }}>
+        <div className="input-icon" style={{ flex: 1, maxWidth: 360 }}>
           <Search size={12} color="#6E7783" />
           <input
             value={query}
@@ -55,7 +56,6 @@ export default function SpatialIdentifiers() {
               fontSize: 11,
               color: '#F1F3F5',
               letterSpacing: '0.04em',
-              width: 320,
             }}
           />
         </div>
@@ -64,29 +64,26 @@ export default function SpatialIdentifiers() {
             <button
               key={f}
               onClick={() => setFloorFilter(f)}
+              className={`chip transition-all ${floorFilter === f ? 'chip-gold' : ''}`}
               style={{
-                background: floorFilter === f ? '#C99A45' : 'transparent',
-                border: `1px solid ${floorFilter === f ? '#C99A45' : '#28313C'}`,
-                color: floorFilter === f ? '#0A0D12' : '#6E7783',
-                fontSize: 9,
-                padding: '3px 10px',
-                borderRadius: 2,
                 cursor: 'pointer',
+                background: floorFilter === f ? undefined : 'transparent',
+                borderColor: floorFilter === f ? undefined : '#28313C',
+                color: floorFilter === f ? undefined : '#6E7783',
                 fontFamily: 'IBM Plex Mono',
-                fontWeight: floorFilter === f ? 700 : 400,
-                letterSpacing: '0.06em',
               }}
             >
               {f}
             </button>
           ))}
         </div>
-        <span className="font-mono" style={{ fontSize: 9, color: '#6E7783', marginLeft: 8 }}>
+        <span className="chip" style={{ background: 'transparent', marginLeft: 8 }}>
           {filtered.length} RECORDS
         </span>
       </div>
 
-      <div className="flex-1 overflow-y-auto">
+      <div className="flex-1 overflow-y-auto p-4">
+        <div className="table-container table-dark fade-up" style={{ background: 'transparent', borderColor: '#28313C' }}>
         <table className="w-full">
           <thead style={{ position: 'sticky', top: 0, background: '#10151C', zIndex: 1 }}>
             <tr style={{ borderBottom: '1px solid #28313C' }}>
@@ -101,9 +98,8 @@ export default function SpatialIdentifiers() {
             {filtered.map((row, i) => (
               <tr
                 key={i}
-                style={{ borderBottom: '1px solid #151B23' }}
-                onMouseEnter={(e) => (e.currentTarget.style.background = '#10151C')}
-                onMouseLeave={(e) => (e.currentTarget.style.background = 'transparent')}
+                className="fade-up"
+                style={{ borderBottom: '1px solid #151B23', animationDelay: `${Math.min(i * 30, 300)}ms` }}
               >
                 <td className="px-5 py-3 font-mono" style={{ fontSize: 10, color: '#4FB8AC', letterSpacing: '0.02em' }}>
                   {row.id}
@@ -126,6 +122,7 @@ export default function SpatialIdentifiers() {
             ))}
           </tbody>
         </table>
+        </div>
       </div>
     </div>
   );

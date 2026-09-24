@@ -54,6 +54,7 @@ export default function Settings() {
   return (
     <div className="flex flex-col h-full overflow-hidden" style={{ background: '#0A0D12' }}>
       <div className="px-6 py-4 shrink-0" style={{ borderBottom: '1px solid #28313C' }}>
+        <div className="font-mono text-[10px] tracking-[0.2em] text-amber-300/70 mb-1">SYSTEM · PREFERENCES</div>
         <h1 className="font-display font-semibold" style={{ fontSize: 18, color: '#F1F3F5', letterSpacing: '0.04em' }}>
           SETTINGS
         </h1>
@@ -64,18 +65,20 @@ export default function Settings() {
 
       <div className="flex-1 overflow-y-auto p-5">
         <div className="flex flex-col gap-5" style={{ maxWidth: 680 }}>
-          {SECTIONS.map((section) => (
+          {SECTIONS.map((section, si) => (
             <div
               key={section.title}
-              style={{ background: '#10151C', border: '1px solid #28313C', borderRadius: 3, overflow: 'hidden' }}
+              className="fade-up"
+              style={{ background: '#10151C', border: '1px solid #28313C', borderRadius: 'var(--radius-lg)', overflow: 'hidden', animationDelay: `${si * 60}ms` }}
             >
               <div
-                className="px-4 py-3"
+                className="px-4 py-3 flex items-center justify-between"
                 style={{ borderBottom: '1px solid #28313C' }}
               >
                 <span style={{ fontSize: 9, fontWeight: 600, letterSpacing: '0.12em', color: '#6E7783', fontFamily: 'IBM Plex Sans' }}>
                   {section.title}
                 </span>
+                <span className="chip" style={{ background: 'transparent' }}>{section.rows.length} FIELDS</span>
               </div>
               {section.rows.map((row, i) => (
                 <div
@@ -153,11 +156,12 @@ export default function Settings() {
           ))}
 
           {/* Keyboard shortcuts */}
-          <div style={{ background: '#10151C', border: '1px solid #28313C', borderRadius: 3, overflow: 'hidden' }}>
-            <div className="px-4 py-3" style={{ borderBottom: '1px solid #28313C' }}>
+          <div className="fade-up" style={{ background: '#10151C', border: '1px solid #28313C', borderRadius: 'var(--radius-lg)', overflow: 'hidden', animationDelay: '240ms' }}>
+            <div className="px-4 py-3 flex items-center justify-between" style={{ borderBottom: '1px solid #28313C' }}>
               <span style={{ fontSize: 9, fontWeight: 600, letterSpacing: '0.12em', color: '#6E7783', fontFamily: 'IBM Plex Sans' }}>
                 KEYBOARD SHORTCUTS
               </span>
+              <span className="chip chip-gold">8 BINDS</span>
             </div>
             <div className="p-4 grid gap-2" style={{ gridTemplateColumns: 'repeat(2,1fr)' }}>
               {[
@@ -172,9 +176,9 @@ export default function Settings() {
               ].map(([key, label]) => (
                 <div key={key} className="flex items-center gap-3">
                   <kbd className="font-mono" style={{
-                    fontSize: 9, color: '#F1F3F5', background: '#1B222C',
-                    border: '1px solid #28313C', padding: '2px 8px', borderRadius: 2,
-                    minWidth: 80, textAlign: 'center',
+                    fontSize: 9, color: '#E8C88A', background: '#1B222C',
+                    border: '1px solid rgb(201 154 69 / 0.35)', padding: '2px 8px', borderRadius: 6,
+                    minWidth: 80, textAlign: 'center', boxShadow: '0 2px 0 rgb(0 0 0 / 0.4)',
                   }}>
                     {key}
                   </kbd>
