@@ -111,11 +111,21 @@ async function printPdfReport(bldg: Building, flrs: Floor[], units: Unit[], sids
     }
     return `<tr><td>${u.label} (${u.code})</td><td>${sid?.full ?? dash}</td><td>${hash ? hash.slice(0, 32) + '…' : dash}</td><td>${ver}</td><td>${qr}</td></tr>`;
   }));
+  // SVAMITVA verify QR: offline data-URI via the existing qrcode package
+  // (no third-party API, no ULPIN leakage). Links the verify bridge.
+  let liveQr = dash;
+  if (live?.ulpin) {
+    try {
+      liveQr = `<img src="${await QRCode.toDataURL(`https://cadastral.ai/verify/${live.ulpin}`, { width: 132, margin: 1 })}" width="66" height="66" alt="SVAMITVA verify ${live.ulpin}" />`;
+    } catch {
+      liveQr = dash;
+    }
+  }
   const rows = [
     `<h1>3D Bhu-Aadhaar</h1><p>Generated ${new Date().toLocaleDateString('en-IN')}</p>`,
     `<h2>Building · ${bldg.name}</h2><p><b>Owner:</b> ${bldg.ownership?.ownerName ?? dash}<br><b>Ownership:</b> ${bldg.ownership?.ownershipType ?? dash}<br><b>Market value:</b> ${bMarket}<br><b>Assessed value:</b> ${bAssessed}</p>`,
     ...(live
-      ? [`<h2>Live-captured structure</h2><p><b>Bhu-Aadhaar:</b> ${live.ulpin}<br><b>Height:</b> ${live.height_m}m<br><b>Location:</b> ${live.lat.toFixed(6)}, ${live.lon.toFixed(6)}<br><b>Elevation (MSL):</b> ${live.elevation_msl_m !== undefined ? `${live.elevation_msl_m}m (NASA SRTM)` : dash}<br><b>Encroachment Check:</b> ${live.encroachment === undefined ? dash : live.encroachment ? '<span style="color: red; font-weight: bold;">CONFLICT DETECTED</span>' : '<span style="color: green;">CLEAR</span>'}</p>`]
+      ? [`<h2>Live-captured structure</h2><p><b>Bhu-Aadhaar:</b> ${live.ulpin}<br><b>Height:</b> ${live.height_m}m<br><b>Location:</b> ${live.lat.toFixed(6)}, ${live.lon.toFixed(6)}<br><b>Elevation (MSL):</b> ${live.elevation_msl_m !== undefined ? `${live.elevation_msl_m}m (NASA SRTM)` : dash}<br><b>Encroachment Check:</b> ${live.encroachment === undefined ? dash : live.encroachment ? '<span style="color: red; font-weight: bold;">CONFLICT DETECTED</span>' : '<span style="color: green;">CLEAR</span>'}</p><p><b>SVAMITVA Verify:</b><br>${liveQr}<br><span style="font-size:10px">https://cadastral.ai/verify/${live.ulpin}</span></p>`]
       : []),
     '<h2>Floor valuation schedule</h2><table><thead><tr><th>Floor</th><th>Owner</th><th>Ownership</th><th>Market value</th><th>Assessed value</th><th>Year</th></tr></thead><tbody>',
     ...flrs.map((floor) => {
