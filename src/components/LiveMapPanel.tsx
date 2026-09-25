@@ -7,6 +7,7 @@ export interface LiveFootprint {
   parcel_id: string;
   footprint: { type: string; coordinates: number[][][] } | null;
   encroachment?: boolean;
+  height_m?: number;
 }
 
 interface Props {
