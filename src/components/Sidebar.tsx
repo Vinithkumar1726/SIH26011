@@ -89,10 +89,10 @@ export default function Sidebar({ active, onNav }: Props) {
           SYSTEM STATUS
         </div>
         {[
-          { label: 'DATABASE', status: 'ONLINE', tone: 'online' as const },
-          { label: 'GIS ENGINE', status: 'READY', tone: 'online' as const },
-          { label: '3D ENGINE', status: 'READY', tone: 'online' as const },
-          { label: 'VERSION', status: '2.4.1', tone: null },
+          { label: 'POSTGIS 3D TOPOLOGY', status: 'ONLINE', tone: 'online' as const },
+          { label: 'NASA SRTM ELEVATION', status: 'SYNCED', tone: 'online' as const },
+          { label: 'YOLOv11-ONNX VISION', status: 'ACTIVE', tone: 'online' as const },
+          { label: 'VERSION', status: 'vSIH26011 - SVAMITVA BUILD', tone: null },
         ].map((row) => (
           <div key={row.label} className="flex justify-between items-center mb-1.5">
             <span className="font-mono text-[9px] tracking-[0.08em] text-neutral-400 flex items-center gap-1.5">

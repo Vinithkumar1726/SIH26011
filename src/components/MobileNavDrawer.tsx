@@ -172,10 +172,10 @@ export default function MobileNavDrawer({ isOpen, onClose, active, onNav }: Prop
               SYSTEM STATUS
             </div>
             {[
-              { label: 'DATABASE', status: 'ONLINE', ok: true },
-              { label: 'GIS ENGINE', status: 'READY', ok: true },
-              { label: '3D ENGINE', status: 'READY', ok: true },
-              { label: 'VERSION', status: '2.4.1', ok: null },
+              { label: 'POSTGIS 3D TOPOLOGY', status: 'ONLINE', ok: true },
+              { label: 'NASA SRTM ELEVATION', status: 'SYNCED', ok: true },
+              { label: 'YOLOv11-ONNX VISION', status: 'ACTIVE', ok: true },
+              { label: 'VERSION', status: 'vSIH26011 - SVAMITVA BUILD', ok: null },
             ].map((row) => (
               <div key={row.label} className="flex justify-between items-center mb-2">
                 <span className="font-mono" style={{ fontSize: 9, color: 'var(--color-text-quaternary)', letterSpacing: '0.08em' }}>
