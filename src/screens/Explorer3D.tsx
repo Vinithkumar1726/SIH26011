@@ -235,6 +235,7 @@ export default function Explorer3D() {
   const [popupBlocked, setPopupBlocked] = useState(false);
   const [liveCaptureMode, setLiveCaptureMode] = useState(false);
   const [lowPower, setLowPower] = useState(false);
+  const [ilimsMode, setIlimsMode] = useState(false);
   const [splitView, setSplitView] = useState(false);
   const [map2DMode, setMap2DMode] = useState<'satellite' | 'vector'>('satellite');
   const [selectedLiveParcelId, setSelectedLiveParcelId] = useState<string | null>(null);  const [liveCaptureLoading, setLiveCaptureLoading] = useState(false);
@@ -929,6 +930,7 @@ export default function Explorer3D() {
               parcel={p}
               origin={origin}
               lowPower={lowPower}
+              ilimsMode={ilimsMode}
               selected={p.parcel_id === selectedLiveParcelId}
               onSelect={() => setSelectedLiveParcelId((prev) => (prev === p.parcel_id ? null : p.parcel_id))}
               onHover={(name) => setHoverBlock(name)}
@@ -1024,6 +1026,13 @@ export default function Explorer3D() {
             className={`w-full text-[10px] py-1 rounded-none uppercase tracking-wider mb-2 ${lowPower ? 'bg-amber-400/15 text-amber-200 border border-amber-300/40' : 'bg-white/5 text-slate-400 border border-transparent hover:text-white'}`}
           >
             {lowPower ? '◉ Low Power: ON' : '◎ Low Power Mode'}
+          </button>
+          <button
+            type="button"
+            onClick={() => setIlimsMode((v) => !v)}
+            className={`w-full text-[10px] py-1 rounded-none uppercase tracking-wider mb-2 ${ilimsMode ? 'bg-amber-400/15 text-amber-200 border border-amber-300/40' : 'bg-white/5 text-slate-400 border border-transparent hover:text-white'}`}
+          >
+            {ilimsMode ? '◉ ILIMS Land Bank: ON' : '◎ ILIMS Land Bank Mode'}
           </button>
           <button
             type="button"
@@ -2210,16 +2219,34 @@ function LiveParcelInspector({ parcelId, onClose }: { parcelId: string; onClose:
   );
 }
 
-function LiveCapturedBlock({ parcel, origin, lowPower, selected, onSelect, onHover }: {
+function LiveCapturedBlock({ parcel, origin, lowPower, ilimsMode, selected, onSelect, onHover }: {
   parcel: { parcel_id: string; height_m: number; footprint: { type: string; coordinates: number[][][] } | null; encroachment?: boolean; elevation_msl_m?: number };
   origin: [number, number];
   lowPower: boolean;
+  ilimsMode: boolean;
   selected: boolean;
   onSelect: () => void;
   onHover: (label: string | null) => void;
 }) {
   const [hovered, setHovered] = useState(false);
   const encroached = parcel.encroachment === true;
+  // ILIMS land-bank density: log-scaled footprint volume proxy.
+  // Dense/high → bright cyan; open/low → deep blue.
+  const ilimsColor = useMemo(() => {
+    const ring = parcel.footprint?.coordinates?.[0] ?? [];
+    let area = 0;
+    if (ring.length >= 3) {
+      const clat = ring.reduce((s, p) => s + p[1], 0) / ring.length;
+      const kx = 111320 * Math.cos((clat * Math.PI) / 180);
+      const pts = ring.map(([x, y]) => [x * kx, y * 111320]);
+      for (let i = 0; i < pts.length - 1; i++) area += pts[i][0] * pts[i + 1][1] - pts[i + 1][0] * pts[i][1];
+      area = Math.abs(area) / 2;
+    }
+    const vol = Math.max(area * Math.max(parcel.height_m, 0.1), 1);
+    const t = Math.min(Math.max(Math.log10(vol) / 5, 0), 1);
+    const lerp = (a: number, b: number) => Math.round(a + (b - a) * t);
+    return `rgb(${lerp(30, 34)},${lerp(58, 211)},${lerp(138, 238)})`;
+  }, [parcel]);
   const label = encroached
     ? `Live-captured (approved) · ${parcel.parcel_id} · ENCROACHMENT`
     : `Live-captured (approved) · ${parcel.parcel_id}`;
@@ -2256,7 +2283,7 @@ function LiveCapturedBlock({ parcel, origin, lowPower, selected, onSelect, onHov
       onPointerOut={() => { setHovered(false); onHover(null); document.body.style.cursor = 'default'; }}
     >
       <primitive object={geom} attach="geometry" />
-      <meshStandardMaterial color={encroached ? '#ef4444' : selected ? '#fbbf24' : '#a855f7'} transparent={!lowPower} opacity={lowPower ? 1 : (hovered || selected ? 0.85 : 0.55)} side={THREE.DoubleSide} />
+      <meshStandardMaterial color={ilimsMode ? ilimsColor : encroached ? '#ef4444' : selected ? '#fbbf24' : '#a855f7'} transparent={!lowPower} opacity={lowPower ? 1 : (hovered || selected ? 0.85 : 0.55)} side={THREE.DoubleSide} />
       {!lowPower && (
       <lineSegments>
         <primitive object={edges} attach="geometry" />
