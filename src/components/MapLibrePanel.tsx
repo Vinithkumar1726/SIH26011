@@ -421,7 +421,7 @@ export default function MapLibrePanel({ apiBase, initial, target, footprints, se
   }, []);
 
   return (
-    <div className="flex flex-col h-full min-h-0" style={{ background: '#F4F1E8' }}>
+    <div className="flex flex-col flex-1 min-h-0" style={{ background: '#F4F1E8' }}>
       <div className="flex items-center gap-2 px-3 py-2 shrink-0" style={{ background: '#FFFFFF', borderBottom: '3px solid #111111' }}>
         <span className="brutal-badge brutal-badge-black" style={{ fontSize: 8 }}>MAPTILER VECTOR</span>
         <span className="brutal-badge" style={{ fontSize: 8 }}>{registryCount} REGISTRY</span>

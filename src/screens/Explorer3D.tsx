@@ -1704,7 +1704,7 @@ export default function Explorer3D() {
         </div>
       </div>
       {splitView && (
-        <div className="w-1/2 flex flex-col min-h-0" style={{ borderLeft: '3px solid #111111', background: '#F4F1E8' }}>
+        <div className="w-1/2 flex flex-col min-h-0 self-stretch" style={{ borderLeft: '3px solid #111111', background: '#F4F1E8' }}>
           <div className="flex items-center gap-0 px-3 py-1.5 shrink-0" style={{ background: '#FFFFFF', borderBottom: '3px solid #111111' }}>
             <span className="brutal-eyebrow mr-2">2D VIEW</span>
             {(['satellite', 'vector'] as const).map((m) => (
@@ -1719,7 +1719,7 @@ export default function Explorer3D() {
               </button>
             ))}
           </div>
-          <div className="flex-1 min-h-0">
+          <div className="flex-1 min-h-0 flex flex-col">
           {map2DMode === 'satellite' ? (
           <LiveMapPanel
             apiBase={(import.meta.env.VITE_API_URL || 'http://127.0.0.1:8000').replace(/\/$/, '')}
