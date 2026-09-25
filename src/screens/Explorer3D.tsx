@@ -2345,12 +2345,20 @@ function LiveCapturedBlock({ parcel, origin, lowPower, ilimsMode, selected, onSe
     <mesh
       position={[0, 0.02, 0]}
       rotation={[-Math.PI / 2, 0, 0]}
+      scale={selected ? [1.02, 1.02, 1.02] : [1, 1, 1]}
       onClick={(e) => { e.stopPropagation(); onSelect(); onHover(label); }}
       onPointerOver={(e) => { e.stopPropagation(); setHovered(true); onHover(label); document.body.style.cursor = 'pointer'; }}
       onPointerOut={() => { setHovered(false); onHover(null); document.body.style.cursor = 'default'; }}
     >
       <primitive object={geom} attach="geometry" />
-      <meshStandardMaterial color={ilimsMode ? ilimsColor : encroached ? '#ef4444' : selected ? '#fbbf24' : '#a855f7'} transparent={!lowPower} opacity={lowPower ? 1 : (hovered || selected ? 0.85 : 0.55)} side={THREE.DoubleSide} />
+      <meshStandardMaterial
+        color={selected ? '#fbbf24' : ilimsMode ? ilimsColor : encroached ? '#ef4444' : '#a855f7'}
+        emissive={selected ? '#d97706' : '#000000'}
+        emissiveIntensity={selected ? 0.5 : 0}
+        transparent={!lowPower && !selected}
+        opacity={selected ? 1 : (lowPower ? 1 : (hovered ? 0.8 : 0.55))}
+        side={THREE.DoubleSide}
+      />
       {!lowPower && (
       <lineSegments>
         <primitive object={edges} attach="geometry" />
