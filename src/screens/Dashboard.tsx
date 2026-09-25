@@ -92,14 +92,14 @@ export default function Dashboard({ onNav }: Props) {
       </section>
 
       <div className="flex-1 min-h-0 min-w-0 overflow-y-auto p-5 md:p-6 flex flex-col gap-6">
-        <div className="grid gap-6 grid-cols-1 md:grid-cols-2 xl:grid-cols-3">
+        <div className="grid gap-6 grid-cols-1 md:grid-cols-2 xl:grid-cols-4 pb-2">
           {kpiCards.map((card, index) => (
             <motion.div
               key={card.label}
               initial={{ opacity: 0, y: 12 }}
               animate={{ opacity: 1, y: 0 }}
               transition={{ duration: 0.15, delay: index * 0.04 }}
-              className="brutal-panel"
+              className="brutal-panel brutal-lift"
               style={{ padding: 16, borderTop: `6px solid ${card.color === '#4FB8AC' ? '#16A34A' : '#F5C400'}` }}
             >
               <div className="flex items-center justify-between mb-2">
@@ -256,7 +256,7 @@ export default function Dashboard({ onNav }: Props) {
               animate={{ opacity: 1, y: 0 }}
               transition={{ duration: 0.15, delay: index * 0.04 }}
               whileTap={{ scale: 0.98 }}
-              className="brutal-panel text-left"
+              className="brutal-panel brutal-lift text-left"
               style={{ padding: 16, cursor: 'pointer' }}
               onMouseEnter={(e) => { e.currentTarget.style.transform = 'translate(-2px,-2px)'; e.currentTarget.style.boxShadow = '7px 7px 0 #111111'; }}
               onMouseLeave={(e) => { e.currentTarget.style.transform = 'none'; e.currentTarget.style.boxShadow = '5px 5px 0 #111111'; }}

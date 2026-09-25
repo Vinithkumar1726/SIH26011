@@ -731,6 +731,10 @@ tr:hover td { background: var(--color-bg-hover); }
 .brutal-btn:hover { transform: translate(-1px, -1px); box-shadow: 4px 4px 0 #111111; }
 .brutal-btn:active { transform: translate(2px, 2px); box-shadow: 1px 1px 0 #111111; }
 .brutal-btn:disabled { opacity: 0.45; cursor: not-allowed; transform: none; }
+/* Unlayered press physics (beats .brutal-panel shadow; @layer utilities lose to unlayered) */
+.brutal-lift { transition: transform 0.08s ease, box-shadow 0.08s ease; }
+.brutal-lift:hover { transform: translate(-2px, -2px); box-shadow: 7px 7px 0 #111111; }
+.brutal-lift:active { transform: translate(3px, 3px); box-shadow: 1px 1px 0 #111111; }
 .brutal-btn-primary { background: var(--brutal-ink); color: var(--brutal-white); }
 .brutal-btn-gold { background: var(--brutal-gold); color: var(--brutal-ink); }
 .brutal-btn-danger { background: var(--brutal-error); color: #fff; }
