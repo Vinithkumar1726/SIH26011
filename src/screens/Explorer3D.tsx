@@ -86,16 +86,11 @@ async function printPdfReport(bldg: Building, flrs: Floor[], units: Unit[], sids
   lon: number;
   elevation_msl_m?: number;
   encroachment?: boolean;
-} | null, preopened?: Window | null) {
+} | null) {
   const dash = '—';
-  // Use the synchronously-opened window when provided: popup blockers only
-  // allow window.open() directly inside the click gesture, never after awaits.
-  const printWindow = preopened ?? window.open('', '_blank', 'noopener,noreferrer');
-  if (!printWindow) return false;
-
-  // Write the document shell immediately to prevent about:blank white screen
-  printWindow.document.write('<!DOCTYPE html><html><head><title>3D Bhu-Aadhaar Report</title><style>body{font-family:sans-serif;padding:20px;color:#333}</style></head><body>Loading report...</body></html>');
-  printWindow.document.close();
+  // Popup blockers cannot be relied on: deliver the passport as a file
+  // download (anchor click), which browsers never block. The user opens
+  // the HTML and prints to PDF.
   const money = (v?: { marketValue: number; assessedValue: number; currency: string }) =>
     v ? [formatReportCurrency(v.marketValue, v.currency), formatReportCurrency(v.assessedValue, v.currency)] : [dash, dash];
   const [bMarket, bAssessed] = money(bldg.valuation);
@@ -140,11 +135,22 @@ async function printPdfReport(bldg: Building, flrs: Floor[], units: Unit[], sids
     '</tbody></table>',
     '<footer style="margin-top:24px;font-size:11px;color:#5A6B8A;border-top:1px solid #C8D0DB;padding-top:8px">Prototype 3D Property Record — not a legal document</footer>',
   ];
-  printWindow.document.write(`<html><head><title>3D Bhu-Aadhaar Report</title><style>body{font-family:Arial,sans-serif;color:#17202a;padding:32px}h1{color:#087f73}table{border-collapse:collapse;width:100%;font-size:12px}th,td{border:1px solid #cbd5e1;padding:8px;text-align:left}th{background:#e2e8f0}</style></head><body>${rows.join('')}</body></html>`);
-  printWindow.document.close();
-  printWindow.focus();
-  printWindow.print();
-  return true;
+  const html = `<html><head><title>3D Bhu-Aadhaar Report</title><style>body{font-family:Arial,sans-serif;color:#17202a;padding:32px}h1{color:#087f73}table{border-collapse:collapse;width:100%;font-size:12px}th,td{border:1px solid #cbd5e1;padding:8px;text-align:left}th{background:#e2e8f0}</style></head><body>${rows.join('')}</body></html>`;
+  try {
+    const blob = new Blob([html], { type: 'text/html' });
+    const url = URL.createObjectURL(blob);
+    const name = `bhu-aadhaar-${(live?.ulpin ?? bldg.name ?? 'record').replace(/[^A-Za-z0-9-]+/g, '_')}.html`;
+    const link = document.createElement('a');
+    link.href = url;
+    link.download = name;
+    document.body.appendChild(link);
+    link.click();
+    link.remove();
+    setTimeout(() => URL.revokeObjectURL(url), 5000);
+    return true;
+  } catch {
+    return false;
+  }
 }
 
 function clamp01(v: number) {
@@ -1362,17 +1368,9 @@ export default function Explorer3D() {
           <input type="range" min={0} max={60000000} step={1000000} value={minimumMarketValue} disabled={source === 'live'} onChange={(e) => setMinimumMarketValue(Number(e.target.value))} className="w-full" />
           <div className="grid grid-cols-2 gap-1 mt-2">
             <button type="button" onClick={() => downloadCsv(building, floors)} className="text-[9px] py-1.5 rounded bg-amber-400/10 text-amber-200 border border-amber-300/25 hover:bg-amber-400/20">CSV REPORT</button>
-            <button type="button" onClick={() => {
-              setPopupBlocked(false);
-              // Open synchronously inside the gesture; async work fills it later.
-              const w = window.open('', '_blank', 'noopener,noreferrer');
-              if (!w) { setPopupBlocked(true); return; }
-              void printPdfReport(building, floors, units, spatialIDs, undefined, w).then((ok) => {
-                if (!ok) { try { w.close(); } catch { /* already closed */ } setPopupBlocked(true); }
-              });
-            }} className="brutal-btn brutal-btn-gold w-full justify-center" style={{ fontSize: 9 }}>Generate SVAMITVA Passport & QR</button>
+            <button type="button" onClick={async () => { setPopupBlocked(false); setPopupBlocked(!(await printPdfReport(building, floors, units, spatialIDs))); }} className="brutal-btn brutal-btn-gold w-full justify-center" style={{ fontSize: 9 }}>Generate SVAMITVA Passport & QR</button>
           </div>
-          {popupBlocked && <div className="text-[9px] text-amber-300 mt-2">Pop-up blocked — allow pop-ups for this site to generate the record.</div>}
+          {popupBlocked && <div className="text-[9px] text-amber-300 mt-2">Download failed — check browser download permissions and retry.</div>}
           {reportFilterActive && matchingFloorIds.size === 0 && <div className="text-[9px] text-danger mt-2">No floors match this filter.</div>}
           </CollapsePanel>
         </div>
