@@ -1041,6 +1041,45 @@ export default function Explorer3D() {
           >
             {splitView ? '◉ Split 2D/3D: ON' : '◎ Split 2D/3D View'}
           </button>
+          <CollapsePanel title={`Parcels (${liveParcels.length})`} open={openPanels.view} onToggle={() => togglePanel('view')}>
+            {selectedLiveParcelId && (
+              <button
+                type="button"
+                onClick={() => setSelectedLiveParcelId(null)}
+                className="w-full text-[10px] py-1 rounded-none uppercase tracking-wider mb-2 bg-white/5 text-slate-400 border border-transparent hover:text-white"
+              >
+                ✕ Clear Selection
+              </button>
+            )}
+            <div className="flex flex-col gap-1.5 max-h-64 overflow-y-auto">
+              {liveParcels.map((parcel) => (
+                <div
+                  key={parcel.parcel_id}
+                  className={`pointer-events-auto p-2 border-2 transition-all duration-75 flex justify-between items-center gap-2 ${
+                    selectedLiveParcelId === parcel.parcel_id
+                      ? 'bg-amber-300 border-black translate-x-1 translate-y-1'
+                      : 'bg-white border-black hover:bg-slate-50'
+                  }`}
+                  style={{ boxShadow: selectedLiveParcelId === parcel.parcel_id ? '2px 2px 0 #111' : '4px 4px 0 #111' }}
+                >
+                  <div className="min-w-0">
+                    <p className="font-black uppercase text-[10px] text-black truncate">ULPIN: {parcel.parcel_id}</p>
+                    <p className="text-[9px] text-slate-600">Height: {parcel.height_m}m{parcel.encroachment ? ' · CONFLICT' : ''}</p>
+                  </div>
+                  <button
+                    type="button"
+                    onClick={() => setSelectedLiveParcelId(parcel.parcel_id)}
+                    className="bg-black text-white px-2 py-1 font-bold text-[9px] uppercase cursor-pointer hover:bg-amber-400 hover:text-black transition-colors shrink-0"
+                  >
+                    Locate ⌖
+                  </button>
+                </div>
+              ))}
+              {liveParcels.length === 0 && (
+                <div className="text-[10px] text-slate-500">No live parcels yet — capture or approve some.</div>
+              )}
+            </div>
+          </CollapsePanel>
           {liveCaptureNotice && (
             <div className="fade-up text-[10px] leading-relaxed text-amber-200 bg-amber-400/10 border-2 border-black rounded-none px-2.5 py-1.5 mb-2" style={{ boxShadow: '3px 3px 0 #000' }}>
               {liveCaptureNotice}
