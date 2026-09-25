@@ -1358,7 +1358,7 @@ export default function Explorer3D() {
           <input type="range" min={0} max={60000000} step={1000000} value={minimumMarketValue} disabled={source === 'live'} onChange={(e) => setMinimumMarketValue(Number(e.target.value))} className="w-full" />
           <div className="grid grid-cols-2 gap-1 mt-2">
             <button type="button" onClick={() => downloadCsv(building, floors)} className="text-[9px] py-1.5 rounded bg-amber-400/10 text-amber-200 border border-amber-300/25 hover:bg-amber-400/20">CSV REPORT</button>
-            <button type="button" onClick={async () => { setPopupBlocked(false); setPopupBlocked(!(await printPdfReport(building, floors, units, spatialIDs))); }} className="brutal-btn brutal-btn-gold w-full justify-center" style={{ fontSize: 9 }}>Generate 3D Bhu-Aadhaar</button>
+            <button type="button" onClick={async () => { setPopupBlocked(false); setPopupBlocked(!(await printPdfReport(building, floors, units, spatialIDs))); }} className="brutal-btn brutal-btn-gold w-full justify-center" style={{ fontSize: 9 }}>Generate SVAMITVA Passport & QR</button>
           </div>
           {popupBlocked && <div className="text-[9px] text-amber-300 mt-2">Pop-up blocked — allow pop-ups for this site to generate the record.</div>}
           {reportFilterActive && matchingFloorIds.size === 0 && <div className="text-[9px] text-danger mt-2">No floors match this filter.</div>}
