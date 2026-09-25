@@ -1287,7 +1287,8 @@ export default function Explorer3D() {
         )}
 
         {inspectorVisible && (
-          <div className={`absolute bottom-3 left-1/2 -translate-x-1/2 glass rounded-none w-[400px] ${compact ? 'max-w-[calc(100%-2rem)]' : narrow ? 'max-w-full' : 'max-w-[calc(100%-34rem)]'} max-h-[48%] flex flex-col`}>
+          <div className={`absolute bottom-3 left-1/2 -translate-x-1/2 z-10 glass rounded-none w-[400px] ${compact ? 'max-w-[calc(100%-2rem)]' : narrow ? 'max-w-full' : 'max-w-[calc(100%-34rem)]'} max-h-[48%] flex flex-col pointer-events-none`}>
+            <div className="pointer-events-auto flex flex-col min-h-0">
             <button
               type="button"
               onClick={() => setInspOpen((v) => !v)}
@@ -1385,11 +1386,13 @@ export default function Explorer3D() {
                 )}
               </div>
             )}
+            </div>
           </div>
         )}
 
         {cityVisible && osmRecord && !inspectorVisible && (
-          <div className={`absolute bottom-3 left-1/2 -translate-x-1/2 glass rounded-none w-[400px] ${compact ? 'max-w-[calc(100%-2rem)]' : 'max-w-[calc(100%-34rem)]'} max-h-[48%] flex flex-col`}>
+          <div className={`absolute bottom-3 left-1/2 -translate-x-1/2 z-10 glass rounded-none w-[400px] ${compact ? 'max-w-[calc(100%-2rem)]' : 'max-w-[calc(100%-34rem)]'} max-h-[48%] flex flex-col pointer-events-none`}>
+            <div className="pointer-events-auto flex flex-col min-h-0">
             <div className="w-full flex items-center justify-between p-3 shrink-0">
               <span className="text-[10px] font-semibold text-white uppercase tracking-wider">OSM building (context)</span>
               <span className="flex items-center gap-2">
@@ -1466,6 +1469,7 @@ export default function Explorer3D() {
               })()}
               <div className="text-[9px] text-slate-500 pt-1">Context data — not a cadastral record. Heights are assumed unless tagged.</div>
               <div className="text-[9px] text-slate-500">Synthetic subdivision of an OSM footprint — not cadastral records.</div>
+            </div>
             </div>
           </div>
         )}
