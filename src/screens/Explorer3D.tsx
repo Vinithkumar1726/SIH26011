@@ -1021,7 +1021,7 @@ export default function Explorer3D() {
             {splitView ? '◉ Split 2D/3D: ON' : '◎ Split 2D/3D View'}
           </button>
           {liveCaptureNotice && (
-            <div className="fade-up text-[10px] leading-relaxed text-amber-200 bg-amber-400/10 border border-amber-300/30 rounded-lg px-2.5 py-1.5 mb-2" style={{ boxShadow: '0 4px 16px -8px rgb(251 191 36 / 0.5)' }}>
+            <div className="fade-up text-[10px] leading-relaxed text-amber-200 bg-amber-400/10 border-2 border-black rounded-none px-2.5 py-1.5 mb-2" style={{ boxShadow: '3px 3px 0 #000' }}>
               {liveCaptureNotice}
             </div>
           )}
@@ -1279,13 +1279,13 @@ export default function Explorer3D() {
         </div>
 
         {liveCaptureLoading && (
-          <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 glass rounded-lg px-5 py-3 pointer-events-none">
+          <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 glass rounded-none px-5 py-3 pointer-events-none">
             <span className="text-[11px] text-slate-200">Extracting 3D geometry & staging for review…</span>
           </div>
         )}
 
         {inspectorVisible && (
-          <div className={`absolute bottom-3 left-1/2 -translate-x-1/2 glass rounded-lg w-[400px] ${compact ? 'max-w-[calc(100%-2rem)]' : narrow ? 'max-w-full' : 'max-w-[calc(100%-34rem)]'} max-h-[48%] flex flex-col`}>
+          <div className={`absolute bottom-3 left-1/2 -translate-x-1/2 glass rounded-none w-[400px] ${compact ? 'max-w-[calc(100%-2rem)]' : narrow ? 'max-w-full' : 'max-w-[calc(100%-34rem)]'} max-h-[48%] flex flex-col`}>
             <button
               type="button"
               onClick={() => setInspOpen((v) => !v)}
@@ -1387,7 +1387,7 @@ export default function Explorer3D() {
         )}
 
         {cityVisible && osmRecord && !inspectorVisible && (
-          <div className={`absolute bottom-3 left-1/2 -translate-x-1/2 glass rounded-lg w-[400px] ${compact ? 'max-w-[calc(100%-2rem)]' : 'max-w-[calc(100%-34rem)]'} max-h-[48%] flex flex-col`}>
+          <div className={`absolute bottom-3 left-1/2 -translate-x-1/2 glass rounded-none w-[400px] ${compact ? 'max-w-[calc(100%-2rem)]' : 'max-w-[calc(100%-34rem)]'} max-h-[48%] flex flex-col`}>
             <div className="w-full flex items-center justify-between p-3 shrink-0">
               <span className="text-[10px] font-semibold text-white uppercase tracking-wider">OSM building (context)</span>
               <span className="flex items-center gap-2">
@@ -1472,14 +1472,14 @@ export default function Explorer3D() {
           <button
             type="button"
             onClick={() => setMobilePanel((p) => (p === 'hierarchy' ? null : 'hierarchy'))}
-            className={`glass rounded-lg px-3 py-2 text-[10px] font-semibold uppercase tracking-wider ${mobilePanel === 'hierarchy' ? 'text-amber-200' : 'text-slate-200'}`}
+            className={`glass rounded-none px-3 py-2 text-[10px] font-semibold uppercase tracking-wider ${mobilePanel === 'hierarchy' ? 'text-amber-200' : 'text-slate-200'}`}
           >
             🏢 Hierarchy
           </button>
           <button
             type="button"
             onClick={() => setMobilePanel((p) => (p === 'inspector' ? null : 'inspector'))}
-            className={`glass rounded-lg px-3 py-2 text-[10px] font-semibold uppercase tracking-wider ${mobilePanel === 'inspector' ? 'text-amber-200' : 'text-slate-200'}`}
+            className={`glass rounded-none px-3 py-2 text-[10px] font-semibold uppercase tracking-wider ${mobilePanel === 'inspector' ? 'text-amber-200' : 'text-slate-200'}`}
           >
             📋 Inspector
           </button>
@@ -1501,7 +1501,7 @@ export default function Explorer3D() {
           </div>
         )}
 
-        <div className="absolute bottom-3 left-3 glass rounded-lg px-3 py-2 flex items-center gap-4">
+        <div className="absolute bottom-3 left-3 glass rounded-none px-3 py-2 flex items-center gap-4">
           <div className="text-center"><div className="text-sm font-bold text-white">{units.length}</div><div className="text-[9px] text-slate-500">Units</div></div>
           <div className="w-px h-6 bg-white/10"></div>
           <div className="text-center"><div className="text-sm font-bold text-white">{floors.length}</div><div className="text-[9px] text-slate-500">Floors</div></div>
@@ -1535,7 +1535,7 @@ export default function Explorer3D() {
           </div>
         )}
 
-        <div className="absolute bottom-3 right-3 glass rounded-lg px-3 py-2">
+        <div className="absolute bottom-3 right-3 glass rounded-none px-3 py-2">
           <div className="flex items-center gap-3 text-[10px]">
             <div className="flex items-center gap-1"><div className="w-2 h-2 rounded-sm bg-emerald-500"></div><span className="text-slate-400">Apartment</span></div>
             <div className="flex items-center gap-1"><div className="w-2 h-2 rounded-sm bg-slate-500"></div><span className="text-slate-400">Parking</span></div>
@@ -1575,7 +1575,7 @@ export default function Explorer3D() {
             </div>
           )}
           {conflicts.size > 0 && conflictOpen && (
-            <div className="glass rounded-lg px-4 py-3 border border-danger/30 max-w-lg pointer-events-auto">
+            <div className="glass rounded-none px-4 py-3 border border-danger/30 max-w-lg pointer-events-auto">
               <div className="flex items-start gap-2">
                 <i className="fas fa-triangle-exclamation text-danger text-xs mt-0.5"></i>
                 <div className="flex-1">

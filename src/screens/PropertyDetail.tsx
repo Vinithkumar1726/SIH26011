@@ -40,7 +40,7 @@ export default function PropertyDetail({ unitId, onBack }: Props) {
       <div className="flex flex-col h-full" style={{ background: '#F8FAFC' }}>
         <div className="flex items-center justify-center h-full">
           <div className="flex flex-col items-center gap-4">
-            <div className="w-8 h-8 border-3 border-primary border-t-transparent rounded-full animate-spin" />
+            <div className="w-8 h-8 border-3 border-black border-t-transparent rounded-full animate-spin" />
             <span className="text-text-tertiary font-mono text-sm">Loading property record...</span>
           </div>
         </div>
@@ -191,8 +191,8 @@ function RecordTab({ unit, spatialId, onCopy, copied }: any) {
 
       {/* Ownership / Rights */}
       <Section title="OWNERSHIP / RIGHTS" icon={User}>
-        <div className="bg-muted border border-border rounded-lg p-4">
-          <div className="text-xs text-text-tertiary uppercase tracking-wider mb-3">Cadastral Rights Record</div>
+        <div className="brutal-panel-flat p-4">
+          <div className="brutal-eyebrow mb-3">Cadastral Rights Record</div>
           <div className="grid gap-3" style={{ gridTemplateColumns: '1fr 1fr' }}>
             <InfoCell label="Owner" value="To be populated via land records integration" />
             <InfoCell label="Tenure" value="—" />
@@ -352,8 +352,8 @@ function HistoryTab({ unitId, unit }: any) {
   if (loadError) {
     return (
       <div className="max-w-2xl">
-        <h3 className="font-display font-semibold mb-6 text-text-primary">VERSION HISTORY</h3>
-        <div className="bg-surface border border-border rounded-lg p-4 text-sm text-text-secondary">{loadError}</div>
+        <h3 className="font-display font-bold mb-6 text-[#111]">VERSION HISTORY</h3>
+        <div className="brutal-notice brutal-notice-red">{loadError}</div>
       </div>
     );
   }
@@ -361,9 +361,9 @@ function HistoryTab({ unitId, unit }: any) {
   if (!entries) {
     return (
       <div className="max-w-2xl">
-        <h3 className="font-display font-semibold mb-6 text-text-primary">VERSION HISTORY</h3>
-        <div className="flex items-center gap-3 text-text-tertiary font-mono text-sm">
-          <div className="w-5 h-5 border-2 border-primary border-t-transparent rounded-full animate-spin" />
+        <h3 className="font-display font-bold mb-6 text-[#111]">VERSION HISTORY</h3>
+        <div className="flex items-center gap-3 font-mono text-sm font-bold text-[#111]">
+          <div className="w-5 h-5 border-[3px] border-black border-t-transparent rounded-full animate-spin" />
           Loading version history...
         </div>
       </div>
@@ -373,8 +373,8 @@ function HistoryTab({ unitId, unit }: any) {
   if (entries.length === 0) {
     return (
       <div className="max-w-2xl">
-        <h3 className="font-display font-semibold mb-6 text-text-primary">VERSION HISTORY</h3>
-        <div className="bg-surface border border-border rounded-lg p-4 text-sm text-text-secondary">No prior versions recorded for this unit.</div>
+        <h3 className="font-display font-bold mb-6 text-[#111]">VERSION HISTORY</h3>
+        <div className="brutal-panel-flat" style={{ padding: 16, borderStyle: 'dashed' }}>No prior versions recorded for this unit.</div>
       </div>
     );
   }
