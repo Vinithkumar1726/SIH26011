@@ -11,9 +11,9 @@ interface Props {
 
 const KPI_CARDS = [
   { label: 'PARCELS', value: '01', sub: 'REGISTERED', icon: <MapPin size={14} />, color: '#C99A45', trend: '+1 this session' },
-  { label: 'BUILDINGS', value: '01', sub: 'MAPPED', icon: <Building2 size={14} />, color: '#4FB8AC', trend: '3 floors' },
-  { label: 'PROPERTY UNITS', value: '04', sub: '3D REGISTERED', icon: <Layers size={14} />, color: '#C99A45', trend: 'V01 · all floors' },
-  { label: 'VALIDATION', value: '100%', sub: 'PASS RATE', icon: <ShieldCheck size={14} />, color: '#4FB8AC', trend: '18/18 checks' },
+  { label: 'VOLUMETRIC SOLIDS (3D)', value: '01', sub: 'MAPPED', icon: <Building2 size={14} />, color: '#4FB8AC', trend: '3 floors' },
+  { label: '14-DIGIT ULPINs GENERATED', value: '04', sub: '3D REGISTERED', icon: <Layers size={14} />, color: '#C99A45', trend: 'V01 · all floors' },
+  { label: 'ST_3DIntersects AUDIT', value: '100%', sub: 'PASS RATE', icon: <ShieldCheck size={14} />, color: '#4FB8AC', trend: '18/18 checks' },
 ];
 
 const ACTIVITY = [
@@ -49,9 +49,9 @@ export default function Dashboard({ onNav }: Props) {
 
   const kpiCards = stats ? [
     { label: 'PARCELS', value: String(stats.total_parcels).padStart(2, '0'), sub: 'REGISTERED', icon: <MapPin size={14} />, color: '#C99A45', trend: 'LIVE API' },
-    { label: 'BUILDINGS', value: String(stats.total_buildings).padStart(2, '0'), sub: 'MAPPED', icon: <Building2 size={14} />, color: '#4FB8AC', trend: `${stats.total_floors} floors` },
-    { label: 'PROPERTY UNITS', value: String(stats.total_units).padStart(2, '0'), sub: '3D REGISTERED', icon: <Layers size={14} />, color: '#C99A45', trend: `${stats.total_3d_units} solids` },
-    { label: 'VALIDATION', value: stats.total_units ? `${Math.round((stats.validated_units / stats.total_units) * 100)}%` : '—', sub: 'PASS RATE', icon: <ShieldCheck size={14} />, color: '#4FB8AC', trend: `${stats.conflicts} conflicts` },
+    { label: 'VOLUMETRIC SOLIDS (3D)', value: String(stats.total_buildings).padStart(2, '0'), sub: 'MAPPED', icon: <Building2 size={14} />, color: '#4FB8AC', trend: `${stats.total_floors} floors` },
+    { label: '14-DIGIT ULPINs GENERATED', value: String(stats.total_units).padStart(2, '0'), sub: '3D REGISTERED', icon: <Layers size={14} />, color: '#C99A45', trend: `${stats.total_3d_units} solids` },
+    { label: 'ST_3DIntersects AUDIT', value: stats.total_units ? `${Math.round((stats.validated_units / stats.total_units) * 100)}%` : '—', sub: 'PASS RATE', icon: <ShieldCheck size={14} />, color: '#4FB8AC', trend: `${stats.conflicts} conflicts` },
   ] : KPI_CARDS;
 
   return (
@@ -80,10 +80,10 @@ export default function Dashboard({ onNav }: Props) {
       <section id="hero-particle-container" aria-label="3D Particle Visualization" className="mx-6 mb-2 px-6 py-8 text-center shrink-0 brutal-panel" style={{ borderTop: '6px solid #F5C400' }}>
         <div className="brutal-eyebrow" style={{ marginBottom: 6 }}>LIVE REGISTRY · COIMBATORE TILE</div>
         <h2 className="font-display font-bold text-[#111] tracking-[0.01em] mb-3" style={{ fontSize: 'clamp(18px, 3vw, 24px)' }}>
-          3D CADASTRAL VISUALIZATION
+          3D BHU-AADHAAR (ULPIN) TWIN
         </h2>
         <p className="mx-auto mb-5 max-w-[600px]" style={{ fontSize: 'clamp(12px, 1.5vw, 14px)', lineHeight: 1.6, color: '#555' }}>
-          Interactive 3D particle visualization of cadastral data streams. Real-time volumetric rendering with WebGL.
+          Integrated Land Information Management System (ILIMS) powered by YOLOv11 AI and NASA SRTM 30m True-Elevation.
         </p>
         <div className="brutal-badge brutal-badge-gold">
           <span className="status-led online" />
