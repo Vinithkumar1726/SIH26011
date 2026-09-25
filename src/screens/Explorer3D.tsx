@@ -844,8 +844,8 @@ export default function Explorer3D() {
   }, [floors, units, origin]);
 
   return (
-    <div className="h-full flex" data-explorer-root>
-      <div ref={canvasRef} className={`${splitView ? 'w-1/2' : 'flex-1'} relative bg-void`}>
+    <div className="h-full w-full flex min-h-0 relative" data-explorer-root>
+      <div ref={canvasRef} className={`${splitView ? 'w-1/2' : 'flex-1'} relative bg-void min-h-0 min-w-0`}>
         <Canvas
           camera={{ position: [70, 60, 70], fov: 50 }}
           frameloop={weather === 'monsoon' ? 'always' : 'demand'}
