@@ -844,8 +844,9 @@ export default function Explorer3D() {
   }, [floors, units, origin]);
 
   return (
-    <div className="h-full w-full flex min-h-0 relative" data-explorer-root>
+    <div className="h-full w-full flex min-h-0 min-w-0 relative overflow-hidden" data-explorer-root>
       <div ref={canvasRef} className={`${splitView ? 'w-1/2' : 'flex-1'} relative bg-void min-h-0 min-w-0`}>
+        <div className="absolute inset-0 z-0">
         <Canvas
           camera={{ position: [70, 60, 70], fov: 50 }}
           frameloop={weather === 'monsoon' ? 'always' : 'demand'}
@@ -978,8 +979,9 @@ export default function Explorer3D() {
           })}
           <ViewRig preset={viewPreset} interiorTour={interiorTour} buildingId={building.id} cam={cam} cityViews={cityViews} cityVisible={cityVisible} cityMeta={cityMeta} maxDistance={viewPreset === 'freeroam' && cityVisible && cityMeta ? 4 * cityMeta.radiusM : cityVisible && cityMeta ? 2.5 * cityMeta.radiusM : 250} focusPose={focusPose} pipeFocus={pipeFocus} camNonce={camNonce} />
         </Canvas>
+        </div>
 
-        <div className={`absolute top-3 left-3 bottom-28 ${compact ? 'w-44' : narrow ? 'w-52' : 'w-64'} flex flex-col gap-2 overflow-y-auto pointer-events-none`}>
+        <div className={`absolute top-3 left-3 bottom-28 z-10 ${compact ? 'w-44' : narrow ? 'w-52' : 'w-64'} flex flex-col gap-2 overflow-y-auto pointer-events-none`}>
           <CollapsePanel title="View Controls" open={openPanels.view} onToggle={() => togglePanel('view')}>
           {source === 'live' && (
             <div className="mb-2">
@@ -1216,7 +1218,7 @@ export default function Explorer3D() {
           )}
         </div>
 
-        <div className={`absolute top-3 right-3 bottom-28 ${compact ? 'w-40' : narrow ? 'w-48' : 'w-56'} flex flex-col gap-2 overflow-y-auto pointer-events-none`}>
+        <div className={`absolute top-3 right-3 bottom-28 z-10 ${compact ? 'w-40' : narrow ? 'w-48' : 'w-56'} flex flex-col gap-2 overflow-y-auto pointer-events-none`}>
           <CollapsePanel
             title="Floor Isolation"
             open={openPanels.floor}
@@ -1544,9 +1546,9 @@ export default function Explorer3D() {
           </div>
         </div>
 
-        <div className="absolute top-3 left-1/2 -translate-x-1/2 flex flex-col items-center gap-1 max-w-[calc(100%-34rem)] pointer-events-none">
+        <div className="absolute top-3 left-1/2 -translate-x-1/2 z-10 flex flex-col items-center gap-1 max-w-[calc(100%-34rem)] pointer-events-none">
           <div className="flex items-center gap-2 pointer-events-auto">
-            <div className="glass rounded-full px-3 py-1">
+            <div className="glass rounded-none px-3 py-1" style={{ border: '2px solid #111111' }}>
               {osmRecord ? (
                 <span className="text-[10px] text-amber-300">● OSM · illustrative</span>
               ) : source === 'live' ? (
