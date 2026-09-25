@@ -238,7 +238,34 @@ export default function Explorer3D() {
   const [ilimsMode, setIlimsMode] = useState(false);
   const [splitView, setSplitView] = useState(false);
   const [map2DMode, setMap2DMode] = useState<'satellite' | 'vector'>('satellite');
-  const [selectedLiveParcelId, setSelectedLiveParcelId] = useState<string | null>(null);  const [liveCaptureLoading, setLiveCaptureLoading] = useState(false);
+  const [selectedLiveParcelId, setSelectedLiveParcelId] = useState<string | null>(null);
+
+  // Cinematic focus target: centroid of the selected parcel → MapLibre swoop.
+  const focusTarget = useMemo(() => {
+    if (!selectedLiveParcelId) return null;
+    const targetParcel = liveParcels.find((p) => p.parcel_id === selectedLiveParcelId);
+    const ring = targetParcel?.footprint?.coordinates?.[0];
+    if (!ring || ring.length === 0) return null;
+    try {
+      let sumLon = 0;
+      let sumLat = 0;
+      for (const coord of ring) {
+        sumLon += coord[0];
+        sumLat += coord[1];
+      }
+      return {
+        lon: sumLon / ring.length,
+        lat: sumLat / ring.length,
+        zoom: 19.5,
+        pitch: 65,
+        bearing: Math.floor(Math.random() * 60) - 30,
+        duration: 2500,
+      };
+    } catch (e) {
+      console.error('FlyTo coordinate calculation failed:', e);
+      return null;
+    }
+  }, [selectedLiveParcelId, liveParcels]);  const [liveCaptureLoading, setLiveCaptureLoading] = useState(false);
   const [liveCaptureNotice, setLiveCaptureNotice] = useState<string | null>(null);
   const [liveData, setLiveData] = useState<LiveHierarchy | null>(null);
   const [source, setSource] = useState<'loading' | 'live' | 'demo'>('loading');
@@ -1796,6 +1823,7 @@ export default function Explorer3D() {
           <MapLibrePanel
             apiBase={(import.meta.env.VITE_API_URL || 'http://127.0.0.1:8000').replace(/\/$/, '')}
             basemap="satellite"
+            target={focusTarget}
             footprints={liveParcels}
             selectedParcelId={selectedLiveParcelId}
             onSelectParcel={setSelectedLiveParcelId}
