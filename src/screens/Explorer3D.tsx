@@ -239,8 +239,22 @@ export default function Explorer3D() {
   const [splitView, setSplitView] = useState(false);
   const [map2DMode, setMap2DMode] = useState<'satellite' | 'vector'>('satellite');
   const [selectedLiveParcelId, setSelectedLiveParcelId] = useState<string | null>(null);
+  const [liveCaptureLoading, setLiveCaptureLoading] = useState(false);
+  const [liveCaptureNotice, setLiveCaptureNotice] = useState<string | null>(null);
+  const [liveData, setLiveData] = useState<LiveHierarchy | null>(null);
+  const [source, setSource] = useState<'loading' | 'live' | 'demo'>('loading');
+  const [summaries, setSummaries] = useState<BuildingSummary[]>([]);
+  const [cityBuildings, setCityBuildings] = useState<CityBuilding[]>([]);
+  const [liveParcels, setLiveParcels] = useState<Array<{
+    parcel_id: string;
+    height_m: number;
+    footprint: { type: string; coordinates: number[][][] } | null;
+    encroachment?: boolean;
+    elevation_msl_m?: number;
+  }>>([]);
 
   // Cinematic focus target: centroid of the selected parcel → MapLibre swoop.
+  // Declared after liveParcels (temporal-dead-zone safe).
   const focusTarget = useMemo(() => {
     if (!selectedLiveParcelId) return null;
     const targetParcel = liveParcels.find((p) => p.parcel_id === selectedLiveParcelId);
@@ -265,19 +279,7 @@ export default function Explorer3D() {
       console.error('FlyTo coordinate calculation failed:', e);
       return null;
     }
-  }, [selectedLiveParcelId, liveParcels]);  const [liveCaptureLoading, setLiveCaptureLoading] = useState(false);
-  const [liveCaptureNotice, setLiveCaptureNotice] = useState<string | null>(null);
-  const [liveData, setLiveData] = useState<LiveHierarchy | null>(null);
-  const [source, setSource] = useState<'loading' | 'live' | 'demo'>('loading');
-  const [summaries, setSummaries] = useState<BuildingSummary[]>([]);
-  const [cityBuildings, setCityBuildings] = useState<CityBuilding[]>([]);
-  const [liveParcels, setLiveParcels] = useState<Array<{
-    parcel_id: string;
-    height_m: number;
-    footprint: { type: string; coordinates: number[][][] } | null;
-    encroachment?: boolean;
-    elevation_msl_m?: number;
-  }>>([]);
+  }, [selectedLiveParcelId, liveParcels]);
   const [hoverBlock, setHoverBlock] = useState<string | null>(null);
   const [showCity, setShowCity] = useState(true);
   const [showPipes, setShowPipes] = useState(true);
