@@ -8,6 +8,9 @@ export interface MapTarget {
   lon: number;
   lat: number;
   zoom?: number;
+  pitch?: number;
+  bearing?: number;
+  duration?: number;
 }
 
 interface Props {
@@ -410,7 +413,14 @@ export default function MapLibrePanel({ apiBase, initial, target, footprints, se
 
   useEffect(() => {
     if (target && mapRef.current) {
-      mapRef.current.flyTo({ center: [target.lon, target.lat], zoom: target.zoom ?? 17, essential: true });
+      mapRef.current.flyTo({
+        center: [target.lon, target.lat],
+        zoom: target.zoom ?? 17,
+        pitch: target.pitch ?? 0,
+        bearing: target.bearing ?? 0,
+        duration: target.duration ?? 1500,
+        essential: true,
+      });
     }
   }, [target]);
 
