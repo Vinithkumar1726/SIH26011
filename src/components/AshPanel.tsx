@@ -30,6 +30,57 @@ export interface AshSnapshot {
   bearing: number;
   renderCount: number;
   errors: AshError[];
+  viewportW: number;
+  viewportH: number;
+  docH: number;
+  explorerH: number;
+}
+
+export interface DomTraceNode {
+  index: number;
+  tag: string;
+  cls: string;
+  display: string;
+  position: string;
+  width: string;
+  height: string;
+  minHeight: string;
+  maxHeight: string;
+  flex: string;
+  flexDirection: string;
+  flexGrow: string;
+  flexShrink: string;
+  gridRows: string;
+  overflow: string;
+}
+
+/** Walk from the map container up through every ancestor. Development-only. */
+export function traceMapAncestors(container: HTMLElement, depth = 14): DomTraceNode[] {
+  const out: DomTraceNode[] = [];
+  let el: HTMLElement | null = container;
+  for (let i = 0; i < depth && el; i++) {
+    const cs = getComputedStyle(el);
+    const r = el.getBoundingClientRect();
+    out.push({
+      index: i,
+      tag: el.tagName.toLowerCase(),
+      cls: (typeof el.className === 'string' ? el.className : '').split(/\s+/).filter(Boolean).slice(0, 6).join('.'),
+      display: cs.display,
+      position: cs.position,
+      width: `${Math.round(r.width)}px`,
+      height: `${Math.round(r.height)}px`,
+      minHeight: cs.minHeight,
+      maxHeight: cs.maxHeight,
+      flex: cs.flex,
+      flexDirection: cs.flexDirection,
+      flexGrow: cs.flexGrow,
+      flexShrink: cs.flexShrink,
+      gridRows: cs.gridTemplateRows,
+      overflow: cs.overflow,
+    });
+    el = el.parentElement;
+  }
+  return out;
 }
 
 export const ASH_IDLE: AshSnapshot = {
@@ -45,6 +96,10 @@ export const ASH_IDLE: AshSnapshot = {
   lon: 0, lat: 0, zoom: 0, pitch: 0, bearing: 0,
   renderCount: 0,
   errors: [],
+  viewportW: 0,
+  viewportH: 0,
+  docH: 0,
+  explorerH: 0,
 };
 
 function dot(color: string) {
@@ -81,11 +136,19 @@ export function ashReportText(s: AshSnapshot): string {
     '',
     `Errors: ${s.errors.length}`,
     ...s.errors.slice(0, 10).map((e) => `[${e.time}][${e.source}] ${e.message}`),
+    '',
+    `Viewport: ${s.viewportW}x${s.viewportH}`,
+    `Document: ${s.docH}`,
+    `ExplorerRoot: ${s.explorerH}`,
   ];
   return lines.join('\n');
 }
 
-export default function AshPanel({ snap }: { snap: AshSnapshot }) {
+export default function AshPanel({ snap, trace, onTrace }: {
+  snap: AshSnapshot;
+  trace: DomTraceNode[];
+  onTrace: () => void;
+}) {
   const [open, setOpen] = useState(false);
   const [copied, setCopied] = useState(false);
 
@@ -161,6 +224,23 @@ export default function AshPanel({ snap }: { snap: AshSnapshot }) {
           >
             {copied ? 'COPIED' : 'COPY DIAGNOSTICS'}
           </button>
+          <button
+            type="button"
+            onClick={onTrace}
+            aria-label="Trace map container ancestor heights"
+            style={{ marginTop: 6, marginLeft: 6, fontSize: 8, fontWeight: 700, background: '#fff', color: '#111', border: '2px solid #111', padding: '2px 10px', cursor: 'pointer' }}
+          >
+            TRACE DOM HEIGHTS
+          </button>
+          {trace.length > 0 && (
+            <div style={{ marginTop: 6, maxHeight: 220, overflowY: 'auto', border: '2px solid #111', padding: 4, background: '#fff' }}>
+              {trace.map((n) => (
+                <div key={n.index} style={{ fontSize: 8, color: Number.parseFloat(n.height) === 0 ? '#D92D20' : '#111', fontWeight: Number.parseFloat(n.height) === 0 ? 700 : 400, wordBreak: 'break-all' }}>
+                  [{n.index}] {n.tag}{n.cls ? `.${n.cls}` : ''} {n.width}×{n.height} d:{n.display} pos:{n.position} flex:{n.flex} dir:{n.flexDirection} minH:{n.minHeight} over:{n.overflow}
+                </div>
+              ))}
+            </div>
+          )}
         </div>
       )}
     </div>

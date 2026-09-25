@@ -2,7 +2,7 @@ import { useEffect, useRef, useState } from 'react';
 import * as maplibregl from 'maplibre-gl';
 import 'maplibre-gl/dist/maplibre-gl.css';
 import type { LiveFootprint } from './LiveMapPanel';
-import AshPanel, { ASH_IDLE, classifyAshError, sanitizeAshText, type AshSnapshot } from './AshPanel';
+import AshPanel, { ASH_IDLE, classifyAshError, sanitizeAshText, traceMapAncestors, type AshSnapshot, type DomTraceNode } from './AshPanel';
 
 export interface MapTarget {
   lon: number;
@@ -110,6 +110,22 @@ export default function MapLibrePanel({ apiBase, initial, target, footprints, se
   const [registryCount, setRegistryCount] = useState(0);
   const [diag, setDiag] = useState('STYLE: …');
   const [ash, setAsh] = useState<AshSnapshot>(ASH_IDLE);
+  const [trace, setTrace] = useState<DomTraceNode[]>([]);
+
+  const runTrace = () => {
+    const m = mapRef.current;
+    if (!m) return;
+    const nodes = traceMapAncestors(m.getContainer(), 14);
+    setTrace(nodes);
+    const explorer = m.getContainer().closest('[data-explorer-root]');
+    setAsh((prev) => ({
+      ...prev,
+      viewportW: window.innerWidth,
+      viewportH: window.innerHeight,
+      docH: document.documentElement.clientHeight,
+      explorerH: explorer ? Math.round(explorer.getBoundingClientRect().height) : 0,
+    }));
+  };
 
   const pushAshError = (source: string, message: string) =>
     setAsh((prev) => ({
@@ -428,7 +444,7 @@ export default function MapLibrePanel({ apiBase, initial, target, footprints, se
         <span className="brutal-badge brutal-badge-gold" style={{ fontSize: 8 }}>{footprints.length} LIVE</span>
       </div>
       <div className="shrink-0 px-2 py-1" style={{ background: '#F4F1E8', borderBottom: '2px solid #111111' }}>
-        <AshPanel snap={ash} />
+        <AshPanel snap={ash} trace={trace} onTrace={runTrace} />
       </div>
       <div className="relative flex-1 min-h-0">
         <div ref={divRef} className="absolute inset-0" />
