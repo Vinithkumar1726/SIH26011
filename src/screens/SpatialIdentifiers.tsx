@@ -1,5 +1,7 @@
 import { useState } from 'react';
 import { Search, Copy } from 'lucide-react';
+import { Badge, Button, Input, Panel, Table, TD, TH } from '../design/primitives';
+import { INK, DOMAIN, FONT, MUTED, PAPER, SURFACE } from '../design/tokens';
 
 const ROWS = [
   { id: '29384756102934-B01-F01-U01-V01', entity: 'U01', ver: 'V01', status: 'ACTIVE', floor: 'F01' },
@@ -26,86 +28,71 @@ export default function SpatialIdentifiers() {
   }
 
   return (
-    <div className="flex flex-col h-full overflow-hidden" style={{ background: '#F4F1E8' }}>
-      <div className="px-6 py-4 shrink-0" style={{ borderBottom: '3px solid #111111', background: '#FFFFFF' }}>
-        <div className="brutal-eyebrow">Analysis · Identifiers</div>
-        <h1 className="font-display font-bold" style={{ fontSize: 18, color: '#111111', letterSpacing: '0.01em' }}>
+    <div className="flex flex-col h-full overflow-hidden" style={{ background: SURFACE.app }}>
+      <div className="px-6 py-4 shrink-0" style={{ borderBottom: `3px solid ${INK}`, background: SURFACE.panel }}>
+        <div style={{ fontFamily: FONT.mono, fontSize: 9, fontWeight: 700, letterSpacing: '0.18em', color: DOMAIN.temporal }}>
+          Analysis · Identifiers
+        </div>
+        <h1 style={{ fontFamily: FONT.display, fontWeight: 700, fontSize: 18, color: PAPER, letterSpacing: '0.01em' }}>
           SPATIAL IDENTIFIER REGISTRY
         </h1>
-        <p style={{ fontSize: 11, color: '#555555', marginTop: 4 }}>
+        <p style={{ fontSize: 11, color: MUTED, marginTop: 4 }}>
           Versioned 3D spatial identifiers for all registered property units.
         </p>
       </div>
 
       {/* Filters */}
-      <div
-        className="flex items-center gap-3 px-5 py-3 shrink-0"
-        style={{ borderBottom: '3px solid #111111', background: '#FFFFFF' }}
-      >
-        <div className="input-icon" style={{ flex: 1, maxWidth: 360 }}>
-          <Search size={12} color="#555555" />
-          <input
+      <div className="flex items-center gap-3 px-5 py-3 shrink-0" style={{ borderBottom: `3px solid ${INK}`, background: SURFACE.panel }}>
+        <div className="flex items-center gap-2" style={{ flex: 1, maxWidth: 360 }}>
+          <Search size={12} color={MUTED} />
+          <Input
             value={query}
             onChange={(e) => setQuery(e.target.value)}
             placeholder="SEARCH IDENTIFIER..."
-            className="brutal-input font-mono"
             style={{ fontSize: 11, letterSpacing: '0.04em' }}
           />
         </div>
-        <div className="flex items-center gap-0">
+        <div className="flex items-center gap-2">
           {['ALL', 'F01', 'F02'].map((f) => (
-            <button
-              key={f}
-              onClick={() => setFloorFilter(f)}
-              className={`brutal-tab ${floorFilter === f ? 'active' : ''}`}
-              style={{ fontFamily: 'IBM Plex Mono' }}
-            >
+            <Button key={f} domain="temporal" active={floorFilter === f} onClick={() => setFloorFilter(f)}>
               {f}
-            </button>
+            </Button>
           ))}
         </div>
-        <span className="brutal-badge brutal-badge-black">
-          {filtered.length} RECORDS
-        </span>
+        <Badge domain="record">{filtered.length} RECORDS</Badge>
       </div>
 
       <div className="flex-1 overflow-y-auto p-4">
-        <div className="brutal-panel" style={{ padding: 0, overflow: 'hidden' }}>
-        <div className="table-container table-dark fade-up" style={{ background: 'transparent', border: 'none' }}>
-        <table className="brutal-table">
-          <thead style={{ position: 'sticky', top: 0, background: '#10151C', zIndex: 1 }}>
-            <tr style={{ borderBottom: '1px solid #28313C' }}>
-              {['SPATIAL IDENTIFIER', 'ENTITY', 'FLOOR', 'VERSION', 'STATUS', ''].map((h) => (
-                <th key={h}>{h}</th>
-              ))}
-            </tr>
-          </thead>
-          <tbody>
-            {filtered.map((row, i) => (
-              <tr key={i}>
-                <td className="font-mono font-bold" style={{ letterSpacing: '0.02em' }}>
-                  {row.id}
-                </td>
-                <td><span className="brutal-badge brutal-badge-gold">{row.entity}</span></td>
-                <td className="font-mono">{row.floor}</td>
-                <td className="font-mono">{row.ver}</td>
-                <td><span className="brutal-badge brutal-badge-green">● {row.status}</span></td>
-                <td>
-                  <button
-                    className="brutal-btn"
-                    style={{ padding: '3px 8px', fontSize: 9 }}
-                    onClick={() => copy(row.id)}
-                  >
-                    <Copy size={10} style={{ display: 'inline', marginRight: 4 }} />
-                    {copied === row.id ? 'COPIED' : 'COPY'}
-                  </button>
-                </td>
-              </tr>
-            ))}
-          </tbody>
-        </table>
-        </div>
-        </div>
+        <Panel>
+          <div style={{ overflowX: 'auto' }}>
+            <Table>
+              <thead style={{ position: 'sticky', top: 0, zIndex: 1 }}>
+                <tr>
+                  {['SPATIAL IDENTIFIER', 'ENTITY', 'FLOOR', 'VERSION', 'STATUS', ''].map((h) => (
+                    <TH key={h}>{h}</TH>
+                  ))}
+                </tr>
+              </thead>
+              <tbody>
+                {filtered.map((row, i) => (
+                  <tr key={i}>
+                    <TD accent>{row.id}</TD>
+                    <TD><Badge domain="record">{row.entity}</Badge></TD>
+                    <TD>{row.floor}</TD>
+                    <TD>{row.ver}</TD>
+                    <TD><Badge domain="ok">● {row.status}</Badge></TD>
+                    <TD>
+                      <Button domain="info" style={{ padding: '3px 8px', fontSize: 9 }} onClick={() => copy(row.id)}>
+                        <Copy size={10} style={{ display: 'inline', marginRight: 4 }} />
+                        {copied === row.id ? 'COPIED' : 'COPY'}
+                      </Button>
+                    </TD>
+                  </tr>
+                ))}
+              </tbody>
+            </Table>
+          </div>
+        </Panel>
       </div>
     </div>
   );

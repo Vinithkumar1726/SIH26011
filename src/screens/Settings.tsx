@@ -1,4 +1,6 @@
 import { useState } from 'react';
+import { Badge, Input, Panel } from '../design/primitives';
+import { INK, DOMAIN, FONT, MUTED, PAPER, SURFACE } from '../design/tokens';
 
 interface SettingRow {
   key: string;
@@ -52,45 +54,37 @@ export default function Settings() {
   );
 
   return (
-    <div className="flex flex-col h-full overflow-hidden" style={{ background: '#F4F1E8' }}>
-      <div className="px-6 py-4 shrink-0" style={{ borderBottom: '3px solid #111111', background: '#FFFFFF' }}>
-        <div className="brutal-eyebrow">System · Preferences</div>
-        <h1 className="font-display font-bold" style={{ fontSize: 18, color: '#111111', letterSpacing: '0.01em' }}>
+    <div className="flex flex-col h-full overflow-hidden" style={{ background: SURFACE.app }}>
+      <div className="px-6 py-4 shrink-0" style={{ borderBottom: `3px solid ${INK}`, background: SURFACE.panel }}>
+        <div style={{ fontFamily: FONT.mono, fontSize: 9, fontWeight: 700, letterSpacing: '0.18em', color: DOMAIN.temporal }}>
+          System · Preferences
+        </div>
+        <h1 style={{ fontFamily: FONT.display, fontWeight: 700, fontSize: 18, color: PAPER, letterSpacing: '0.01em' }}>
           SETTINGS
         </h1>
-        <p style={{ fontSize: 11, color: '#555555', marginTop: 4 }}>
+        <p style={{ fontSize: 11, color: MUTED, marginTop: 4 }}>
           System configuration and application preferences.
         </p>
       </div>
 
       <div className="flex-1 overflow-y-auto p-5">
         <div className="flex flex-col gap-5" style={{ maxWidth: 680 }}>
-          {SECTIONS.map((section, si) => (
-            <div
-              key={section.title}
-              className="brutal-panel"
-              style={{ padding: 0, overflow: 'hidden' }}
-            >
-              <div
-                className="brutal-header"
-              >
-                <span className="brutal-title">{section.title}</span>
-                <span className="brutal-badge brutal-badge-gold">{section.rows.length} FIELDS</span>
-              </div>
+          {SECTIONS.map((section) => (
+            <Panel key={section.title} title={section.title}
+              right={<Badge domain="info">{section.rows.length} FIELDS</Badge>}>
               {section.rows.map((row, i) => (
                 <div
                   key={row.key}
-                  className="flex items-center justify-between px-4 py-3"
-                  style={{ borderBottom: i < section.rows.length - 1 ? '2px solid #111111' : undefined }}
+                  className="flex items-center justify-between px-1 py-3"
+                  style={{ borderBottom: i < section.rows.length - 1 ? `2px solid ${INK}` : undefined }}
                 >
-                  <span style={{ fontSize: 11, fontWeight: 600, color: '#111111', fontFamily: 'IBM Plex Sans' }}>
+                  <span style={{ fontSize: 11, fontWeight: 600, color: PAPER, fontFamily: FONT.body }}>
                     {row.label}
                   </span>
                   {!row.type || row.type === 'text' ? (
-                    <input
+                    <Input
                       value={values[row.key]}
                       onChange={(e) => setValues((p) => ({ ...p, [row.key]: e.target.value }))}
-                      className="brutal-input font-mono"
                       style={{ fontSize: 10, width: 280 }}
                       readOnly={!row.type}
                     />
@@ -98,8 +92,11 @@ export default function Settings() {
                     <select
                       value={values[row.key]}
                       onChange={(e) => setValues((p) => ({ ...p, [row.key]: e.target.value }))}
-                      className="brutal-input font-mono"
-                      style={{ fontSize: 10, width: 200 }}
+                      style={{
+                        fontFamily: FONT.mono, fontSize: 10, width: 200,
+                        background: SURFACE.input, color: PAPER,
+                        border: `2px solid ${INK}`, padding: '8px 10px',
+                      }}
                     >
                       {row.options?.map((o) => <option key={o}>{o}</option>)}
                     </select>
@@ -108,22 +105,17 @@ export default function Settings() {
                       onClick={() => setValues((p) => ({ ...p, [row.key]: p[row.key] === 'ON' ? 'OFF' : 'ON' }))}
                       aria-label={row.label}
                       style={{
-                        background: values[row.key] === 'ON' ? '#16A34A' : '#fff',
-                        border: '2px solid #111111',
-                        width: 44,
-                        height: 22,
-                        cursor: 'pointer',
-                        position: 'relative',
+                        background: values[row.key] === 'ON' ? DOMAIN.ok : SURFACE.input,
+                        border: `2px solid ${INK}`,
+                        width: 44, height: 22, cursor: 'pointer', position: 'relative',
                         transition: 'background 0.1s',
                       }}
                     >
                       <div style={{
-                        width: 14,
-                        height: 14,
-                        background: values[row.key] === 'ON' ? '#fff' : '#111',
-                        border: '2px solid #111',
-                        position: 'absolute',
-                        top: 2,
+                        width: 14, height: 14,
+                        background: values[row.key] === 'ON' ? INK : MUTED,
+                        border: `2px solid ${INK}`,
+                        position: 'absolute', top: 2,
                         left: values[row.key] === 'ON' ? 24 : 2,
                         transition: 'left 0.1s',
                       }} />
@@ -131,16 +123,12 @@ export default function Settings() {
                   )}
                 </div>
               ))}
-            </div>
+            </Panel>
           ))}
 
           {/* Keyboard shortcuts */}
-          <div className="brutal-panel" style={{ padding: 0, overflow: 'hidden' }}>
-            <div className="brutal-header">
-              <span className="brutal-title">Keyboard Shortcuts</span>
-              <span className="brutal-badge brutal-badge-gold">8 BINDS</span>
-            </div>
-            <div className="p-4 grid gap-2" style={{ gridTemplateColumns: 'repeat(2,1fr)' }}>
+          <Panel title="Keyboard Shortcuts" right={<Badge domain="info">8 BINDS</Badge>}>
+            <div className="grid gap-2" style={{ gridTemplateColumns: 'repeat(2,1fr)' }}>
               {[
                 ['Ctrl/Cmd + K', 'Global Search'],
                 ['Esc', 'Close Modal'],
@@ -152,14 +140,20 @@ export default function Settings() {
                 ['S', 'Solid Mode'],
               ].map(([key, label]) => (
                 <div key={key} className="flex items-center gap-3">
-                  <kbd className="brutal-kbd" style={{ minWidth: 80, textAlign: 'center' }}>
+                  <kbd
+                    style={{
+                      minWidth: 80, textAlign: 'center', fontFamily: FONT.mono,
+                      fontSize: 10, fontWeight: 700, color: PAPER,
+                      background: SURFACE.raised, border: `2px solid ${INK}`, padding: '3px 8px',
+                    }}
+                  >
                     {key}
                   </kbd>
-                  <span style={{ fontSize: 10, color: '#555', fontFamily: 'IBM Plex Sans' }}>{label}</span>
+                  <span style={{ fontSize: 10, color: MUTED, fontFamily: FONT.body }}>{label}</span>
                 </div>
               ))}
             </div>
-          </div>
+          </Panel>
         </div>
       </div>
     </div>

@@ -1,6 +1,8 @@
 import { useCallback, useEffect, useState } from 'react';
 import { ArrowRight } from 'lucide-react';
 import { api } from '../api';
+import { Badge, Button, Card, Empty, Input, Panel } from '../design/primitives';
+import { INK, DOMAIN, FONT, MUTED, PAPER, SURFACE, type DomainKey } from '../design/tokens';
 
 const PROPOSALS = [
   {
@@ -42,6 +44,14 @@ interface LiveProposal {
   floors_override: number | null;
   z_base_msl_m: number | null;
   created_at: string | null;
+}
+
+/** Proposal source → palette domain (distinguishable at a glance, not just by text). */
+function sourceDomain(source: string | null): DomainKey {
+  if (source === 'osm' || (source ?? '').startsWith('live-map')) return 'spatial';
+  if (source === 'vision' || (source ?? '').includes('vision')) return 'ai';
+  if (source === 'synthetic_fallback') return 'warn';
+  return 'info';
 }
 
 export default function AIReview() {
@@ -104,111 +114,87 @@ export default function AIReview() {
   const pending = Object.values(statuses).filter((s) => s === 'pending').length;
 
   return (
-    <div className="flex flex-col h-full overflow-hidden" style={{ background: '#F4F1E8' }}>
-      <div className="px-6 py-4 shrink-0" style={{ borderBottom: '3px solid #111111', background: '#FFFFFF' }}>
+    <div className="flex flex-col h-full overflow-hidden" style={{ background: SURFACE.app }}>
+      <div className="px-6 py-4 shrink-0" style={{ borderBottom: `3px solid ${INK}`, background: SURFACE.panel }}>
         <div className="flex items-center gap-3 mb-1">
-          <span className="brutal-badge brutal-badge-gold">AI</span>
-          <h1 className="font-display font-bold" style={{ fontSize: 18, color: '#111111', letterSpacing: '0.01em' }}>
+          <Badge domain="ai">AI</Badge>
+          <h1 style={{ fontFamily: FONT.display, fontWeight: 700, fontSize: 18, color: PAPER, letterSpacing: '0.01em' }}>
             AI-ASSISTED MAPPING REVIEW
           </h1>
         </div>
-        <p style={{ fontSize: 11, color: '#555555' }}>
+        <p style={{ fontSize: 11, color: MUTED }}>
           Review AI field-mapping proposals and anomaly detections. Approve or reject each item.
         </p>
 
         {/* Summary chips */}
         <div className="flex gap-2 mt-3">
-          {[
-            { label: 'PENDING', val: pending, tone: 'gold' as const },
-            { label: 'ACCEPTED', val: accepted, tone: 'green' as const },
-            { label: 'REJECTED', val: rejected, tone: 'red' as const },
-          ].map((m) => (
-            <div key={m.label} className={`brutal-badge brutal-badge-${m.tone}`} style={{ fontSize: 10, padding: '4px 12px' }}>
-              <span className="font-display font-bold" style={{ fontSize: 14 }}>{m.val}</span>
-              <span>{m.label}</span>
-            </div>
-          ))}
+          <Badge domain="warn"><span style={{ fontSize: 14, fontWeight: 700 }}>{pending}</span>&nbsp;PENDING</Badge>
+          <Badge domain="ok"><span style={{ fontSize: 14, fontWeight: 700 }}>{accepted}</span>&nbsp;ACCEPTED</Badge>
+          <Badge domain="conflict"><span style={{ fontSize: 14, fontWeight: 700 }}>{rejected}</span>&nbsp;REJECTED</Badge>
         </div>
       </div>
 
       <div className="flex-1 overflow-y-auto p-5">
         <div className="flex flex-col gap-4" style={{ maxWidth: 760 }}>
           <div className="flex items-center justify-between">
-            <div className="brutal-title">
+            <div style={{ fontFamily: FONT.display, fontWeight: 700, fontSize: 13, color: PAPER, letterSpacing: '0.06em' }}>
               LIVE-CAPTURED BUILDINGS (FROM 3D GROUND CLICKS)
             </div>
             {!liveLoading && !liveError && live.length > 0 && (
-              <span className="brutal-badge brutal-badge-gold">{live.length} PENDING</span>
+              <Badge domain="ai">{live.length} PENDING</Badge>
             )}
           </div>
           {liveLoading && (
             <div className="flex flex-col gap-3">
               {[0, 1].map((i) => (
-                <div key={i} className="brutal-skeleton" style={{ height: 120 }} />
+                <div key={i} style={{ height: 120, background: SURFACE.raised, border: `2px dashed ${INK}` }} />
               ))}
             </div>
           )}
           {liveError && (
-            <div className="brutal-notice brutal-notice-red">{liveError}</div>
+            <Card><span style={{ color: DOMAIN.conflict, fontFamily: FONT.mono, fontSize: 11 }}>{liveError}</span></Card>
           )}
           {encroachNote && (
-            <div className="brutal-notice brutal-notice-red" style={{ fontWeight: 700 }}>{encroachNote}</div>
+            <Card><span style={{ color: DOMAIN.conflict, fontFamily: FONT.mono, fontSize: 11, fontWeight: 700 }}>{encroachNote}</span></Card>
           )}
           {!liveLoading && !liveError && live.length === 0 && (
-            <div className="brutal-panel-flat" style={{ padding: 20, textAlign: 'center', borderStyle: 'dashed' }}>
-              <div className="brutal-title" style={{ marginBottom: 4 }}>No pending captures</div>
-              <div style={{ fontSize: 11, color: '#555' }}>
-                Click ground in the 3D Explorer with Live Capture Mode on.
-              </div>
-            </div>
+            <Empty title="No pending captures" sub="Click ground in the 3D Explorer with Live Capture Mode on." />
           )}
-          {live.map((p, li) => (
-            <div
+          {live.map((p) => (
+            <Panel
               key={p.id}
-              className="brutal-panel"
-              style={{ padding: 16, borderLeft: '8px solid #F5C400' }}
+              accent="ai"
+              right={<Badge domain="info">LIVE CAPTURE {p.id.slice(0, 8)}…</Badge>}
             >
               <div className="flex items-center gap-2 mb-2 flex-wrap">
-                <span className="brutal-badge brutal-badge-black">
-                  LIVE CAPTURE {p.id.slice(0, 8)}…
-                </span>
-                <span
-                  className={`brutal-badge ${p.source === 'synthetic_fallback' ? 'brutal-badge-gold' : ''}`}
-                >
+                <Badge domain={sourceDomain(p.source)}>
                   {(p.source ?? 'unknown').toUpperCase()}
-                </span>
+                </Badge>
               </div>
-              <p className="font-mono font-bold" style={{ fontSize: 12, color: '#111', margin: '0 0 4px 0', lineHeight: 1.5 }}>
+              <p style={{ fontFamily: FONT.mono, fontWeight: 700, fontSize: 12, color: PAPER, margin: '0 0 4px 0', lineHeight: 1.5 }}>
                 Bhu-Aadhaar {p.ulpin ?? '—'} · captured{' '}
                 {p.created_at ? new Date(p.created_at).toLocaleString('en-IN') : '—'}
               </p>
               {p.source === 'synthetic_fallback' && (
-                <div className="brutal-notice brutal-notice-gold" style={{ margin: '4px 0', fontSize: 11 }}>
+                <div style={{ margin: '4px 0', fontSize: 11, color: DOMAIN.warn, fontFamily: FONT.mono }}>
                   Synthetic 10 m box — NOT a detected building.
                 </div>
               )}
               <div className="flex items-center gap-2 flex-wrap" style={{ margin: '8px 0' }}>
-                <span className="brutal-badge">
-                  H {p.height_m ?? '—'} m
-                </span>
-                <span
-                  className={`brutal-badge ${(p.height_source ?? 'ESTIMATED') === 'USER' ? 'brutal-badge-green' : 'brutal-badge-gold'}`}
-                  title="Height provenance: ESTIMATED is not survey-grade"
+                <Badge domain="info">H {p.height_m ?? '—'} m</Badge>
+                <Badge
+                  domain={(p.height_source ?? 'ESTIMATED') === 'USER' ? 'ok' : 'warn'}
                 >
                   {(p.height_source ?? 'ESTIMATED') === 'USER' ? 'USER-SET' : 'ESTIMATED — NOT SURVEY-GRADE'}
-                </span>
+                </Badge>
                 {p.floors_override != null && (
-                  <span className="brutal-badge">
-                    {p.floors_override} FLOORS (USER)
-                  </span>
+                  <Badge domain="info">{p.floors_override} FLOORS (USER)</Badge>
                 )}
                 {p.z_base_msl_m != null && (
-                  <span className="brutal-badge">
-                    BASE {Number(p.z_base_msl_m).toFixed(1)} m MSL
-                  </span>
+                  <Badge domain="spatial">BASE {Number(p.z_base_msl_m).toFixed(1)} m MSL</Badge>
                 )}
-                <button
-                  className="brutal-btn"
+                <Button
+                  domain="info"
                   style={{ fontSize: 9, padding: '4px 10px' }}
                   onClick={() => {
                     setEditingId(editingId === p.id ? null : p.id);
@@ -218,119 +204,114 @@ export default function AIReview() {
                   }}
                 >
                   {editingId === p.id ? 'CANCEL EDIT' : 'EDIT H/FLOORS'}
-                </button>
+                </Button>
               </div>
               {editingId === p.id && (
                 <div className="flex items-center gap-2 flex-wrap" style={{ margin: '4px 0 8px 0' }}>
-                  <input
+                  <Input
                     value={draftHeight}
                     onChange={(e) => setDraftHeight(e.target.value)}
                     placeholder="Height m"
                     type="number"
                     min="0"
                     step="0.5"
-                    className="brutal-input font-mono"
                     style={{ width: 110, fontSize: 10 }}
                   />
-                  <input
+                  <Input
                     value={draftFloors}
                     onChange={(e) => setDraftFloors(e.target.value)}
                     placeholder="Floors"
                     type="number"
                     min="1"
                     step="1"
-                    className="brutal-input font-mono"
                     style={{ width: 90, fontSize: 10 }}
                   />
-                  <button className="brutal-btn brutal-btn-gold" style={{ fontSize: 9, padding: '6px 12px' }} onClick={() => void saveEdit(p.id)}>
+                  <Button domain="record" style={{ fontSize: 9, padding: '6px 12px' }} onClick={() => void saveEdit(p.id)}>
                     SAVE
-                  </button>
-                  {editMsg && <span style={{ fontSize: 10, color: '#E5484D' }}>{editMsg}</span>}
+                  </Button>
+                  {editMsg && <span style={{ fontSize: 10, color: DOMAIN.conflict }}>{editMsg}</span>}
                 </div>
               )}
-              <div className="flex gap-2 mt-3 pt-3" style={{ borderTop: '2px solid #111111' }}>
-                <button
-                  className="brutal-btn brutal-btn-danger"
+              <div className="flex gap-2 mt-3 pt-3" style={{ borderTop: `2px solid ${INK}` }}>
+                <Button
+                  domain="conflict"
                   style={{ fontSize: 10, padding: '6px 14px' }}
                   onClick={() => void decide(p.id, 'REJECTED')}
                 >
                   REJECT
-                </button>
-                <button
-                  className="brutal-btn brutal-btn-success"
+                </Button>
+                <Button
+                  domain="ok"
                   style={{ fontSize: 10, padding: '6px 14px' }}
                   onClick={() => void decide(p.id, 'APPROVED')}
                 >
                   APPROVE → ADD 3D BUILDING
-                </button>
+                </Button>
               </div>
-            </div>
+            </Panel>
           ))}
-          <div className="brutal-eyebrow" style={{ marginTop: 8 }}>
+          <div style={{ fontFamily: FONT.mono, fontSize: 9, fontWeight: 700, letterSpacing: '0.18em', color: MUTED, marginTop: 8 }}>
             FIELD-MAPPING PROPOSALS (STATIC DEMO)
           </div>
           {PROPOSALS.map((p) => {
             const st = statuses[p.id];
             return (
-              <div
+              <Panel
                 key={p.id}
-                className="brutal-panel"
-                style={{
-                  padding: 16,
-                  opacity: st === 'rejected' ? 0.55 : 1,
-                  borderLeft: `8px solid ${st === 'accepted' ? '#16A34A' : st === 'rejected' ? '#D92D20' : '#F5C400'}`,
-                }}
+                accent={st === 'accepted' ? 'ok' : st === 'rejected' ? 'conflict' : 'record'}
+                right={
+                  st !== 'pending'
+                    ? <Badge domain={st === 'accepted' ? 'ok' : 'conflict'}>● {st.toUpperCase()}</Badge>
+                    : undefined
+                }
               >
-                <div className="flex items-start justify-between">
+                <div className="flex items-start justify-between" style={{ opacity: st === 'rejected' ? 0.55 : 1 }}>
                   <div className="flex-1">
                     <div className="flex items-center gap-2 mb-3 flex-wrap">
-                      <span className="brutal-badge brutal-badge-black">
-                        AI PROPOSAL {p.id}
-                      </span>
-                      <span
-                        className={`brutal-badge ${p.type === 'ANOMALY' ? 'brutal-badge-gold' : ''}`}
-                      >
-                        {p.type}
-                      </span>
-                      {st !== 'pending' && (
-                        <span className={st === 'accepted' ? 'brutal-badge brutal-badge-green' : 'brutal-badge brutal-badge-red'}>
-                          ● {st.toUpperCase()}
-                        </span>
-                      )}
+                      <Badge domain="info">AI PROPOSAL {p.id}</Badge>
+                      <Badge domain={p.type === 'ANOMALY' ? 'warn' : 'info'}>{p.type}</Badge>
                     </div>
 
                     <div className="flex items-center gap-2 mb-3 flex-wrap">
-                      <span className="font-mono font-bold"
-                        style={{ fontSize: 12, color: '#111', background: '#F4F1E8', padding: '4px 10px', border: '2px solid #111' }}>
+                      <span
+                        style={{
+                          fontFamily: FONT.mono, fontWeight: 700, fontSize: 12,
+                          color: PAPER, background: SURFACE.raised,
+                          padding: '4px 10px', border: `2px solid ${INK}`,
+                        }}
+                      >
                         {p.src}
                       </span>
-                      <ArrowRight size={12} color="#111111" strokeWidth={3} />
-                      <span className="font-mono font-bold"
-                        style={{ fontSize: 12, color: '#111', background: '#F5C400', padding: '4px 10px', border: '2px solid #111' }}>
+                      <ArrowRight size={12} color={PAPER} strokeWidth={3} />
+                      <span
+                        style={{
+                          fontFamily: FONT.mono, fontWeight: 700, fontSize: 12,
+                          color: INK, background: DOMAIN.ai,
+                          padding: '4px 10px', border: `2px solid ${INK}`,
+                        }}
+                      >
                         {p.dst}
                       </span>
                     </div>
 
-                    <p style={{ fontSize: 11, color: '#333', margin: 0, lineHeight: 1.5 }}>
+                    <p style={{ fontSize: 11, color: MUTED, margin: 0, lineHeight: 1.5 }}>
                       {p.reason}
                     </p>
                   </div>
 
                   <div className="flex flex-col items-end gap-1 ml-6 shrink-0">
-                    <div
-                      className="font-display font-bold"
-                      style={{ fontSize: 22, color: '#111' }}
-                    >
+                    <div style={{ fontFamily: FONT.display, fontWeight: 700, fontSize: 22, color: PAPER }}>
                       {p.confidence}%
                     </div>
-                    <div className="brutal-eyebrow" style={{ fontSize: 8 }}>
+                    <div style={{ fontFamily: FONT.mono, fontSize: 8, fontWeight: 700, letterSpacing: '0.18em', color: MUTED }}>
                       CONFIDENCE
                     </div>
-                    <div className="progress-bar" style={{ width: 60, height: 10, marginTop: 2, border: '2px solid #111', background: '#fff' }}>
-                      <div className="fill"
+                    <div style={{ width: 60, height: 10, marginTop: 2, border: `2px solid ${INK}`, background: SURFACE.input }}>
+                      <div
                         style={{
+                          height: '100%',
                           width: `${p.confidence}%`,
-                          background: p.confidence > 90 ? '#16A34A' : '#F5C400',
+                          background: p.confidence > 90 ? DOMAIN.ok : DOMAIN.record,
                         }}
                       />
                     </div>
@@ -338,30 +319,27 @@ export default function AIReview() {
                 </div>
 
                 {st === 'pending' && (
-                  <div className="flex gap-2 mt-4 pt-3" style={{ borderTop: '2px solid #111111' }}>
-                    <button
-                      className="brutal-btn brutal-btn-danger"
+                  <div className="flex gap-2 mt-4 pt-3" style={{ borderTop: `2px solid ${INK}` }}>
+                    <Button
+                      domain="conflict"
                       style={{ fontSize: 10, padding: '6px 14px' }}
                       onClick={() => setStatuses((prev) => ({ ...prev, [p.id]: 'rejected' }))}
                     >
                       REJECT
-                    </button>
-                    <button
-                      className="brutal-btn"
-                      style={{ fontSize: 10, padding: '6px 14px' }}
-                    >
+                    </Button>
+                    <Button domain="info" style={{ fontSize: 10, padding: '6px 14px' }}>
                       EDIT
-                    </button>
-                    <button
-                      className="brutal-btn brutal-btn-success"
+                    </Button>
+                    <Button
+                      domain="ok"
                       style={{ fontSize: 10, padding: '6px 14px' }}
                       onClick={() => setStatuses((prev) => ({ ...prev, [p.id]: 'accepted' }))}
                     >
                       ACCEPT
-                    </button>
+                    </Button>
                   </div>
                 )}
-              </div>
+              </Panel>
             );
           })}
         </div>

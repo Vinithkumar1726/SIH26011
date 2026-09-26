@@ -1,5 +1,7 @@
 import { useState } from 'react';
 import { Copy } from 'lucide-react';
+import { Badge, Button, Panel } from '../design/primitives';
+import { INK, DOMAIN, FONT, MUTED, PAPER, SURFACE } from '../design/tokens';
 
 const VERSIONS = [
   {
@@ -29,40 +31,38 @@ export default function PropertyRecords() {
   }
 
   return (
-    <div className="flex flex-col h-full overflow-hidden" style={{ background: '#F4F1E8' }}>
+    <div className="flex flex-col h-full overflow-hidden" style={{ background: SURFACE.app }}>
       {/* Header */}
-      <div
-        className="px-6 py-4 shrink-0"
-        style={{ borderBottom: '3px solid #111111', background: '#FFFFFF' }}
-      >
+      <div className="px-6 py-4 shrink-0" style={{ borderBottom: `3px solid ${INK}`, background: SURFACE.panel }}>
         <div className="flex items-start justify-between">
           <div>
-            <div className="brutal-eyebrow" style={{ marginBottom: 2 }}>
+            <div style={{ fontFamily: FONT.mono, fontSize: 9, fontWeight: 700, letterSpacing: '0.18em', color: DOMAIN.record, marginBottom: 2 }}>
               PARCEL / B01 / F01 / U01
             </div>
-            <h1 className="font-display font-bold" style={{ fontSize: 18, color: '#111111', letterSpacing: '0.01em' }}>
+            <h1 style={{ fontFamily: FONT.display, fontWeight: 700, fontSize: 18, color: PAPER, letterSpacing: '0.01em' }}>
               PROPERTY RECORD
             </h1>
           </div>
           <div className="flex items-center gap-2">
-            <span className="brutal-badge brutal-badge-green" style={{ fontSize: 10, padding: '4px 10px' }}>● VALIDATED</span>
-            <button className="brutal-btn" style={{ fontSize: 10 }}>EXPORT</button>
+            <Badge domain="ok">● VALIDATED</Badge>
+            <Button domain="info" style={{ fontSize: 10 }}>EXPORT</Button>
           </div>
         </div>
 
         {/* Tabs */}
-        <div className="brutal-tabs mt-4">
+        <div className="flex gap-2 mt-4">
           {[
             { id: 'record', label: 'RECORD' },
             { id: 'history', label: 'VERSION HISTORY' },
           ].map((t) => (
-            <button
+            <Button
               key={t.id}
-              onClick={() => setTab(t.id as any)}
-              className={`brutal-tab ${tab === t.id ? 'active' : ''}`}
+              domain="record"
+              active={tab === t.id}
+              onClick={() => setTab(t.id as 'record' | 'history')}
             >
               {t.label}
-            </button>
+            </Button>
           ))}
         </div>
       </div>
@@ -72,12 +72,12 @@ export default function PropertyRecords() {
           <div className="grid gap-4" style={{ gridTemplateColumns: '1fr 1fr', maxWidth: 900 }}>
             {/* Spatial ID banner */}
             <div
-              className="fade-up"
               style={{
                 gridColumn: '1 / -1',
-                background: '#111111',
-                border: '3px solid #000000',
-                boxShadow: '5px 5px 0 rgba(17,17,17,0.3)',
+                background: SURFACE.panel,
+                border: `3px solid ${INK}`,
+                borderTop: `6px solid ${DOMAIN.record}`,
+                boxShadow: `4px 4px 0 ${INK}`,
                 padding: '12px 16px',
                 display: 'flex',
                 alignItems: 'center',
@@ -85,17 +85,17 @@ export default function PropertyRecords() {
               }}
             >
               <div>
-                <div style={{ fontSize: 9, color: '#F5C400', letterSpacing: '0.14em', marginBottom: 4, fontFamily: 'IBM Plex Sans', fontWeight: 700 }}>
+                <div style={{ fontFamily: FONT.mono, fontSize: 9, color: DOMAIN.record, letterSpacing: '0.14em', marginBottom: 4, fontWeight: 700 }}>
                   3D SPATIAL IDENTIFIER
                 </div>
-                <div className="font-mono" style={{ fontSize: 13, fontWeight: 700, color: '#FFFFFF', letterSpacing: '0.02em', userSelect: 'all' }}>
+                <div style={{ fontFamily: FONT.mono, fontSize: 13, fontWeight: 700, color: PAPER, letterSpacing: '0.02em', userSelect: 'all' }}>
                   {spatialId}
                 </div>
               </div>
-              <button className="brutal-btn brutal-btn-gold" onClick={copy} style={{ display: 'flex', alignItems: 'center', gap: 6, fontSize: 10 }}>
+              <Button domain="record" onClick={copy} style={{ display: 'flex', alignItems: 'center', gap: 6, fontSize: 10 }}>
                 <Copy size={12} />
                 <span>{copied ? 'COPIED' : 'COPY'}</span>
-              </button>
+              </Button>
             </div>
 
             {/* Identification */}
@@ -135,13 +135,15 @@ export default function PropertyRecords() {
                 { check: 'IDENTIFIER', pass: true },
               ].map((c) => (
                 <div key={c.check} className="flex items-center justify-between mb-2.5">
-                  <span className="font-mono font-bold" style={{ fontSize: 10, color: '#111111', letterSpacing: '0.06em' }}>
+                  <span style={{ fontFamily: FONT.mono, fontWeight: 700, fontSize: 10, color: PAPER, letterSpacing: '0.06em' }}>
                     {c.check}
                   </span>
-                  <span className="brutal-badge brutal-badge-green" style={{ fontSize: 8 }}>● PASS</span>
+                  <Badge domain={c.pass ? 'ok' : 'conflict'} style={{ fontSize: 8 }}>
+                    {c.pass ? '● PASS' : '▲ FAIL'}
+                  </Badge>
                 </div>
               ))}
-              <div className="mt-3 pt-3" style={{ borderTop: '2px solid #111111' }}>
+              <div className="mt-3 pt-3" style={{ borderTop: `2px solid ${INK}` }}>
                 <Row label="VALIDATED ON" value="18 SEP 2026 10:39:22" mono small />
                 <Row label="ENGINE VERSION" value="v2.4.1" mono />
               </div>
@@ -151,16 +153,16 @@ export default function PropertyRecords() {
             <Section title="OWNERSHIP / RECORD">
               <div
                 style={{
-                  background: '#F4F1E8',
-                  border: '2px dashed #111111',
+                  background: SURFACE.raised,
+                  border: `2px dashed ${INK}`,
                   padding: '20px 16px',
                   textAlign: 'center',
                 }}
               >
-                <div style={{ fontSize: 9, fontWeight: 700, color: '#111111', letterSpacing: '0.1em', fontFamily: 'IBM Plex Sans' }}>
+                <div style={{ fontSize: 9, fontWeight: 700, color: PAPER, letterSpacing: '0.1em', fontFamily: FONT.body }}>
                   OWNERSHIP INFORMATION
                 </div>
-                <div style={{ fontSize: 10, color: '#555555', marginTop: 6, fontFamily: 'IBM Plex Sans' }}>
+                <div style={{ fontSize: 10, color: MUTED, marginTop: 6, fontFamily: FONT.body }}>
                   To be populated via land records integration
                 </div>
               </div>
@@ -170,52 +172,44 @@ export default function PropertyRecords() {
 
         {tab === 'history' && (
           <div style={{ maxWidth: 600 }}>
-            <h3 className="font-display font-bold mb-4" style={{ fontSize: 13, color: '#111111', letterSpacing: '0.06em' }}>
+            <h3 style={{ fontFamily: FONT.display, fontWeight: 700, marginBottom: 16, fontSize: 13, color: PAPER, letterSpacing: '0.06em' }}>
               VERSION HISTORY
             </h3>
             <div className="relative">
               <div
                 style={{
-                  position: 'absolute',
-                  left: 19,
-                  top: 20,
-                  bottom: 20,
-                  width: 3,
-                  background: '#111111',
+                  position: 'absolute', left: 19, top: 20, bottom: 20,
+                  width: 3, background: INK,
                 }}
               />
               {VERSIONS.map((v, i) => (
                 <div key={v.v} className="flex gap-4 mb-6 relative">
                   <div
-                    className="font-mono flex items-center justify-center shrink-0"
+                    className="flex items-center justify-center shrink-0"
                     style={{
-                      width: 40,
-                      height: 40,
-                      background: i === 0 ? '#F5C400' : '#FFFFFF',
-                      border: '2px solid #111111',
-                      boxShadow: '3px 3px 0 #111111',
-                      fontSize: 10,
-                      color: '#111111',
-                      fontWeight: 700,
-                      zIndex: 1,
+                      width: 40, height: 40,
+                      background: i === 0 ? DOMAIN.temporal : SURFACE.raised,
+                      border: `2px solid ${INK}`,
+                      boxShadow: `3px 3px 0 ${INK}`,
+                      fontFamily: FONT.mono, fontSize: 10,
+                      color: i === 0 ? INK : PAPER,
+                      fontWeight: 700, zIndex: 1,
                     }}
                   >
                     {v.v}
                   </div>
                   <div
                     style={{
-                      flex: 1,
-                      background: '#FFFFFF',
-                      border: '2px solid #111111',
-                      boxShadow: '4px 4px 0 #111111',
+                      flex: 1, background: SURFACE.panel,
+                      border: `2px solid ${INK}`, boxShadow: `4px 4px 0 ${INK}`,
                       padding: '12px 14px',
                     }}
                   >
                     <div className="flex items-center justify-between mb-2">
-                      <span className="font-mono font-bold" style={{ fontSize: 10, color: '#111111', letterSpacing: '0.04em' }}>
+                      <span style={{ fontFamily: FONT.mono, fontWeight: 700, fontSize: 10, color: PAPER, letterSpacing: '0.04em' }}>
                         {v.change}
                       </span>
-                      {i === 0 && <span className="brutal-badge brutal-badge-gold">CURRENT</span>}
+                      {i === 0 && <Badge domain="temporal">CURRENT</Badge>}
                     </div>
                     <div className="grid gap-2" style={{ gridTemplateColumns: '1fr 1fr' }}>
                       <SmallRow label="DATE" value={v.date} />
@@ -235,28 +229,21 @@ export default function PropertyRecords() {
 }
 
 function Section({ title, children }: { title: string; children: React.ReactNode }) {
-  return (
-    <div className="brutal-panel" style={{ padding: 16 }}>
-      <div
-        className="brutal-title"
-        style={{ marginBottom: 12, borderBottom: '2px solid #111111', paddingBottom: 8 }}
-      >
-        {title}
-      </div>
-      {children}
-    </div>
-  );
+  return <Panel title={title}>{children}</Panel>;
 }
 
 function Row({ label, value, mono, small }: { label: string; value: string; mono?: boolean; small?: boolean }) {
   return (
-    <div className="flex justify-between items-start mb-2.5" style={{ borderBottom: '1px solid rgba(17,17,17,0.12)', paddingBottom: 6 }}>
-      <span style={{ fontSize: 9, fontWeight: 700, color: '#555555', letterSpacing: '0.08em', fontFamily: 'IBM Plex Sans', flexShrink: 0, marginRight: 8 }}>
+    <div className="flex justify-between items-start mb-2.5" style={{ borderBottom: `1px solid ${INK}`, paddingBottom: 6 }}>
+      <span style={{ fontSize: 9, fontWeight: 700, color: MUTED, letterSpacing: '0.08em', fontFamily: FONT.body, flexShrink: 0, marginRight: 8 }}>
         {label}
       </span>
       <span
-        className={mono ? 'font-mono' : ''}
-        style={{ fontSize: small ? 9 : 10, fontWeight: 600, color: '#111111', textAlign: 'right', wordBreak: 'break-all', letterSpacing: small ? '0.02em' : '0.04em' }}
+        style={{
+          fontFamily: mono ? FONT.mono : FONT.body,
+          fontSize: small ? 9 : 10, fontWeight: 600, color: PAPER,
+          textAlign: 'right', wordBreak: 'break-all', letterSpacing: small ? '0.02em' : '0.04em',
+        }}
       >
         {value}
       </span>
@@ -267,8 +254,8 @@ function Row({ label, value, mono, small }: { label: string; value: string; mono
 function SmallRow({ label, value }: { label: string; value: string }) {
   return (
     <div>
-      <div style={{ fontSize: 8, fontWeight: 700, color: '#555555', letterSpacing: '0.1em', fontFamily: 'IBM Plex Sans' }}>{label}</div>
-      <div className="font-mono" style={{ fontSize: 9, fontWeight: 600, color: '#111111' }}>{value}</div>
+      <div style={{ fontSize: 8, fontWeight: 700, color: MUTED, letterSpacing: '0.1em', fontFamily: FONT.body }}>{label}</div>
+      <div style={{ fontFamily: FONT.mono, fontSize: 9, fontWeight: 600, color: PAPER }}>{value}</div>
     </div>
   );
 }
