@@ -5,7 +5,7 @@ import type { ThreeEvent } from '@react-three/fiber';
 import { AdaptiveDpr, OrbitControls, useGLTF } from '@react-three/drei';
 import * as THREE from 'three';
 import type { Building, Floor, SpatialID, Unit } from '../workspace3d/types';
-import { building as demoBuilding, floors as demoFloors, footprintToLocal, parcel as demoParcel, spatialIDs as demoSpatialIDs, units as demoUnits } from '../workspace3d/data';
+import { building as demoBuilding, floors as demoFloors, footprintToLocal, lonLatToLocal, parcel as demoParcel, spatialIDs as demoSpatialIDs, units as demoUnits } from '../workspace3d/data';
 import QRCode from 'qrcode';
 import CollapsePanel from '../components/CollapsePanel';
 import LiveMapPanel from '../components/LiveMapPanel';
@@ -293,6 +293,8 @@ export default function Explorer3D() {
   const [showPipes, setShowPipes] = useState(true);
   const [showTerrain, setShowTerrain] = useState(true);
   const [showLiveParcels, setShowLiveParcels] = useState(true);
+  const [xray, setXray] = useState(false);
+  const [subUtils, setSubUtils] = useState<any[]>([]);
   const [lidarTarget, setLidarTarget] = useState('');
   const [lidarRunning, setLidarRunning] = useState(false);
   const [lidarJob, setLidarJob] = useState<{
@@ -601,6 +603,31 @@ export default function Explorer3D() {
       clearInterval(timer);
     };
   }, [cityVisible, isHistorical]);
+
+  // Subterranean utilities: fetch once per city view (tile bbox).
+  useEffect(() => {
+    if (!cityVisible) return;
+    let cancelled = false;
+    const base = (import.meta.env.VITE_API_URL || 'http://127.0.0.1:8000').replace(/\/$/, '');
+    const o = cityMeta?.origin ?? { lon: origin[0], lat: origin[1] };
+    const r = cityMeta?.radiusM ?? 1400;
+    const dLat = r / 111320;
+    const dLon = r / (111320 * Math.cos((o.lat * Math.PI) / 180));
+    fetch(`${base}/api/v2/utilities/subterranean?bbox=${o.lon - dLon},${o.lat - dLat},${o.lon + dLon},${o.lat + dLat}`)
+      .then((res) => {
+        if (!res.ok) throw new Error(`HTTP ${res.status}`);
+        return res.json();
+      })
+      .then((fc) => {
+        if (!cancelled && Array.isArray(fc?.features)) setSubUtils(fc.features);
+      })
+      .catch(() => {
+        /* underground layer stays empty */
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, [cityVisible, cityMeta, origin]);
 
   const pipeStatus = useMemo(() => {
     if (!cityVisible || !cityOffset) return [];
@@ -987,7 +1014,7 @@ export default function Explorer3D() {
           <hemisphereLight args={[sky.hemiSky, sky.hemiGround, sky.ambient]} />
           {showTerrain && (
           <Ground
-            seeThrough={viewPreset === 'cutaway'}
+            seeThrough={viewPreset === 'cutaway' || xray}
             size={cityVisible && cityMeta ? 3 * cityMeta.radiusM : 200 * fh}
             onGroundClick={handleGroundClick}
           />
@@ -1048,6 +1075,9 @@ export default function Explorer3D() {
               onHover={(name) => setHoverBlock(name)}
             />
           ))}
+          {xray && subUtils.length > 0 && (
+            <SubterraneanNetwork features={subUtils} origin={origin} />
+          )}
           {showFloors && floors.map((fl, fi) => (
             <FloorSlab key={fl.id} floor={fl} index={fi} shape={footprintShape} visible={(selectedFloorId === null || selectedFloorId === fl.id)} exploded={exploded} zMax={zMax} highlighted={!reportFilterActive || matchingFloorIds.has(fl.id)} onClick={() => { setSelected(null); setSelectedFloorId(fl.id); setSelectedScope('floor'); }} />
           ))}
@@ -1152,6 +1182,13 @@ export default function Explorer3D() {
             className={`w-full text-[10px] py-1 rounded-none uppercase tracking-wider mb-2 ${splitView ? 'bg-amber-400/15 text-amber-200 border border-amber-300/40' : 'bg-white/5 text-slate-400 border border-transparent hover:text-white'}`}
           >
             {splitView ? '◉ Split 2D/3D: ON' : '◎ Split 2D/3D View'}
+          </button>
+          <button
+            type="button"
+            onClick={() => setXray((v) => !v)}
+            className={`w-full text-[10px] py-1 rounded-none uppercase tracking-wider mb-2 ${xray ? 'bg-amber-400/15 text-amber-200 border border-amber-300/40' : 'bg-white/5 text-slate-400 border border-transparent hover:text-white'}`}
+          >
+            {xray ? '◉ Deep Cadastre / X-Ray: ON' : '◎ Deep Cadastre / X-Ray'}
           </button>
           <div className="mt-1 mb-2" style={{ border: '2px solid #111111', background: isHistorical ? '#F5C400' : '#FFFFFF', padding: '8px 10px', boxShadow: '3px 3px 0 #111111' }}>
             <div className="flex items-center justify-between mb-1">
@@ -2351,8 +2388,50 @@ function NeighbourBlock({ nb, origin, onSelect, onHover }: {
   );
 }
 
-function LiveParcelInspector({ parcelId, onClose }: { parcelId: string; onClose: () => void }) {
-  const [detail, setDetail] = useState<any | null>(null);
+const UTILITY_COLORS: Record<string, string> = {
+  water: '#06b6d4',
+  fiber: '#f97316',
+  sewer: '#22c55e',
+  power: '#F5C400',
+};
+
+function SubterraneanNetwork({ features, origin }: {
+  features: Array<{ properties: { id: string; utility_type: string }; geometry: { coordinates: number[][][] } | { coordinates: number[][] } | null }>;
+  origin: [number, number];
+}) {
+  const tubes = useMemo(() => {
+    const out: Array<{ id: string; color: string; points: [number, number, number][] }> = [];
+    for (const f of features) {
+      const coords = (f.geometry as any)?.coordinates as number[][] | undefined;
+      if (!Array.isArray(coords) || coords.length < 2) continue;
+      const pts: [number, number, number][] = [];
+      for (const c of coords) {
+        if (!Array.isArray(c) || c.length < 2) continue;
+        const { x, y } = lonLatToLocal(c[0], c[1], origin[0], origin[1]);
+        pts.push([x, typeof c[2] === 'number' ? c[2] : -2, -y]);
+      }
+      if (pts.length < 2) continue;
+      out.push({
+        id: f.properties.id,
+        color: UTILITY_COLORS[f.properties.utility_type] ?? '#e2e8f0',
+        points: pts,
+      });
+    }
+    return out;
+  }, [features, origin]);
+  return (
+    <group>
+      {tubes.map((t) => (
+        <mesh key={t.id}>
+          <tubeGeometry args={[new THREE.CatmullRomCurve3(t.points.map((p) => new THREE.Vector3(...p))), 64, 0.35, 8, false]} />
+          <meshStandardMaterial color={t.color} emissive={t.color} emissiveIntensity={1.2} roughness={0.4} />
+        </mesh>
+      ))}
+    </group>
+  );
+}
+
+function LiveParcelInspector({ parcelId, onClose }: { parcelId: string; onClose: () => void }) {  const [detail, setDetail] = useState<any | null>(null);
   const [failed, setFailed] = useState(false);
   useEffect(() => {
     let active = true;

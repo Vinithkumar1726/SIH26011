@@ -2388,10 +2388,44 @@ async def list_cadastral_parcels():
         ]
 
 
+@app.get("/api/v2/utilities/subterranean")
+async def subterranean_utilities(bbox: Optional[str] = None):
+    """Subterranean utility networks as GeoJSON with 3D coordinates."""
+    from sqlalchemy import text
+
+    clauses = []
+    params: dict = {}
+    if bbox:
+        try:
+            minlon, minlat, maxlon, maxlat = (float(v) for v in bbox.split(","))
+        except (TypeError, ValueError):
+            raise HTTPException(status_code=422, detail="bbox must be minlon,minlat,maxlon,maxlat numbers")
+        clauses.append("geom && ST_MakeEnvelope(:minlon, :minlat, :maxlon, :maxlat, 4326)")
+        params.update({"minlon": minlon, "minlat": minlat, "maxlon": maxlon, "maxlat": maxlat})
+    async with async_session() as session:
+        import json as _json
+
+        rows = (await session.execute(text(
+            "SELECT id::text, utility_type, depth_m, status, ST_AsGeoJSON(geom) AS geom "
+            f"FROM subterranean_utilities {'WHERE ' + ' AND '.join(clauses) if clauses else ''} ORDER BY utility_type"
+        ), params)).all()
+        return {
+            "type": "FeatureCollection",
+            "count": len(rows),
+            "features": [
+                {
+                    "type": "Feature",
+                    "properties": {"id": r[0], "utility_type": r[1], "depth_m": r[2], "status": r[3]},
+                    "geometry": _json.loads(r[4]) if r[4] else None,
+                }
+                for r in rows
+            ],
+        }
+
+
 # ============================================================================
 # V2 TEMPORAL API (SCD Type 2 time-travel; v1 endpoints untouched)
 # ============================================================================
-
 class TemporalQuery(BaseModel):
     bbox: Optional[str] = None  # "minlon,minlat,maxlon,maxlat"
     target_epoch: Optional[str] = None  # ISO8601 or Unix timestamp
