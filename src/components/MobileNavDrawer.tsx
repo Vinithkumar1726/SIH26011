@@ -4,7 +4,7 @@ import { LayoutDashboard, Upload, Box, FileText, ShieldCheck, Hash, Sparkles, Sc
 import type { Screen } from '../types';
 import { StatusDot } from '../design/primitives';
 import {
-  BORDER_THIN, DOMAIN, FONT, INK, MUTED, PAPER, SURFACE, onDomain, type DomainKey,
+  BORDER_THIN, DOMAIN, FONT, INK, MUTED, PAPER, SCRIM, SHADOW_SM, SURFACE, onDomain, type DomainKey,
 } from '../design/tokens';
 
 const SECTIONS: { title: string; accent: DomainKey; items: { id: string; label: string; icon: React.ReactNode }[] }[] = [
@@ -77,7 +77,7 @@ export default function MobileNavDrawer({ isOpen, onClose, active, onNav }: Prop
         animate={{ opacity: 1 }}
         exit={{ opacity: 0 }}
         className="fixed inset-0 z-50 lg:hidden"
-        style={{ background: 'rgba(0, 0, 0, 0.6)' }}
+        style={{ background: SCRIM }}
         onClick={onClose}
         role="dialog"
         aria-modal="true"
@@ -139,7 +139,7 @@ export default function MobileNavDrawer({ isOpen, onClose, active, onNav }: Prop
                         color: isActive ? onDomain(section.accent) : PAPER,
                         fontWeight: isActive ? 700 : 500,
                         border: isActive ? BORDER_THIN : '2px solid transparent',
-                        boxShadow: isActive ? '3px 3px 0 #000000' : 'none',
+                        boxShadow: isActive ? SHADOW_SM : 'none',
                         cursor: 'pointer',
                         transition: 'background 100ms',
                       }}

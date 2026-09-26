@@ -70,6 +70,11 @@ export const SHADOW_LG = '6px 6px 0 #000000';
 export const SHADOW_PRESSED = '2px 2px 0 #000000';
 export const SHADOW_NONE = '0 0 0 #000000';
 
+/** Modal/scrim veil: near-black app surface at 72% alpha. The single
+ * sanctioned translucent color — overlays must use this, never an
+ * ad-hoc rgba()/glass blur. */
+export const SCRIM = 'rgba(11, 14, 20, 0.72)';
+
 export const RADIUS = 0;
 export const RADIUS_SM = 2;
 

@@ -1,6 +1,8 @@
 import { Suspense } from 'react';
 import { Canvas } from '@react-three/fiber';
 import { OrbitControls } from '@react-three/drei';
+import { Badge, Button, StatusDot } from '../design/primitives';
+import { FONT, INK, PAPER, SURFACE } from '../design/tokens';
 
 /** Locked, lightweight 3D city preview: auto-rotates, no zoom (no scroll hijack). */
 export default function DashboardCityPreview({ onLaunch }: { onLaunch: () => void }) {
@@ -12,12 +14,12 @@ export default function DashboardCityPreview({ onLaunch }: { onLaunch: () => voi
     { x: 10, z: 11, w: 7, d: 7, h: 20 },
   ];
   return (
-    <div className="brutal-panel" style={{ padding: 0, overflow: 'hidden' }}>
-      <div className="brutal-header">
-        <span className="brutal-title">3D Cityscape Preview</span>
-        <span className="brutal-badge brutal-badge-green">
-          <span className="status-led online led-pulse" /> LIVE
+    <div style={{ background: SURFACE.panel, border: `3px solid ${INK}`, boxShadow: `4px 4px 0 ${INK}`, padding: 0, overflow: 'hidden' }}>
+      <div className="flex items-center justify-between" style={{ padding: '10px 14px', borderBottom: `2px solid ${INK}` }}>
+        <span style={{ fontFamily: FONT.display, fontWeight: 700, fontSize: 14, color: PAPER }}>
+          3D Cityscape Preview
         </span>
+        <Badge domain="ok"><StatusDot domain="ok" size={7} /> LIVE</Badge>
       </div>
       <div style={{ height: 300, background: '#111111' }}>
         <Canvas
@@ -51,10 +53,10 @@ export default function DashboardCityPreview({ onLaunch }: { onLaunch: () => voi
           />
         </Canvas>
       </div>
-      <div style={{ padding: 12, borderTop: '3px solid #111111', background: '#FFFFFF' }}>
-        <button type="button" onClick={onLaunch} className="brutal-btn brutal-btn-gold w-full justify-center">
+      <div style={{ padding: 12, borderTop: `3px solid ${INK}`, background: SURFACE.panel }}>
+        <Button domain="record" onClick={onLaunch} style={{ width: '100%', justifyContent: 'center' }}>
           LAUNCH SATELLITE EXPLORER →
-        </button>
+        </Button>
       </div>
     </div>
   );

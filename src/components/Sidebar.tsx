@@ -5,7 +5,7 @@ import {
 import type { Screen } from '../types';
 import { StatusDot } from '../design/primitives';
 import {
-  BORDER_THIN, DOMAIN, FONT, INK, MUTED, PAPER, SURFACE, onDomain, type DomainKey,
+  BORDER_THIN, DOMAIN, FONT, INK, MUTED, PAPER, SHADOW_SM, SURFACE, onDomain, type DomainKey,
 } from '../design/tokens';
 
 interface NavItem {
@@ -90,7 +90,7 @@ export default function Sidebar({ active, onNav }: Props) {
                     background: isActive ? DOMAIN[section.accent] : 'transparent',
                     color: isActive ? onDomain(section.accent) : MUTED,
                     border: isActive ? BORDER_THIN : '2px solid transparent',
-                    boxShadow: isActive ? '3px 3px 0 #000000' : 'none',
+                    boxShadow: isActive ? SHADOW_SM : 'none',
                     fontFamily: FONT.body,
                     fontSize: 13,
                     fontWeight: isActive ? 700 : 500,

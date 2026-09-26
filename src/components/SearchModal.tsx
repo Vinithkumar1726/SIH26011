@@ -3,7 +3,7 @@ import { Search, X, FileText, Building2, MapPin, Hash } from 'lucide-react';
 import type { Screen } from '../types';
 import { Button } from '../design/primitives';
 import {
-  BORDER, DOMAIN, FONT, INK, MUTED, PAPER, SHADOW_LG, SURFACE,
+  BORDER, DOMAIN, FONT, INK, MUTED, PAPER, SCRIM, SHADOW_LG, SURFACE,
 } from '../design/tokens';
 
 const RESULTS = [
@@ -74,7 +74,7 @@ export default function SearchModal({ onClose, onNav }: Props) {
   return (
     <div
       className="fixed inset-0 flex items-start justify-center pt-24 z-50"
-      style={{ background: 'rgba(0, 0, 0, 0.6)' }}
+      style={{ background: SCRIM }}
       onClick={(e) => { if (e.target === e.currentTarget) onClose(); }}
     >
       <div className="w-full flex flex-col" style={{ maxWidth: 680, background: SURFACE.panel, border: BORDER, boxShadow: SHADOW_LG }}>

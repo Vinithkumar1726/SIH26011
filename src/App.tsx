@@ -17,6 +17,7 @@ import AIReview from './screens/AIReview';
 import AuditTrail from './screens/AuditTrail';
 import Settings from './screens/Settings';
 import CadastralHierarchy from './components/CadastralHierarchy';
+import { SURFACE } from './design/tokens';
 
 // Auth context for JWT-ready authentication
 interface AuthUser {
@@ -311,7 +312,7 @@ function AppInner() {
       className="app-shell h-screen w-screen flex overflow-hidden relative"
       style={{
         flexDirection: 'column',
-        background: '#020617',
+        background: SURFACE.app,
       }}
     >
       <motion.div
