@@ -758,6 +758,35 @@ export default function Explorer3D() {
     };
   }, [buildingPipes, cityVisible, cityOffset]);
 
+  // Satellite click → 3D explore: fly the twin camera to the selected parcel.
+  const parcelFocus = useMemo(() => {
+    if (!selectedLiveParcelId) return null;
+    const parcel = liveParcels.find((p) => p.parcel_id === selectedLiveParcelId);
+    const ring = parcel?.footprint?.coordinates?.[0];
+    if (!ring || ring.length === 0) return null;
+    let sumLon = 0;
+    let sumLat = 0;
+    for (const c of ring) {
+      sumLon += c[0];
+      sumLat += c[1];
+    }
+    const [lx, ly] = footprintToLocal(
+      [[sumLon / ring.length, sumLat / ring.length]], origin[0], origin[1],
+    )[0];
+    const cx = lx;
+    const cz = -ly;
+    const h = Math.max(parcel?.height_m ?? 12, 1);
+    const d = Math.max(60, 2.5 * h);
+    return {
+      pos: [cx + 0.7 * d, 0.6 * d, cz + 0.7 * d] as [number, number, number],
+      tgt: [cx, h / 2, cz] as [number, number, number],
+    };
+  }, [selectedLiveParcelId, liveParcels, origin]);
+
+  useEffect(() => {
+    if (selectedLiveParcelId && parcelFocus) setCamNonce((n) => n + 1);
+  }, [selectedLiveParcelId, parcelFocus]);
+
   const cityViews = useMemo(() => {
     if (!cityVisible || !cityOffset || !cityMeta) return null;
     const R = cityMeta.radiusM;
@@ -1026,7 +1055,7 @@ export default function Explorer3D() {
               />
             );
           })}
-          <ViewRig preset={viewPreset} interiorTour={interiorTour} buildingId={building.id} cam={cam} cityViews={cityViews} cityVisible={cityVisible} cityMeta={cityMeta} maxDistance={viewPreset === 'freeroam' && cityVisible && cityMeta ? 4 * cityMeta.radiusM : cityVisible && cityMeta ? 2.5 * cityMeta.radiusM : 250} focusPose={focusPose} pipeFocus={pipeFocus} camNonce={camNonce} />
+          <ViewRig preset={viewPreset} interiorTour={interiorTour} buildingId={building.id} cam={cam} cityViews={cityViews} cityVisible={cityVisible} cityMeta={cityMeta} maxDistance={viewPreset === 'freeroam' && cityVisible && cityMeta ? 4 * cityMeta.radiusM : cityVisible && cityMeta ? 2.5 * cityMeta.radiusM : 250} focusPose={parcelFocus ?? focusPose} pipeFocus={pipeFocus} camNonce={camNonce} />
         </Canvas>
         </div>
 
