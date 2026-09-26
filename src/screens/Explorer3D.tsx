@@ -530,11 +530,60 @@ export default function Explorer3D() {
     && cityOffset !== null
     && Math.hypot(cityOffset[0], cityOffset[1]) <= (cityMeta?.radiusM ?? 0);
 
+  // 4D temporal scrubber: epoch bounds fixed at mount so the slider is stable.
+  const epochBounds = useMemo(() => ({
+    min: Date.UTC(2015, 0, 1),
+    max: Date.now(),
+  }), []);
+  const [targetEpochMs, setTargetEpochMs] = useState<number>(epochBounds.max);
+  const isHistorical = targetEpochMs < epochBounds.max - 60000;
+
+  // Debounced v2 time-travel fetch; max restores the live endpoint.
   useEffect(() => {
     if (!cityVisible) return;
+    if (!isHistorical) {
+      const base = (import.meta.env.VITE_API_URL || 'http://127.0.0.1:8000').replace(/\/$/, '');
+      fetch(`${base}/api/cadastral-parcels`)
+        .then((r) => {
+          if (!r.ok) throw new Error('no live parcels');
+          return r.json();
+        })
+        .then((list) => {
+          if (Array.isArray(list)) setLiveParcels(list);
+        })
+        .catch(() => {
+          /* keep current parcels on failure */
+        });
+      return;
+    }
+    const timer = window.setTimeout(() => {
+      const base = (import.meta.env.VITE_API_URL || 'http://127.0.0.1:8000').replace(/\/$/, '');
+      fetch(`${base}/api/v2/parcels/temporal?target_epoch=${new Date(targetEpochMs).toISOString()}`)
+        .then((r) => {
+          if (!r.ok) throw new Error(`HTTP ${r.status}`);
+          return r.json();
+        })
+        .then((fc) => {
+          const feats = Array.isArray(fc?.features) ? fc.features : [];
+          setLiveParcels(feats.map((f: any) => ({
+            parcel_id: f.properties?.parcel_id,
+            height_m: f.properties?.height_m ?? 12,
+            footprint: f.geometry ?? null,
+          })));
+        })
+        .catch(() => {
+          /* keep current parcels on failure */
+        });
+    }, 300);
+    return () => window.clearTimeout(timer);
+  }, [cityVisible, isHistorical, targetEpochMs]);
+
+  // Live-mode re-poll so newly approved captures appear without reload.
+  useEffect(() => {
+    if (!cityVisible || isHistorical) return;
     let cancelled = false;
     const base = (import.meta.env.VITE_API_URL || 'http://127.0.0.1:8000').replace(/\/$/, '');
-    const load = () => {
+    const timer = setInterval(() => {
       fetch(`${base}/api/cadastral-parcels`)
         .then((r) => {
           if (!r.ok) throw new Error('no live parcels');
@@ -546,15 +595,12 @@ export default function Explorer3D() {
         .catch(() => {
           /* live-captured layer stays empty */
         });
-    };
-    load();
-    // Re-poll so newly approved captures appear without a manual reload.
-    const timer = setInterval(load, 15000);
+    }, 15000);
     return () => {
       cancelled = true;
       clearInterval(timer);
     };
-  }, [cityVisible]);
+  }, [cityVisible, isHistorical]);
 
   const pipeStatus = useMemo(() => {
     if (!cityVisible || !cityOffset) return [];
@@ -1107,6 +1153,41 @@ export default function Explorer3D() {
           >
             {splitView ? '◉ Split 2D/3D: ON' : '◎ Split 2D/3D View'}
           </button>
+          <div className="mt-1 mb-2" style={{ border: '2px solid #111111', background: isHistorical ? '#F5C400' : '#FFFFFF', padding: '8px 10px', boxShadow: '3px 3px 0 #111111' }}>
+            <div className="flex items-center justify-between mb-1">
+              <span className="font-mono font-bold" style={{ fontSize: 9, letterSpacing: '0.1em', color: '#111111' }}>4D TIME TRAVEL</span>
+              <span className="brutal-badge" style={{ fontSize: 8, background: isHistorical ? '#111111' : '#16A34A', color: '#fff', borderColor: '#111111' }}>
+                {isHistorical ? 'HISTORICAL' : '● LIVE'}
+              </span>
+            </div>
+            <div className="font-mono font-bold text-center" style={{ fontSize: 13, color: '#111111', fontVariantNumeric: 'tabular-nums' }}>
+              {new Date(targetEpochMs).toLocaleDateString('en-IN', { month: 'short', year: 'numeric' }).toUpperCase()}
+            </div>
+            <input
+              type="range"
+              aria-label="Target epoch for time-travel parcels"
+              min={epochBounds.min}
+              max={epochBounds.max}
+              step={30 * 24 * 3600 * 1000}
+              value={targetEpochMs}
+              onChange={(e) => setTargetEpochMs(Number(e.target.value))}
+              className="w-full mt-1"
+            />
+            <div className="flex items-center justify-between mt-1">
+              <span className="font-mono" style={{ fontSize: 8, color: '#555555' }}>JAN 2015</span>
+              {isHistorical && (
+                <button
+                  type="button"
+                  onClick={() => setTargetEpochMs(epochBounds.max)}
+                  className="brutal-btn brutal-btn-primary"
+                  style={{ fontSize: 8, padding: '3px 8px' }}
+                >
+                  BACK TO LIVE
+                </button>
+              )}
+              <span className="font-mono" style={{ fontSize: 8, color: '#555555' }}>NOW</span>
+            </div>
+          </div>
           <CollapsePanel title={`Parcels (${liveParcels.length})`} open={openPanels.view} onToggle={() => togglePanel('view')}>
             {selectedLiveParcelId && (
               <button
