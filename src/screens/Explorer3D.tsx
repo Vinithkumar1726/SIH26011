@@ -2,7 +2,9 @@ import { Component, Suspense, useEffect, useMemo, useRef, useState } from 'react
 import type { ReactNode } from 'react';
 import { Canvas, useFrame, useThree } from '@react-three/fiber';
 import type { ThreeEvent } from '@react-three/fiber';
-import { AdaptiveDpr, OrbitControls, useGLTF } from '@react-three/drei';
+import { AdaptiveDpr, Html, Line, OrbitControls, useGLTF } from '@react-three/drei';
+import { EffectComposer, Bloom, SSAO } from '@react-three/postprocessing';
+import { motion, AnimatePresence } from 'framer-motion';
 import * as THREE from 'three';
 import type { Building, Floor, SpatialID, Unit } from '../workspace3d/types';
 import { building as demoBuilding, floors as demoFloors, footprintToLocal, lonLatToLocal, parcel as demoParcel, spatialIDs as demoSpatialIDs, units as demoUnits } from '../workspace3d/data';
@@ -294,6 +296,8 @@ export default function Explorer3D() {
   const [showTerrain, setShowTerrain] = useState(true);
   const [showLiveParcels, setShowLiveParcels] = useState(true);
   const [xray, setXray] = useState(false);
+  const [measureMode, setMeasureMode] = useState(false);
+  const [measurePoints, setMeasurePoints] = useState<THREE.Vector3[]>([]);
   const [subUtils, setSubUtils] = useState<any[]>([]);
   const [shadowAudit, setShadowAudit] = useState(false);
   const [dayOfYear, setDayOfYear] = useState<number>(() => {
@@ -836,6 +840,11 @@ export default function Explorer3D() {
     };
   }, [buildingPipes, cityVisible, cityOffset]);
 
+  // Spatial tape measure: push intersection points, reset on 3rd click.
+  const pushMeasurePoint = (p: THREE.Vector3) => {
+    setMeasurePoints((prev) => (prev.length >= 2 ? [p.clone()] : [...prev, p.clone()]));
+  };
+
   // Satellite click → 3D explore: fly the twin camera to the selected parcel.
   const parcelFocus = useMemo(() => {
     if (!selectedLiveParcelId) return null;
@@ -1030,6 +1039,11 @@ export default function Explorer3D() {
             seeThrough={viewPreset === 'cutaway' || xray}
             size={cityVisible && cityMeta ? 3 * cityMeta.radiusM : 200 * fh}
             onGroundClick={handleGroundClick}
+            onMeasureDown={(e) => {
+              if (!measureMode) return;
+              e.stopPropagation();
+              pushMeasurePoint(e.point.clone());
+            }}
           />
           )}
           {showGrid && !cityVisible && <GridFloor size={200 * fh} />}
@@ -1084,6 +1098,8 @@ export default function Explorer3D() {
               lowPower={lowPower}
               ilimsMode={ilimsMode}
               selected={p.parcel_id === selectedLiveParcelId}
+              measureMode={measureMode}
+              onMeasure={pushMeasurePoint}
               onSelect={() => setSelectedLiveParcelId((prev) => (prev === p.parcel_id ? null : p.parcel_id))}
               onHover={(name) => setHoverBlock(name)}
             />
@@ -1145,6 +1161,15 @@ export default function Explorer3D() {
             );
           })}
           <ViewRig preset={viewPreset} interiorTour={interiorTour} buildingId={building.id} cam={cam} cityViews={cityViews} cityVisible={cityVisible} cityMeta={cityMeta} maxDistance={viewPreset === 'freeroam' && cityVisible && cityMeta ? 4 * cityMeta.radiusM : cityVisible && cityMeta ? 2.5 * cityMeta.radiusM : 250} focusPose={parcelFocus ?? focusPose} pipeFocus={pipeFocus} camNonce={camNonce} />
+          {measurePoints.length > 0 && (
+            <MeasurementLine points={measurePoints} onClear={() => setMeasurePoints([])} />
+          )}
+          {quality !== 'low' && (
+            <EffectComposer>
+              <Bloom intensity={1.5} luminanceThreshold={1} mipmapBlur />
+              <SSAO color="black" intensity={50} luminanceInfluence={0.5} radius={0.4} />
+            </EffectComposer>
+          )}
         </Canvas>
         </div>
 
@@ -1209,6 +1234,13 @@ export default function Explorer3D() {
             className={`w-full text-[10px] py-1 rounded-none uppercase tracking-wider mb-2 ${shadowAudit ? 'bg-cyan-500/20 text-cyan-300 border border-cyan-400/40' : 'bg-white/5 text-slate-400 border border-transparent hover:text-white'}`}
           >
             {shadowAudit ? '◉ Shadow Audit: ON' : '◎ Shadow Audit Mode'}
+          </button>
+          <button
+            type="button"
+            onClick={() => { setMeasureMode((v) => !v); setMeasurePoints([]); }}
+            className={`w-full text-[10px] py-1 rounded-lg uppercase tracking-wider mb-2 ${measureMode ? 'bg-cyan-500/20 text-cyan-300 border border-cyan-400/40' : 'bg-white/5 text-slate-400 border border-transparent hover:text-white'}`}
+          >
+            {measureMode ? '◉ Measure: ON (click 2 pts)' : '⚏ Measure Distance'}
           </button>
           {shadowAudit && (
             <div className="mb-2" style={{ border: '2px solid #111111', background: '#F5C400', padding: '8px 10px', boxShadow: '3px 3px 0 #111111' }}>
@@ -1845,13 +1877,23 @@ export default function Explorer3D() {
       </div>
 
       <div className={`${mobilePanel === 'inspector' ? 'fixed' : 'hidden'} md:absolute md:flex inset-x-0 bottom-0 md:inset-x-auto md:top-4 md:right-4 md:bottom-24 md:w-[22rem] z-40 max-h-[70vh] md:max-h-none overflow-y-auto no-scrollbar flex-shrink-0 flex-col bg-slate-900/60 backdrop-blur-xl border border-white/10 rounded-2xl text-slate-200 font-sans tracking-wide`} style={{ boxShadow: '0 25px 50px -12px rgb(0 0 0 / 0.55)' }}>
-        {selectedLiveParcelId && (
-          <LiveParcelInspector
-            parcelId={selectedLiveParcelId}
-            encroachment={liveParcels.find((p) => p.parcel_id === selectedLiveParcelId)?.encroachment === true}
-            onClose={() => setSelectedLiveParcelId(null)}
-          />
-        )}
+        <AnimatePresence>
+          {selectedLiveParcelId && (
+            <motion.div
+              key="live-parcel-inspector"
+              initial={{ x: 100, opacity: 0 }}
+              animate={{ x: 0, opacity: 1 }}
+              exit={{ x: 100, opacity: 0 }}
+              transition={{ type: 'spring', stiffness: 300, damping: 30 }}
+            >
+              <LiveParcelInspector
+                parcelId={selectedLiveParcelId}
+                encroachment={liveParcels.find((p) => p.parcel_id === selectedLiveParcelId)?.encroachment === true}
+                onClose={() => setSelectedLiveParcelId(null)}
+              />
+            </motion.div>
+          )}
+        </AnimatePresence>
         <div className="p-4 border-b border-white/10">
           <div className="flex items-center justify-between">
             <h3 className="text-sm font-semibold text-slate-100 flex items-center gap-2">
@@ -1959,7 +2001,12 @@ export default function Explorer3D() {
         </div>
       </div>
       {/* 4D temporal dock: bottom-center glass pill */}
-      <div className="absolute bottom-6 left-1/2 -translate-x-1/2 z-40 pointer-events-none">
+      <motion.div
+        className="absolute bottom-6 left-1/2 -translate-x-1/2 z-40 pointer-events-none"
+        initial={{ y: 50, opacity: 0 }}
+        animate={{ y: 0, opacity: 1 }}
+        transition={{ duration: 0.25, ease: 'easeOut' }}
+      >
         <div className="pointer-events-auto flex items-center gap-4 px-6 py-3 rounded-full bg-slate-900/60 backdrop-blur-xl border border-white/10" style={{ boxShadow: '0 10px 30px -10px rgb(0 0 0 / 0.6)' }}>
           <span className="font-mono font-bold text-[9px] tracking-[0.14em] text-cyan-300 shrink-0">4D TIME</span>
           <span className="font-mono font-bold text-[13px] text-white shrink-0" style={{ fontVariantNumeric: 'tabular-nums', minWidth: 76, textAlign: 'center' }}>
@@ -1989,7 +2036,7 @@ export default function Explorer3D() {
             </button>
           )}
         </div>
-      </div>
+      </motion.div>
       {splitView && (
         <div className="w-1/2 flex flex-col min-h-0 self-stretch" style={{ borderLeft: '3px solid #111111', background: '#F4F1E8' }}>
           <div className="flex items-center gap-0 px-3 py-1.5 shrink-0" style={{ background: '#FFFFFF', borderBottom: '3px solid #111111' }}>
@@ -2334,10 +2381,11 @@ function UndergroundPipes({ pipes, groupPos, statuses }: {
   );
 }
 
-function Ground({ seeThrough, size = 200, onGroundClick }: {
+function Ground({ seeThrough, size = 200, onGroundClick, onMeasureDown }: {
   seeThrough?: boolean;
   size?: number;
   onGroundClick?: (e: ThreeEvent<MouseEvent>) => void;
+  onMeasureDown?: (e: ThreeEvent<MouseEvent>) => void;
 }) {
   return (
     <mesh
@@ -2345,6 +2393,7 @@ function Ground({ seeThrough, size = 200, onGroundClick }: {
       position={[0, -0.1, 0]}
       receiveShadow
       onClick={(e) => onGroundClick?.(e)}
+      onPointerDown={(e) => onMeasureDown?.(e)}
     >
       <planeGeometry args={[size, size]} />
       <meshStandardMaterial color="#0f1629" transparent={!!seeThrough} opacity={seeThrough ? 0.22 : 1} depthWrite={!seeThrough} />
@@ -2463,7 +2512,7 @@ function SubterraneanNetwork({ features, origin }: {
       {tubes.map((t) => (
         <mesh key={t.id}>
           <tubeGeometry args={[new THREE.CatmullRomCurve3(t.points.map((p) => new THREE.Vector3(...p))), 64, 0.35, 8, false]} />
-          <meshStandardMaterial color={t.color} emissive={t.color} emissiveIntensity={1.2} roughness={0.4} />
+          <meshStandardMaterial color={t.color} emissive={t.color} emissiveIntensity={2} roughness={0.4} />
         </mesh>
       ))}
     </group>
@@ -2649,12 +2698,51 @@ function LiveParcelInspector({ parcelId, encroachment, onClose }: { parcelId: st
   );
 }
 
-function LiveCapturedBlock({ parcel, origin, lowPower, ilimsMode, selected, onSelect, onHover }: {
+function MeasurementLine({ points, onClear }: { points: THREE.Vector3[]; onClear: () => void }) {
+  if (points.length === 0) return null;
+  const dist = points.length === 2 ? points[0].distanceTo(points[1]) : 0;
+  const mid = points.length === 2
+    ? new THREE.Vector3().addVectors(points[0], points[1]).multiplyScalar(0.5)
+    : points[0].clone();
+  return (
+    <group>
+      {points.map((p, i) => (
+        <mesh key={i} position={p}>
+          <sphereGeometry args={[0.6, 12, 12]} />
+          <meshBasicMaterial color="#22d3ee" />
+        </mesh>
+      ))}
+      {points.length === 2 && (
+        <>
+          <Line points={[points[0], points[1]]} color="#22d3ee" lineWidth={2} dashed dashSize={2} gapSize={1.2} />
+          <Html position={mid} center distanceFactor={60}>
+            <div className="flex items-center gap-2">
+              <div className="px-2 py-1 rounded bg-slate-900/80 text-cyan-400 font-mono text-xs border border-white/10 whitespace-nowrap">
+                {dist.toFixed(2)}m
+              </div>
+              <button
+                type="button"
+                onClick={(e) => { e.stopPropagation(); onClear(); }}
+                className="px-2 py-1 rounded bg-slate-900/80 text-slate-300 hover:text-white font-mono text-xs border border-white/10"
+              >
+                ✕
+              </button>
+            </div>
+          </Html>
+        </>
+      )}
+    </group>
+  );
+}
+
+function LiveCapturedBlock({ parcel, origin, lowPower, ilimsMode, selected, measureMode, onMeasure, onSelect, onHover }: {
   parcel: { parcel_id: string; height_m: number; footprint: { type: string; coordinates: number[][][] } | null; encroachment?: boolean; elevation_msl_m?: number };
   origin: [number, number];
   lowPower: boolean;
   ilimsMode: boolean;
   selected: boolean;
+  measureMode: boolean;
+  onMeasure: (p: THREE.Vector3) => void;
   onSelect: () => void;
   onHover: (label: string | null) => void;
 }) {
@@ -2711,7 +2799,12 @@ function LiveCapturedBlock({ parcel, origin, lowPower, ilimsMode, selected, onSe
       scale={selected ? [1.02, 1.02, 1.02] : [1, 1, 1]}
       castShadow
       receiveShadow
-      onClick={(e) => { e.stopPropagation(); onSelect(); onHover(label); }}
+      onClick={(e) => { e.stopPropagation(); if (!measureMode) { onSelect(); } onHover(label); }}
+      onPointerDown={(e) => {
+        if (!measureMode) return;
+        e.stopPropagation();
+        onMeasure(e.point.clone());
+      }}
       onPointerOver={(e) => { e.stopPropagation(); setHovered(true); onHover(label); document.body.style.cursor = 'pointer'; }}
       onPointerOut={() => { setHovered(false); onHover(null); document.body.style.cursor = 'default'; }}
     >

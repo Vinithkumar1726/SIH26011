@@ -1,4 +1,5 @@
 import { useState, useEffect, createContext, useContext, ReactNode } from 'react';
+import { motion } from 'framer-motion';
 import type { Screen } from './types';
 import { api, type DashboardStats } from './api';
 import Topbar from './components/Topbar';
@@ -313,9 +314,14 @@ function AppInner() {
         background: '#020617',
       }}
     >
-      <div className="absolute top-4 left-1/2 -translate-x-1/2 z-50">
+      <motion.div
+        className="absolute top-4 left-1/2 -translate-x-1/2 z-50"
+        initial={{ y: -50, opacity: 0 }}
+        animate={{ y: 0, opacity: 1 }}
+        transition={{ duration: 0.25, ease: 'easeOut' }}
+      >
         <Topbar screen={screen} onNav={setScreen} apiOnline={apiOnline} />
-      </div>
+      </motion.div>
       <div style={{ display: 'flex', flex: 1, minHeight: 0, overflow: 'hidden', paddingTop: 76 }}>
         <Sidebar active={screen} onNav={setScreen} />
 
