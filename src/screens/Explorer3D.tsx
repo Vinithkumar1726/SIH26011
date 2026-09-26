@@ -1,4 +1,4 @@
-import { Component, Suspense, useEffect, useMemo, useRef, useState } from 'react';
+import { Component, memo, Suspense, useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import type { ReactNode } from 'react';
 import { Canvas, useFrame, useThree } from '@react-three/fiber';
 import type { ThreeEvent } from '@react-three/fiber';
@@ -382,7 +382,7 @@ export default function Explorer3D() {
     lidarRun.current += 1;
   }, []);
 
-  const handleGroundClick = async (e: ThreeEvent<MouseEvent>) => {
+  const handleGroundClick = useCallback(async (e: ThreeEvent<MouseEvent>) => {
     if (!liveCaptureMode || liveCaptureLoading) return;
     e.stopPropagation();
     // World (building-local metres, Y-up, north = -z) back to lon/lat.
@@ -418,7 +418,7 @@ export default function Explorer3D() {
       setLiveCaptureLoading(false);
       setLiveCaptureMode(false);
     }
-  };
+  }, [liveCaptureMode, liveCaptureLoading, origin]);
 
   const switchBuilding = (id: string, preset?: ViewPreset) => {
     if (id === building.id || source !== 'live') return;
@@ -841,9 +841,9 @@ export default function Explorer3D() {
   }, [buildingPipes, cityVisible, cityOffset]);
 
   // Spatial tape measure: push intersection points, reset on 3rd click.
-  const pushMeasurePoint = (p: THREE.Vector3) => {
+  const pushMeasurePoint = useCallback((p: THREE.Vector3) => {
     setMeasurePoints((prev) => (prev.length >= 2 ? [p.clone()] : [...prev, p.clone()]));
-  };
+  }, []);
 
   // Satellite click → 3D explore: fly the twin camera to the selected parcel.
   const parcelFocus = useMemo(() => {
@@ -1914,9 +1914,9 @@ export default function Explorer3D() {
         <div className="p-4" style={{ borderBottom: '2px solid #111111' }}>
           {selected ? (
             <div className="space-y-3 animate-fade-in">
-              <div className="brutal-panel" style={{ background: '#111111', padding: 12 }}>
-                <div className="brutal-eyebrow" style={{ color: '#F5C400', marginBottom: 4 }}>Spatial Identifier</div>
-                <div className="text-[11px] mono font-bold break-all" style={{ color: '#FFFFFF' }}>{spatialIDs.find((s) => s.unit_id === selected.id)?.full}</div>
+              <div className="rounded-xl bg-slate-900/60 backdrop-blur-xl border border-white/10 p-3">
+                <div className="font-mono text-[9px] tracking-[0.18em] text-cyan-300/80 mb-1">SPATIAL IDENTIFIER</div>
+                <div className="text-[11px] mono font-medium break-all text-white">{spatialIDs.find((s) => s.unit_id === selected.id)?.full}</div>
               </div>
               <div className="grid grid-cols-2 gap-2">
                 <InfoCell label="Label" value={selected.label} />
@@ -1930,16 +1930,16 @@ export default function Explorer3D() {
                 <InfoCell label="Volume" value={volumeText(selected.volume_cum)} />
                 <InfoCell label="Geom. Version" value={`V${String(selected.version).padStart(2, '0')}`} />
               </div>
-              <div className="brutal-panel-flat" style={{ padding: 12 }}>
-                <div className="brutal-eyebrow" style={{ marginBottom: 4 }}>Geometry Hash (SHA-256)</div>
-                <div className="text-[9px] mono font-bold break-all" style={{ color: '#111' }}>{selected.hash}</div>
+              <div className="rounded-xl bg-slate-900/60 backdrop-blur-xl border border-white/10 p-3">
+                <div className="font-mono text-[9px] tracking-[0.18em] text-cyan-300/80 mb-1">Geometry Hash (SHA-256)</div>
+                <div className="text-[9px] mono font-medium break-all text-slate-200">{selected.hash}</div>
               </div>
-              <div className="brutal-panel-flat" style={{ padding: 12 }}>
-                <div className="brutal-eyebrow" style={{ marginBottom: 6 }}>Validation Status</div>
+              <div className="rounded-xl bg-slate-900/60 backdrop-blur-xl border border-white/10 p-3">
+                <div className="font-mono text-[9px] tracking-[0.18em] text-cyan-300/80 mb-1.5">Validation Status</div>
                 {conflicts.has(selected.id) ? (
-                  <span className="brutal-badge brutal-badge-red">▲ CONFLICT DETECTED</span>
+                  <span className="font-mono text-[10px] font-bold px-2 py-0.5 rounded-full bg-red-500/20 text-red-300 border border-red-400/40">▲ CONFLICT DETECTED</span>
                 ) : (
-                  <span className="brutal-badge brutal-badge-green">● VALID — NO OVERLAPS</span>
+                  <span className="font-mono text-[10px] font-bold px-2 py-0.5 rounded-full bg-emerald-500/20 text-emerald-300 border border-emerald-400/40">● VALID — NO OVERLAPS</span>
                 )}
               </div>
             </div>
@@ -1966,15 +1966,15 @@ export default function Explorer3D() {
             </div>
           )}
         </div>
-        <div className="p-3 border-b border-line">
+        <div className="p-3" style={{ borderBottom: '1px solid rgb(255 255 255 / 0.1)' }}>
           <div className="relative">
-            <i className="fas fa-search absolute left-3 top-1/2 -translate-y-1/2 text-slate-600 text-xs"></i>
+            <i className="fas fa-search absolute left-3 top-1/2 -translate-y-1/2 text-slate-500 text-xs"></i>
             <input
               type="text"
               placeholder="Search units, IDs…"
               value={search}
               onChange={(e) => setSearch(e.target.value)}
-              className="w-full bg-deep text-xs text-slate-200 rounded-md pl-9 pr-3 py-2 border border-line focus:border-amber-300/40 outline-none placeholder-slate-600"
+              className="w-full bg-white/5 text-xs text-slate-200 rounded-lg pl-9 pr-3 py-2 border border-white/10 focus:border-cyan-400/50 outline-none placeholder-slate-500"
             />
           </div>
         </div>
@@ -1986,15 +1986,15 @@ export default function Explorer3D() {
               <button
                 key={u.id}
                 onClick={() => { setSelected(u); setSelectedScope(null); setSelectedFloorId(u.floor_id); }}
-                className={`w-full text-left px-3 py-2 rounded-md text-xs transition-all ${
-                  isSelected ? 'bg-amber-400/10 border border-amber-300/25' : 'hover:bg-white/5 border border-transparent'
+                className={`w-full text-left px-3 py-2 rounded-lg text-xs transition-all ${
+                  isSelected ? 'bg-cyan-500/15 border border-cyan-400/40' : 'hover:bg-white/5 border border-transparent'
                 }`}
               >
                 <div className="flex items-center justify-between">
-                  <span className={`truncate ${isSelected ? 'text-amber-200' : 'text-slate-300'}`}>{u.label}</span>
-                  <span className="text-[9px] text-slate-600 ml-2 flex-shrink-0">{u.area_sqm}m²</span>
+                  <span className={`truncate ${isSelected ? 'text-cyan-200' : 'text-slate-300'}`}>{u.label}</span>
+                  <span className="text-[9px] text-slate-500 ml-2 flex-shrink-0">{u.area_sqm}m²</span>
                 </div>
-                {sid && <div className="text-[9px] mono text-slate-600 truncate mt-0.5">{sid.full}</div>}
+                {sid && <div className="text-[9px] mono text-slate-500 truncate mt-0.5">{sid.full}</div>}
               </button>
             );
           })}
@@ -2381,7 +2381,7 @@ function UndergroundPipes({ pipes, groupPos, statuses }: {
   );
 }
 
-function Ground({ seeThrough, size = 200, onGroundClick, onMeasureDown }: {
+const Ground = memo(function Ground({ seeThrough, size = 200, onGroundClick, onMeasureDown }: {
   seeThrough?: boolean;
   size?: number;
   onGroundClick?: (e: ThreeEvent<MouseEvent>) => void;
@@ -2399,7 +2399,7 @@ function Ground({ seeThrough, size = 200, onGroundClick, onMeasureDown }: {
       <meshStandardMaterial color="#0f1629" transparent={!!seeThrough} opacity={seeThrough ? 0.22 : 1} depthWrite={!seeThrough} />
     </mesh>
   );
-}
+}, (a, b) => a.seeThrough === b.seeThrough && a.size === b.size);
 
 function GridFloor({ size = 200 }: { size?: number }) {
   return <gridHelper args={[size, 40, '#1a2340', '#1a2340' ]} position={[0, 0, 0]} />;
@@ -2483,7 +2483,7 @@ const UTILITY_COLORS: Record<string, string> = {
   power: '#F5C400',
 };
 
-function SubterraneanNetwork({ features, origin }: {
+const SubterraneanNetwork = memo(function SubterraneanNetwork({ features, origin }: {
   features: Array<{ properties: { id: string; utility_type: string }; geometry: { coordinates: number[][][] } | { coordinates: number[][] } | null }>;
   origin: [number, number];
 }) {
@@ -2517,7 +2517,7 @@ function SubterraneanNetwork({ features, origin }: {
       ))}
     </group>
   );
-}
+}, (a, b) => a.features === b.features && a.origin === b.origin);
 
 function SolarRig({ hour, dayOfYear, latDeg, extent }: {
   hour: number; dayOfYear: number; latDeg: number; extent: number;
@@ -2735,7 +2735,7 @@ function MeasurementLine({ points, onClear }: { points: THREE.Vector3[]; onClear
   );
 }
 
-function LiveCapturedBlock({ parcel, origin, lowPower, ilimsMode, selected, measureMode, onMeasure, onSelect, onHover }: {
+const LiveCapturedBlock = memo(function LiveCapturedBlock({ parcel, origin, lowPower, ilimsMode, selected, measureMode, onMeasure, onSelect, onHover }: {
   parcel: { parcel_id: string; height_m: number; footprint: { type: string; coordinates: number[][][] } | null; encroachment?: boolean; elevation_msl_m?: number };
   origin: [number, number];
   lowPower: boolean;
@@ -2824,6 +2824,26 @@ function LiveCapturedBlock({ parcel, origin, lowPower, ilimsMode, selected, meas
       </lineSegments>
       )}
     </mesh>
+  );
+}, liveBlockEqual);
+// Custom compare: parcel identity + data + flags. Callbacks are stable by
+// construction (state setters / useCallback), so HUD keystrokes that only
+// touch other state skip these meshes entirely.
+function liveBlockEqual(
+  a: Readonly<{ parcel: { parcel_id: string; height_m: number; footprint: unknown; encroachment?: boolean; elevation_msl_m?: number }; origin: [number, number]; lowPower: boolean; ilimsMode: boolean; selected: boolean; measureMode: boolean }>,
+  b: Readonly<{ parcel: { parcel_id: string; height_m: number; footprint: unknown; encroachment?: boolean; elevation_msl_m?: number }; origin: [number, number]; lowPower: boolean; ilimsMode: boolean; selected: boolean; measureMode: boolean }>,
+): boolean {
+  return (
+    a.parcel.parcel_id === b.parcel.parcel_id &&
+    a.parcel.height_m === b.parcel.height_m &&
+    a.parcel.footprint === b.parcel.footprint &&
+    a.parcel.encroachment === b.parcel.encroachment &&
+    a.parcel.elevation_msl_m === b.parcel.elevation_msl_m &&
+    a.origin === b.origin &&
+    a.lowPower === b.lowPower &&
+    a.ilimsMode === b.ilimsMode &&
+    a.selected === b.selected &&
+    a.measureMode === b.measureMode
   );
 }
 
@@ -2978,9 +2998,9 @@ function DataRow({ k, v, good }: any) {
 
 function InfoCell({ label, value }: any) {
   return (
-    <div className="brutal-panel-flat p-2.5">
-      <div className="brutal-eyebrow" style={{ fontSize: 8, marginBottom: 2 }}>{label}</div>
-      <div className="text-xs font-bold text-[#111] capitalize">{value}</div>
+    <div className="rounded-lg bg-white/5 border border-white/10 p-2.5">
+      <div className="font-mono text-[8px] tracking-[0.16em] text-slate-500 mb-0.5">{label}</div>
+      <div className="text-xs font-semibold text-slate-100 capitalize">{value}</div>
     </div>
   );
 }
@@ -3020,14 +3040,14 @@ function InspectorEntityPanel({ kind, title, subtitle, ownership, valuation }: {
   const currency = new Intl.NumberFormat('en-IN', { style: 'currency', currency: valuation?.currency ?? 'INR', maximumFractionDigits: 0 });
   return (
     <div className="space-y-3 animate-fade-in">
-      <div className="brutal-panel" style={{ background: '#111111', padding: 12 }}>
-        <div className="brutal-eyebrow" style={{ color: '#F5C400', marginBottom: 4 }}>{kind} RECORD</div>
-        <div className="text-sm text-white font-bold">{title}</div>
-        <div className="text-[10px] mt-1" style={{ color: '#a3a3a3' }}>{subtitle}</div>
+      <div className="rounded-xl bg-slate-900/60 backdrop-blur-xl border border-white/10 p-3">
+        <div className="font-mono text-[9px] tracking-[0.18em] text-cyan-300/80 mb-1">{kind} RECORD</div>
+        <div className="text-sm text-white font-semibold">{title}</div>
+        <div className="text-[10px] mt-1 text-slate-400">{subtitle}</div>
       </div>
-      <div className="brutal-panel" style={{ padding: 12 }}>
-        <div className="brutal-eyebrow" style={{ marginBottom: 8 }}>Ownership</div>
-        <div className="text-xs font-bold mb-2" style={{ color: '#111' }}>{ownership?.ownerName ?? dash}</div>
+      <div className="rounded-xl bg-slate-900/60 backdrop-blur-xl border border-white/10 p-3">
+        <div className="font-mono text-[9px] tracking-[0.18em] text-cyan-300/80 mb-2">Ownership</div>
+        <div className="text-xs font-semibold mb-2 text-slate-100">{ownership?.ownerName ?? dash}</div>
         <div className="grid grid-cols-2 gap-2">
           <InfoCell label="Title" value={ownership?.ownershipType ?? dash} />
           <InfoCell label="Tenure" value={ownership?.tenure ?? dash} />
@@ -3035,18 +3055,18 @@ function InspectorEntityPanel({ kind, title, subtitle, ownership, valuation }: {
           <InfoCell label="Verified" value={ownership?.lastVerified ?? dash} />
         </div>
       </div>
-      <div className="brutal-panel" style={{ padding: 12 }}>
+      <div className="rounded-xl bg-slate-900/60 backdrop-blur-xl border border-white/10 p-3">
         <div className="flex items-center justify-between mb-2">
-          <div className="brutal-eyebrow">Property Valuation</div>
-          <span className="brutal-badge brutal-badge-gold" style={{ fontSize: 8 }}>{valuation?.valuationYear ?? dash}</span>
+          <div className="font-mono text-[9px] tracking-[0.18em] text-cyan-300/80">Property Valuation</div>
+          <span className="font-mono text-[9px] px-2 py-0.5 rounded-full bg-cyan-500/20 text-cyan-300">{valuation?.valuationYear ?? dash}</span>
         </div>
         <div className="grid grid-cols-2 gap-2 mb-2">
           <InfoCell label="Market Value" value={valuation ? currency.format(valuation.marketValue) : dash} />
           <InfoCell label="Assessed Value" value={valuation ? currency.format(valuation.assessedValue) : dash} />
         </div>
-        <div className="flex items-center justify-between text-[10px]" style={{ color: '#555' }}>
+        <div className="flex items-center justify-between text-[10px] text-slate-400">
           <span>{valuation?.method ?? dash}</span>
-          <span className="brutal-badge brutal-badge-green" style={{ fontSize: 8 }}>{valuation ? `${Math.round(valuation.confidence * 100)}% CONF` : dash}</span>
+          <span className="font-mono text-[9px] px-2 py-0.5 rounded-full bg-emerald-500/20 text-emerald-300">{valuation ? `${Math.round(valuation.confidence * 100)}% CONF` : dash}</span>
         </div>
       </div>
     </div>
