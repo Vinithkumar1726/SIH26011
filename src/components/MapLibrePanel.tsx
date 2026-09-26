@@ -2,7 +2,7 @@ import { useEffect, useRef, useState } from 'react';
 import * as maplibregl from 'maplibre-gl';
 import 'maplibre-gl/dist/maplibre-gl.css';
 import type { LiveFootprint } from './LiveMapPanel';
-import AshPanel, { ASH_IDLE, classifyAshError, sanitizeAshText, traceMapAncestors, type AshSnapshot, type DomTraceNode } from './AshPanel';
+import AshPanel, { ASH_IDLE, classifyAshError, classifyPainted, sanitizeAshText, traceMapAncestors, type AshSnapshot, type DomTraceNode } from './AshPanel';
 import { Badge } from '../design/primitives';
 import { DOMAIN, FONT, INK, PAPER, SURFACE } from '../design/tokens';
 
@@ -33,11 +33,6 @@ const STYLE_URL = {
 const COIMBATORE = { lon: 76.9558, lat: 11.0168, zoom: 15 };
 const SRC_LIVE = 'sih-live-parcels';
 const SRC_REGISTRY = 'sih-registry-parcels';
-
-// DIAGNOSTIC PHASE 1 (temporary): raw satellite basemap only — no cadastral
-// layers, no extrusions, no overlays. Revert to false after triage.
-const RAW_SATELLITE_ONLY = true;
-const RAW_CAMERA = { lon: 76.9558, lat: 11.0168, zoom: 12, pitch: 0, bearing: 0 };
 
 function toFeatureCollection(items: Array<{ id: string; footprint: any; encroachment?: boolean; height_m?: number }>) {
   const seen = new Set<string>();
@@ -179,11 +174,13 @@ export default function MapLibrePanel({ apiBase, initial, target, footprints, se
       map = new maplibregl.Map({
         container: divRef.current,
         style: `${STYLE_URL[basemap]}?key=${key}`,
-        center: RAW_SATELLITE_ONLY ? [RAW_CAMERA.lon, RAW_CAMERA.lat] : [center0.lon, center0.lat],
-        zoom: RAW_SATELLITE_ONLY ? RAW_CAMERA.zoom : (center0.zoom ?? 15),
-        pitch: RAW_SATELLITE_ONLY ? RAW_CAMERA.pitch : (basemap === 'satellite' ? 60 : 0),
-        bearing: RAW_SATELLITE_ONLY ? RAW_CAMERA.bearing : 0,
+        center: [center0.lon, center0.lat],
+        zoom: center0.zoom ?? 15,
+        pitch: basemap === 'satellite' ? 60 : 0,
+        bearing: 0,
         attributionControl: { compact: true },
+        // Required for the ASH real-paint readback (pixel variance check).
+        preserveDrawingBuffer: true,
       });
       map.addControl(new maplibregl.NavigationControl({ visualizePitch: true }), 'top-right');
       map.addControl(new maplibregl.ScaleControl({ unit: 'metric' }), 'bottom-left');
@@ -263,7 +260,26 @@ export default function MapLibrePanel({ apiBase, initial, target, footprints, se
       map.on('idle', () => {
         const m = map as maplibregl.Map;
         setDiag((d) => (d.startsWith('STYLE: loaded') ? 'STYLE: loaded · TILES: idle' : d));
-        setAsh((prev) => ({ ...prev, render: prev.render === 'RENDERING' ? 'IDLE' : prev.render, ...readDims(m), ...readCamera(m) }));
+        // Real-paint verification: sample the composited canvas for pixel
+        // variance. Uniform pixels = blank surface even when every other
+        // badge reads healthy (the exact failure mode this HUD once missed).
+        let paint: AshSnapshot['paint'] = 'UNVERIFIED';
+        try {
+          const src = m.getCanvas();
+          const probe = document.createElement('canvas');
+          const w = Math.max(1, Math.min(64, src.width));
+          const h = Math.max(1, Math.min(64, src.height));
+          probe.width = w;
+          probe.height = h;
+          const ctx = probe.getContext('2d', { willReadFrequently: true });
+          if (ctx && src.width > 0 && src.height > 0) {
+            ctx.drawImage(src, 0, 0, w, h);
+            paint = classifyPainted(ctx.getImageData(0, 0, w, h).data);
+          }
+        } catch {
+          paint = 'UNVERIFIED';
+        }
+        setAsh((prev) => ({ ...prev, render: prev.render === 'RENDERING' ? 'IDLE' : prev.render, paint, ...readDims(m), ...readCamera(m) }));
         deriveState();
       });
       map.on('moveend', () => {
@@ -295,7 +311,6 @@ export default function MapLibrePanel({ apiBase, initial, target, footprints, se
 
   // Registry parcels overlay (PostGIS source, fetched once).
   useEffect(() => {
-    if (RAW_SATELLITE_ONLY) return;
     const map = mapRef.current;
     if (!map || !key) return;
     let cancelled = false;
@@ -355,7 +370,6 @@ export default function MapLibrePanel({ apiBase, initial, target, footprints, se
 
   // Live-captured footprints overlay (same parcel IDs as the R3F twin).
   useEffect(() => {
-    if (RAW_SATELLITE_ONLY) return;
     const map = mapRef.current;
     if (!map || !key) return;
     const fc = toFeatureCollection(
@@ -389,7 +403,6 @@ export default function MapLibrePanel({ apiBase, initial, target, footprints, se
 
   // Selection highlight + fly-to from the 3D twin / search.
   useEffect(() => {
-    if (RAW_SATELLITE_ONLY) return;
     const m = mapRef.current;
     if (!m) return;
     const paint = () => {

@@ -21,6 +21,7 @@ export interface AshSnapshot {
   glyphs: 'WAITING' | 'LOADED' | 'FAILED';
   render: 'UNKNOWN' | 'RENDERING' | 'IDLE' | 'NO_TILES';
   webgl: 'UNKNOWN' | 'OK' | 'UNAVAILABLE';
+  paint: 'UNVERIFIED' | 'PAINTED' | 'BLANK';
   canvasW: number;
   canvasH: number;
   containerW: number;
@@ -94,6 +95,7 @@ export const ASH_IDLE: AshSnapshot = {
   glyphs: 'WAITING',
   render: 'UNKNOWN',
   webgl: 'UNKNOWN',
+  paint: 'UNVERIFIED',
   canvasW: 0, canvasH: 0, containerW: 0, containerH: 0,
   lon: 0, lat: 0, zoom: 0, pitch: 0, bearing: 0,
   renderCount: 0,
@@ -103,6 +105,32 @@ export const ASH_IDLE: AshSnapshot = {
   docH: 0,
   explorerH: 0,
 };
+
+/** Real-paint classifier (pure): do sampled RGBA pixels show a rendered
+ * scene, or a blank/uniform surface? A live satellite frame always varies;
+ * a blank canvas is one flat color (or fully transparent). */
+export function classifyPainted(px: ArrayLike<number>): 'PAINTED' | 'BLANK' {
+  const n = Math.floor(px.length / 4);
+  if (n < 4) return 'BLANK';
+  let r0 = 0;
+  let g0 = 0;
+  let b0 = 0;
+  let diff = 0;
+  for (let i = 0; i < n; i++) {
+    const r = px[i * 4];
+    const g = px[i * 4 + 1];
+    const b = px[i * 4 + 2];
+    if (i === 0) {
+      r0 = r;
+      g0 = g;
+      b0 = b;
+    } else if (Math.abs(r - r0) + Math.abs(g - g0) + Math.abs(b - b0) > 24) {
+      diff++;
+      if (diff >= 3) return 'PAINTED';
+    }
+  }
+  return 'BLANK';
+}
 
 export function ashReportText(s: AshSnapshot): string {
   const lines = [
@@ -116,6 +144,7 @@ export function ashReportText(s: AshSnapshot): string {
     `Glyphs: ${s.glyphs}`,
     `Render: ${s.render} (frames: ${s.renderCount})`,
     `WebGL: ${s.webgl}`,
+    `Paint: ${s.paint}`,
     '',
     `Canvas: ${s.canvasW}x${s.canvasH}`,
     `Container: ${s.containerW}x${s.containerH}`,
@@ -150,6 +179,7 @@ export default function AshPanel({ snap, trace, onTrace }: {
     ['TILES', snap.tiles, snap.tiles === 'ACTIVE' ? 'ok' : snap.tiles === 'FAILED' ? 'conflict' : snap.tiles === 'IDLE' ? 'info' : 'warn', snap.tiles === 'FAILED'],
     ['RENDER', snap.render, snap.render === 'IDLE' || snap.render === 'RENDERING' ? 'ok' : snap.render === 'NO_TILES' ? 'conflict' : 'info', snap.render === 'NO_TILES'],
     ['WEBGL', snap.webgl, snap.webgl === 'OK' ? 'ok' : snap.webgl === 'UNAVAILABLE' ? 'conflict' : 'info', snap.webgl === 'UNAVAILABLE'],
+    ['PAINT', snap.paint, snap.paint === 'PAINTED' ? 'ok' : snap.paint === 'BLANK' ? 'conflict' : 'warn', snap.paint === 'BLANK'],
   ];
 
   const copy = async () => {
