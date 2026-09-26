@@ -1879,7 +1879,7 @@ export default function Explorer3D() {
         </div>
       </div>
 
-      <div className={`${mobilePanel === 'inspector' ? 'fixed' : 'hidden'} md:static md:flex inset-x-0 bottom-0 z-40 md:z-auto w-auto md:w-80 max-h-[70vh] md:max-h-none overflow-y-auto md:overflow-visible flex-shrink-0 bg-white md:border-t-0 md:border-l flex-col`} style={{ borderTop: '3px solid #111111', borderLeft: '3px solid #111111' }}>
+      <div className={`${mobilePanel === 'inspector' ? 'fixed' : 'hidden'} md:absolute md:flex inset-x-0 bottom-0 md:inset-x-auto md:top-4 md:right-4 md:bottom-24 md:w-[22rem] z-40 max-h-[70vh] md:max-h-none overflow-y-auto no-scrollbar flex-shrink-0 flex-col bg-slate-900/60 backdrop-blur-xl border border-white/10 rounded-2xl text-slate-200 font-sans tracking-wide`} style={{ boxShadow: '0 25px 50px -12px rgb(0 0 0 / 0.55)' }}>
         {selectedLiveParcelId && (
           <LiveParcelInspector
             parcelId={selectedLiveParcelId}
@@ -1887,10 +1887,10 @@ export default function Explorer3D() {
             onClose={() => setSelectedLiveParcelId(null)}
           />
         )}
-        <div className="p-4" style={{ borderBottom: '3px solid #111111', background: '#111111' }}>
+        <div className="p-4 border-b border-white/10">
           <div className="flex items-center justify-between">
-            <h3 className="text-sm font-bold text-white flex items-center gap-2">
-              <span className="brutal-badge brutal-badge-gold" style={{ fontSize: 8 }}>i</span>
+            <h3 className="text-sm font-semibold text-slate-100 flex items-center gap-2">
+              <span className="w-2 h-2 rounded-full bg-cyan-400" style={{ boxShadow: '0 0 8px rgba(34,211,238,0.9)' }} />
               Inspector
             </h3>
             <button
@@ -2586,22 +2586,25 @@ function LiveParcelInspector({ parcelId, encroachment, onClose }: { parcelId: st
   ] : [];
   return (
     <>
-    <div className="brutal-panel" style={{ borderLeft: 'none', borderRight: 'none', borderTop: 'none', boxShadow: 'none', background: '#FFFDF5' }}>
-      <div className="brutal-header brutal-header-gold">
-        <span className="brutal-title">Parcel Inspector</span>
-        <button type="button" onClick={onClose} aria-label="Close parcel inspector" className="brutal-btn" style={{ fontSize: 9, padding: '2px 8px' }}>✕</button>
+    <div className="rounded-2xl overflow-hidden" style={{ background: 'transparent' }}>
+      <div className="flex items-center justify-between px-4 py-3" style={{ borderBottom: '1px solid rgb(255 255 255 / 0.1)' }}>
+        <div>
+          <div className="font-mono text-[9px] tracking-[0.18em] text-cyan-300/80">LIVE PARCEL</div>
+          <div className="font-mono font-medium tracking-widest text-cyan-400" style={{ fontSize: 13 }}>{parcelId}</div>
+        </div>
+        <button type="button" onClick={onClose} aria-label="Close parcel inspector" className="text-slate-400 hover:text-white text-xs px-2 py-1 rounded-lg border border-white/10">✕</button>
       </div>
-      <div className="p-3">
-      {failed && <div className="brutal-notice brutal-notice-red">Inspector detail unavailable.</div>}
-      {!detail && !failed && <div className="brutal-skeleton" style={{ height: 120 }} />}
+      <div className="p-4">
+      {failed && <div className="rounded-lg px-3 py-2 text-[11px] text-red-200" style={{ background: 'rgb(127 29 29 / 0.5)', border: '1px solid rgb(248 113 113 / 0.4)' }}>Inspector detail unavailable.</div>}
+      {!detail && !failed && <div className="animate-pulse space-y-2">{[0, 1, 2, 3].map((i) => (<div key={i} className="rounded" style={{ height: 12, background: 'rgb(255 255 255 / 0.08)' }} />))}</div>}
       {rows.map(([k, v]) => (
-        <div key={k} className="flex items-start justify-between gap-2" style={{ padding: '3px 0', borderBottom: '1px solid rgba(17,17,17,0.12)' }}>
-          <span className="brutal-eyebrow shrink-0" style={{ fontSize: 8 }}>{k}</span>
-          <span className="text-[10px] mono font-bold text-[#111] text-right break-all">{v}</span>
+        <div key={k} className="flex items-start justify-between gap-2 py-1.5" style={{ borderBottom: '1px solid rgb(255 255 255 / 0.05)' }}>
+          <span className="text-[9px] text-slate-400 uppercase tracking-widest shrink-0 font-sans">{k}</span>
+          <span className="text-[11px] text-white font-medium text-right break-all font-sans">{v}</span>
         </div>
       ))}
       {detail && (
-        <button type="button" className="brutal-btn brutal-btn-gold w-full justify-center mt-2" style={{ fontSize: 10 }}>
+        <button type="button" className="w-full mt-3 rounded-lg border border-cyan-500 text-cyan-400 hover:bg-cyan-500/10 text-[11px] font-semibold tracking-wider py-2 transition-colors" onClick={onClose}>
           OPEN 3D VIEW
         </button>
       )}
@@ -2610,14 +2613,14 @@ function LiveParcelInspector({ parcelId, encroachment, onClose }: { parcelId: st
           type="button"
           onClick={() => void generateNotice()}
           disabled={noticeBusy}
-          className="brutal-btn brutal-btn-danger w-full justify-center mt-2"
-          style={{ fontSize: 10 }}
+          className="w-full mt-3 rounded-lg bg-red-600/80 hover:bg-red-500 text-white text-[11px] font-semibold tracking-wider py-2 transition-colors disabled:opacity-50"
+          style={{ boxShadow: '0 0 15px rgba(220,38,38,0.4)' }}
         >
           {noticeBusy ? 'DRAFTING…' : '▲ GENERATE ENFORCEMENT NOTICE'}
         </button>
       )}
       {notice && !noticeOpen && (
-        <button type="button" onClick={() => setNoticeOpen(true)} className="brutal-btn w-full justify-center mt-2" style={{ fontSize: 10 }}>
+        <button type="button" onClick={() => setNoticeOpen(true)} className="w-full mt-2 rounded-lg border border-white/15 text-slate-200 hover:bg-white/5 text-[11px] py-2 transition-colors">
           VIEW DRAFT NOTICE
         </button>
       )}
@@ -2625,20 +2628,20 @@ function LiveParcelInspector({ parcelId, encroachment, onClose }: { parcelId: st
     </div>
   );
   {noticeOpen && notice && (
-    <div className="fixed inset-0 z-50 flex items-center justify-center p-4" style={{ background: 'rgba(17,17,17,0.6)' }} onClick={(e) => { if (e.target === e.currentTarget) setNoticeOpen(false); }}>
-      <div className="brutal-panel" style={{ maxWidth: 640, width: '100%', maxHeight: '85vh', display: 'flex', flexDirection: 'column' }}>
-        <div className="brutal-header brutal-header-gold">
-          <span className="brutal-title">Draft Enforcement Notice</span>
-          <button type="button" onClick={() => setNoticeOpen(false)} className="brutal-btn" style={{ fontSize: 9, padding: '2px 8px' }} aria-label="Close notice">✕</button>
+    <div className="fixed inset-0 z-50 flex items-center justify-center p-4" style={{ background: 'rgba(2,6,23,0.6)', backdropFilter: 'blur(4px)' }} onClick={(e) => { if (e.target === e.currentTarget) setNoticeOpen(false); }}>
+      <div className="rounded-2xl bg-slate-900/70 backdrop-blur-xl border border-white/10 text-slate-200" style={{ maxWidth: 640, width: '100%', maxHeight: '85vh', display: 'flex', flexDirection: 'column', boxShadow: '0 25px 50px -12px rgb(0 0 0 / 0.6), 0 0 24px rgba(6,182,212,0.15)' }}>
+        <div className="flex items-center justify-between px-4 py-3" style={{ borderBottom: '1px solid rgb(255 255 255 / 0.1)' }}>
+          <span className="text-xs font-semibold tracking-widest text-slate-100">DRAFT ENFORCEMENT NOTICE</span>
+          <button type="button" onClick={() => setNoticeOpen(false)} className="rounded-lg border border-white/15 text-slate-300 hover:bg-white/10 text-xs px-2 py-1" aria-label="Close notice">✕</button>
         </div>
-        <div className="overflow-y-auto" style={{ padding: 14 }}>
-          <pre style={{ whiteSpace: 'pre-wrap', fontFamily: 'var(--brutal-font-mono)', fontSize: 11, color: '#111', margin: 0 }}>{notice}</pre>
+        <div className="overflow-y-auto no-scrollbar" style={{ padding: 16 }}>
+          <pre style={{ whiteSpace: 'pre-wrap', fontFamily: 'IBM Plex Mono, monospace', fontSize: 11, color: '#e2e8f0', margin: 0 }}>{notice}</pre>
         </div>
-        <div className="flex gap-2" style={{ padding: 14, borderTop: '3px solid #111111' }}>
-          <button type="button" onClick={printNotice} className="brutal-btn brutal-btn-primary" style={{ fontSize: 10 }}>
+        <div className="flex gap-2" style={{ padding: 14, borderTop: '1px solid rgb(255 255 255 / 0.1)' }}>
+          <button type="button" onClick={printNotice} className="rounded-lg bg-cyan-500/90 hover:bg-cyan-400 text-[#062026] text-[11px] font-bold tracking-wider px-4 py-2 transition-colors" style={{ boxShadow: '0 0 15px rgba(6,182,212,0.35)' }}>
             PRINT / EXPORT TO PDF
           </button>
-          <button type="button" onClick={() => setNoticeOpen(false)} className="brutal-btn" style={{ fontSize: 10 }}>
+          <button type="button" onClick={() => setNoticeOpen(false)} className="rounded-lg border border-white/15 text-slate-200 hover:bg-white/10 text-[11px] px-4 py-2 transition-colors">
             CLOSE
           </button>
         </div>

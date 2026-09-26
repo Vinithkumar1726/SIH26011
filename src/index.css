@@ -865,6 +865,10 @@ tr:hover td { background: var(--color-bg-hover); }
   padding: 1px 7px;
   border-radius: var(--brutal-radius-sm);
 }
+
+/* Clean hidden scrollbars for floating glass panels */
+.no-scrollbar { scrollbar-width: none; }
+.no-scrollbar::-webkit-scrollbar { display: none; }
 button:focus-visible, input:focus-visible, select:focus-visible, a:focus-visible {
   outline: 3px solid var(--brutal-gold);
   outline-offset: 1px;
