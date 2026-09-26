@@ -2329,7 +2329,7 @@ async def review_ai_proposal(proposal_id: str, request: dict):
             }
             await session.execute(text(
                 "INSERT INTO cadastral_parcels (parcel_id, footprint, solid_geom, height_m, source_meta) "
-                "VALUES (:ulpin, ST_GeomFromText(:wkt, 4326), "
+                "VALUES (:ulpin, ST_MakeValid(ST_GeomFromText(:wkt, 4326)), "
                 "ST_Translate(ST_Multi(ST_CollectionExtract(ST_Extrude(ST_Force3D(ST_GeomFromText(:wkt, 4326)), 0, 0, :height), 3)), 0, 0, :z_base), :height, "
                 "CAST(:source_meta AS JSONB)) "
                 "ON CONFLICT (parcel_id) DO NOTHING"
