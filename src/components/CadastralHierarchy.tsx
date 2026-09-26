@@ -84,7 +84,7 @@ export default function CadastralHierarchy({ className = 'hidden md:flex w-72' }
             <div style={{ fontFamily: FONT.mono, fontSize: 9, fontWeight: 700, letterSpacing: '0.18em', color: INK }}>Registry</div>
             <h3 style={{ fontFamily: FONT.display, fontWeight: 700, fontSize: 14, color: INK }}>CADASTRAL HIERARCHY</h3>
           </div>
-          <Badge domain="info">{parcels.length} parcel(s)</Badge>
+          <Badge domain="info">{parcels.length} RECORDS</Badge>
         </div>
         <div className="flex items-center gap-2">
           <Search size={14} color={INK} />

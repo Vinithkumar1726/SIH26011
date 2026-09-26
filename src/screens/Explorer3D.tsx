@@ -12,7 +12,7 @@ import QRCode from 'qrcode';
 import CollapsePanel from '../components/CollapsePanel';
 import LiveMapPanel from '../components/LiveMapPanel';
 import MapLibrePanel from '../components/MapLibrePanel';
-import { Badge, Button, StatusDot } from '../design/primitives';
+import { Badge, Button, Card, StatusDot } from '../design/primitives';
 import { DOMAIN, FONT, INK, MUTED, PAPER, SURFACE } from '../design/tokens';
 import { api } from '../api';
 import CadastralHierarchy from '../components/CadastralHierarchy';
@@ -1274,7 +1274,7 @@ export default function Explorer3D() {
               </div>
             </div>
           )}
-          <CollapsePanel title={`Parcels (${liveParcels.length})`} open={openPanels.view} onToggle={() => togglePanel('view')}>
+          <CollapsePanel title={`Live-Captured (${liveParcels.length})`} open={openPanels.view} onToggle={() => togglePanel('view')}>
             {selectedLiveParcelId && (
               <Button
                 domain="info"
@@ -1306,7 +1306,16 @@ export default function Explorer3D() {
                         Height: {parcel.height_m}m
                         {parcel.encroachment ? ' · CONFLICT' : ''}
                       </p>
-                      {parcel.encroachment && <Badge domain="conflict" style={{ fontSize: 8, marginTop: 2 }}>CONFLICT</Badge>}
+                      {parcel.encroachment && (
+                        <button
+                          type="button"
+                          onClick={() => setSelectedLiveParcelId(parcel.parcel_id)}
+                          title={findParcelOverlaps(parcel.parcel_id, liveParcels).map((o) => `${o.id}: ≈${o.volM3.toFixed(2)} m³`).join('\n') || 'Overlaps at least one other parcel solid'}
+                          style={{ background: 'transparent', border: 'none', padding: 0, marginTop: 2, cursor: 'pointer', textAlign: 'left' }}
+                        >
+                          <Badge domain="conflict" style={{ fontSize: 8 }}>CONFLICT — WHY?</Badge>
+                        </button>
+                      )}
                     </div>
                     <Button
                       domain={isSel ? 'info' : 'spatial'}
@@ -1942,6 +1951,7 @@ export default function Explorer3D() {
               <LiveParcelInspector
                 parcelId={selectedLiveParcelId}
                 encroachment={liveParcels.find((p) => p.parcel_id === selectedLiveParcelId)?.encroachment === true}
+                parcels={liveParcels}
                 onClose={() => setSelectedLiveParcelId(null)}
               />
             </motion.div>
@@ -2618,12 +2628,156 @@ function SolarRig({ hour, dayOfYear, latDeg, extent }: {
   );
 }
 
-function LiveParcelInspector({ parcelId, encroachment, onClose }: { parcelId: string; encroachment: boolean; onClose: () => void }) {
+/** Analytic overlap explainer (frontend mirror of the backend formula):
+ * 2D footprint-intersection area (Sutherland–Hodgman clip + equirectangular
+ * shoelace) × overlapping z-range. Exact for vertical-prism extrusions. */
+export function findParcelOverlaps(
+  parcelId: string,
+  parcels: Array<{ parcel_id: string; height_m: number; elevation_msl_m?: number; footprint: { type: string; coordinates: number[][][] } | null }>,
+): Array<{ id: string; volM3: number }> {
+  type Pt = [number, number];
+  const subj = parcels.find((p) => p.parcel_id === parcelId);
+  const ringOf = (p: { footprint: { coordinates: number[][][] } | null }): Pt[] | null => {
+    const ring = p.footprint?.coordinates?.[0];
+    if (!Array.isArray(ring) || ring.length < 3) return null;
+    return ring.map(([x, y]) => [x, y]);
+  };
+  const sRing = subj ? ringOf(subj) : null;
+  if (!subj || !sRing) return [];
+  const sZ0 = subj.elevation_msl_m ?? 0;
+  const sZ1 = sZ0 + Math.max(subj.height_m || 0, 0);
+  // Stored rings have mixed winding (some CW, some CCW) and may be concave;
+  // Sutherland–Hodgman needs a convex clip window, so both rings are
+  // fan-free triangulated (ear clipping) and intersected triangle-by-triangle
+  // (triangles are convex, so per-pair clipping is exact, including disjoint
+  // multi-part overlaps which single-polygon clipping silently drops).
+  const signedArea = (r: Pt[]): number => {
+    let a = 0;
+    for (let i = 0; i < r.length - 1; i++) a += r[i][0] * r[i + 1][1] - r[i + 1][0] * r[i][1];
+    return a / 2;
+  };
+  const openRing = (r: Pt[]): Pt[] => {
+    const c = r.slice();
+    if (c.length > 1 && c[0][0] === c[c.length - 1][0] && c[0][1] === c[c.length - 1][1]) c.pop();
+    if (signedArea([...c, c[0]]) < 0) c.reverse();
+    return c;
+  };
+  const inTri = (p: Pt, a: Pt, b: Pt, c: Pt): boolean => {
+    const s = (x: Pt, y: Pt, z: Pt) => (x[0] - z[0]) * (y[1] - z[1]) - (y[0] - z[0]) * (x[1] - z[1]);
+    const d1 = s(p, a, b);
+    const d2 = s(p, b, c);
+    const d3 = s(p, c, a);
+    const neg = d1 < -1e-12 || d2 < -1e-12 || d3 < -1e-12;
+    const pos = d1 > 1e-12 || d2 > 1e-12 || d3 > 1e-12;
+    return !(neg && pos);
+  };
+  const triangulate = (ring: Pt[]): Array<[Pt, Pt, Pt]> => {
+    let vs = openRing(ring);
+    const tris: Array<[Pt, Pt, Pt]> = [];
+    let guard = vs.length * vs.length + 4;
+    while (vs.length > 3 && guard-- > 0) {
+      let cut = false;
+      for (let i = 0; i < vs.length; i++) {
+        const prev = vs[(i + vs.length - 1) % vs.length];
+        const cur = vs[i];
+        const next = vs[(i + 1) % vs.length];
+        const cross = (cur[0] - prev[0]) * (next[1] - prev[1]) - (cur[1] - prev[1]) * (next[0] - prev[0]);
+        if (cross <= 1e-15) continue;
+        let blocked = false;
+        for (let j = 0; j < vs.length; j++) {
+          if (j === (i + vs.length - 1) % vs.length || j === i || j === (i + 1) % vs.length) continue;
+          if (inTri(vs[j], prev, cur, next)) { blocked = true; break; }
+        }
+        if (blocked) continue;
+        tris.push([prev, cur, next]);
+        vs = vs.filter((_, k) => k !== i);
+        cut = true;
+        break;
+      }
+      if (!cut) break;
+    }
+    if (vs.length === 3) tris.push([vs[0], vs[1], vs[2]]);
+    return tris;
+  };
+  const inside = (p: Pt, a: Pt, b: Pt) =>
+    (b[0] - a[0]) * (p[1] - a[1]) - (b[1] - a[1]) * (p[0] - a[0]) >= -1e-12;
+  const intersect = (p1: Pt, p2: Pt, a: Pt, b: Pt): Pt => {
+    const d = [p2[0] - p1[0], p2[1] - p1[1]];
+    const e = [b[0] - a[0], b[1] - a[1]];
+    const denom = d[0] * e[1] - d[1] * e[0] || 1e-18;
+    const t = ((a[0] - p1[0]) * e[1] - (a[1] - p1[1]) * e[0]) / denom;
+    return [p1[0] + t * d[0], p1[1] + t * d[1]];
+  };
+  const areaM2 = (pts: Pt[]): number => {
+    if (pts.length < 3) return 0;
+    const clat = pts.reduce((t, p) => t + p[1], 0) / pts.length;
+    const kx = 111320 * Math.cos((clat * Math.PI) / 180);
+    let acc = 0;
+    for (let i = 0; i < pts.length; i++) {
+      const [x0, y0] = [pts[i][0] * kx, pts[i][1] * 111320];
+      const [x1, y1] = [pts[(i + 1) % pts.length][0] * kx, pts[(i + 1) % pts.length][1] * 111320];
+      acc += x0 * y1 - x1 * y0;
+    }
+    return Math.abs(acc) / 2;
+  };
+  const out: Array<{ id: string; volM3: number }> = [];
+  const sTris = triangulate(sRing);
+  if (sTris.length === 0) return [];
+  for (const p of parcels) {
+    if (p.parcel_id === parcelId) continue;
+    const raw = ringOf(p);
+    if (!raw) continue;
+    const cTris = triangulate(raw);
+    if (cTris.length === 0) continue;
+    let interM2 = 0;
+    for (const st of sTris) {
+      for (const ct of cTris) {
+        // Convex subject × convex (triangle) window: exact.
+        let poly: Pt[] = [st[0], st[1], st[2], st[0]];
+        for (let i = 0; i < 3; i++) {
+          const a = ct[i];
+          const b = ct[(i + 1) % 3];
+          const next: Pt[] = [];
+          for (let j = 0; j < poly.length; j++) {
+            const cur = poly[j];
+            const prev = poly[(j + poly.length - 1) % poly.length];
+            const ci = inside(cur, a, b);
+            const pi = inside(prev, a, b);
+            if (ci) {
+              if (!pi) next.push(intersect(prev, cur, a, b));
+              next.push(cur);
+            } else if (pi) {
+              next.push(intersect(prev, cur, a, b));
+            }
+          }
+          poly = next;
+          if (poly.length === 0) break;
+        }
+        interM2 += areaM2(poly);
+      }
+    }
+    const z0 = Math.max(sZ0, p.elevation_msl_m ?? 0);
+    const z1 = Math.min(sZ1, (p.elevation_msl_m ?? 0) + Math.max(p.height_m || 0, 0));
+    const oz = Math.max(0, z1 - z0);
+    if (oz <= 0) continue;
+    const vol = interM2 * oz;
+    if (vol > 0.0001) out.push({ id: p.parcel_id, volM3: vol });
+  }
+  return out.sort((a, b) => b.volM3 - a.volM3);
+}
+
+function LiveParcelInspector({ parcelId, encroachment, parcels, onClose }: {
+  parcelId: string;
+  encroachment: boolean;
+  parcels: Array<{ parcel_id: string; height_m: number; elevation_msl_m?: number; footprint: { type: string; coordinates: number[][][] } | null }>;
+  onClose: () => void;
+}) {
   const [detail, setDetail] = useState<any | null>(null);
   const [failed, setFailed] = useState(false);
   const [notice, setNotice] = useState<string | null>(null);
   const [noticeBusy, setNoticeBusy] = useState(false);
   const [noticeOpen, setNoticeOpen] = useState(false);
+  const overlaps = useMemo(() => findParcelOverlaps(parcelId, parcels), [parcelId, parcels]);
 
   const generateNotice = async () => {
     if (noticeBusy) return;
@@ -2716,14 +2870,40 @@ function LiveParcelInspector({ parcelId, encroachment, onClose }: { parcelId: st
         </Button>
       )}
       {encroachment && (
-        <Button
-          domain="conflict"
-          onClick={() => void generateNotice()}
-          disabled={noticeBusy}
-          style={{ width: '100%', marginTop: 12 }}
-        >
-          {noticeBusy ? 'DRAFTING…' : '▲ GENERATE ENFORCEMENT NOTICE'}
-        </Button>
+        <>
+          <Card>
+            <div style={{ fontFamily: FONT.mono, fontSize: 9, fontWeight: 700, letterSpacing: '0.14em', color: DOMAIN.conflict, marginBottom: 6 }}>
+              ▲ PHYSICAL OVERLAP — WHY THIS FLAG IS SET
+            </div>
+            <div style={{ fontSize: 10, color: PAPER, lineHeight: 1.5, marginBottom: 6 }}>
+              This parcel's extruded solid intersects {overlaps.length > 0 ? overlaps.length : '≥1'} other parcel
+              solid{overlaps.length === 1 ? '' : 's'} (PostGIS ST_3DIntersects, checked at approval time).
+              Volumes below are analytic: 2D footprint-overlap area × height overlap.
+            </div>
+            {overlaps.length > 0 ? (
+              <div className="flex flex-col gap-1">
+                {overlaps.map((o) => (
+                  <div key={o.id} className="flex items-center justify-between gap-2" style={{ fontFamily: FONT.mono, fontSize: 9 }}>
+                    <span className="truncate" style={{ color: PAPER }}>{o.id}</span>
+                    <span style={{ color: DOMAIN.conflict, fontWeight: 700, flexShrink: 0 }}>≈ {o.volM3.toFixed(2)} m³</span>
+                  </div>
+                ))}
+              </div>
+            ) : (
+              <div style={{ fontSize: 10, color: MUTED }}>
+                Partner volumes need 2D footprints + heights for every parcel — unavailable for this pair.
+              </div>
+            )}
+          </Card>
+          <Button
+            domain="conflict"
+            onClick={() => void generateNotice()}
+            disabled={noticeBusy}
+            style={{ width: '100%', marginTop: 12 }}
+          >
+            {noticeBusy ? 'DRAFTING…' : '▲ GENERATE ENFORCEMENT NOTICE'}
+          </Button>
+        </>
       )}
       {notice && !noticeOpen && (
         <Button domain="info" style={{ width: '100%', marginTop: 8 }} onClick={() => setNoticeOpen(true)}>

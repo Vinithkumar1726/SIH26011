@@ -40,10 +40,12 @@ const RAW_SATELLITE_ONLY = true;
 const RAW_CAMERA = { lon: 76.9558, lat: 11.0168, zoom: 12, pitch: 0, bearing: 0 };
 
 function toFeatureCollection(items: Array<{ id: string; footprint: any; encroachment?: boolean; height_m?: number }>) {
+  const seen = new Set<string>();
   return {
     type: 'FeatureCollection' as const,
     features: items
       .filter((p) => p.footprint?.type && Array.isArray(p.footprint.coordinates))
+      .filter((p) => (seen.has(p.id) ? false : (seen.add(p.id), true)))
       .map((p) => ({
         type: 'Feature' as const,
         id: p.id,
@@ -452,8 +454,8 @@ export default function MapLibrePanel({ apiBase, initial, target, footprints, se
     <div className="flex flex-col flex-1 min-h-0" style={{ background: SURFACE.app }}>
       <div className="flex items-center gap-2 px-3 py-2 shrink-0" style={{ background: SURFACE.panel, borderBottom: `3px solid ${INK}` }}>
         <Badge domain="spatial" style={{ fontSize: 8 }}>MAPTILER VECTOR</Badge>
-        <Badge domain="record" style={{ fontSize: 8 }}>{registryCount} REGISTRY</Badge>
-        <Badge domain="ai" style={{ fontSize: 8 }}>{footprints.length} LIVE</Badge>
+        <Badge domain="record" style={{ fontSize: 8 }}>CADASTRAL RECORDS: {registryCount}</Badge>
+        <Badge domain="ai" style={{ fontSize: 8 }}>LIVE-CAPTURED: {footprints.length}</Badge>
       </div>
       <div className="shrink-0 px-2 py-1" style={{ background: SURFACE.app, borderBottom: `2px solid ${INK}` }}>
         <AshPanel snap={ash} trace={trace} onTrace={runTrace} />
