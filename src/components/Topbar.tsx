@@ -2,6 +2,10 @@ import { Bell, Settings, ChevronDown, Menu } from 'lucide-react';
 import type { Screen } from '../types';
 import { useState } from 'react';
 import MobileNavDrawer from './MobileNavDrawer';
+import { StatusDot } from '../design/primitives';
+import {
+  BORDER, BORDER_THIN, DOMAIN, FONT, INK, MUTED, PAPER, SHADOW_SM, SURFACE,
+} from '../design/tokens';
 
 const BREADCRUMBS: Record<Screen, string> = {
   dashboard: 'WORKSPACE / DASHBOARD',
@@ -25,13 +29,20 @@ export default function Topbar({ screen, onNav, apiOnline }: Props) {
   const [mobileNavOpen, setMobileNavOpen] = useState(false);
 
   return (
-    <header className="flex items-center gap-3 px-5 py-2 rounded-full bg-slate-900/60 backdrop-blur-xl border border-white/10 text-slate-200" style={{ boxShadow: '0 10px 30px -10px rgb(0 0 0 / 0.6)' }}>
+    <header
+      className="flex items-center gap-3 px-4 py-2"
+      style={{ background: SURFACE.panel, border: BORDER, boxShadow: SHADOW_SM }}
+    >
       {/* Left: mobile menu button + logo */}
       <div className="flex items-center gap-2 min-w-0">
         <button
-          className="lg:hidden shrink-0 rounded-full p-1.5 text-slate-300 hover:bg-white/10 hover:text-white transition-colors"
+          className="lg:hidden shrink-0"
           onClick={() => setMobileNavOpen(true)}
           aria-label="Open navigation menu"
+          style={{
+            background: SURFACE.raised, color: PAPER, border: BORDER_THIN,
+            padding: 6, cursor: 'pointer', display: 'flex',
+          }}
         >
           <Menu size={16} />
         </button>
@@ -39,11 +50,24 @@ export default function Topbar({ screen, onNav, apiOnline }: Props) {
           className="flex items-center gap-2 cursor-pointer min-w-0"
           onClick={() => onNav('dashboard')}
         >
-          <div className="flex items-center justify-center font-display font-bold text-[10px] tracking-widest w-7 h-7 shrink-0 rounded-full text-[#062026]" style={{ background: '#06B6D4', boxShadow: '0 0 12px rgba(6,182,212,0.5)' }}>
+          <div
+            className="flex items-center justify-center shrink-0"
+            style={{
+              fontFamily: FONT.display, fontWeight: 700, fontSize: 10,
+              letterSpacing: '0.1em', width: 28, height: 28,
+              background: DOMAIN.record, color: INK, border: BORDER_THIN,
+            }}
+          >
             AI
           </div>
           <div className="min-w-0 hidden sm:block">
-            <div className="font-semibold leading-none text-[12px] text-cyan-400 tracking-widest truncate">
+            <div
+              className="truncate"
+              style={{
+                fontFamily: FONT.display, fontWeight: 700, fontSize: 12,
+                color: PAPER, letterSpacing: '0.14em',
+              }}
+            >
               CADASTRAL AI
             </div>
           </div>
@@ -51,43 +75,70 @@ export default function Topbar({ screen, onNav, apiOnline }: Props) {
       </div>
 
       {/* Center: breadcrumb */}
-      <div className="hidden md:block font-mono text-[9px] text-slate-400 tracking-[0.12em] truncate px-2">
+      <div
+        className="hidden md:block truncate px-2"
+        style={{ fontFamily: FONT.mono, fontSize: 9, color: MUTED, letterSpacing: '0.12em' }}
+      >
         {BREADCRUMBS[screen]}
       </div>
 
       {/* Right: status + user */}
       <div className="flex items-center gap-2 justify-end shrink-0 ml-auto">
-        <div className="hidden md:flex items-center gap-3 font-mono text-[9px] tracking-widest text-slate-400">
+        <div
+          className="hidden md:flex items-center gap-3"
+          style={{ fontFamily: FONT.mono, fontSize: 9, letterSpacing: '0.12em', color: MUTED }}
+        >
           <span className="flex items-center gap-1.5">
-            <span className="w-2 h-2 rounded-full bg-emerald-400" style={{ boxShadow: '0 0 6px rgba(52,211,153,0.9)' }} />API
+            <StatusDot domain="ok" size={8} />API
           </span>
           <span className="flex items-center gap-1.5">
-            <span className={`w-2 h-2 rounded-full ${apiOnline ? 'bg-emerald-400' : 'bg-red-400'}`} style={{ boxShadow: '0 0 6px rgba(52,211,153,0.9)' }} />{apiOnline ? 'POSTGIS' : 'OFFLINE'}
+            <StatusDot domain={apiOnline ? 'ok' : 'conflict'} size={8} />
+            {apiOnline ? 'POSTGIS' : 'OFFLINE'}
           </span>
           <span className="flex items-center gap-1.5">
-            <span className="w-2 h-2 rounded-full bg-cyan-400" style={{ boxShadow: '0 0 6px rgba(34,211,238,0.9)' }} />MAP
+            <StatusDot domain="spatial" size={8} />MAP
           </span>
         </div>
 
         <button
-          className="hidden sm:flex items-center gap-1.5 px-2 py-1 text-slate-200 hover:bg-white/10 rounded-full min-w-0 max-w-[140px] transition-colors"
+          className="hidden sm:flex items-center gap-1.5 px-2 py-1 min-w-0"
           title="VINITH K"
+          style={{
+            background: 'transparent', border: '2px solid transparent',
+            color: PAPER, cursor: 'pointer', maxWidth: 140,
+          }}
         >
-          <span className="truncate text-[11px] font-semibold">VINITH K</span>
-          <ChevronDown size={10} className="shrink-0 text-slate-500" />
+          <span className="truncate" style={{ fontSize: 11, fontWeight: 700, fontFamily: FONT.body }}>
+            VINITH K
+          </span>
+          <ChevronDown size={10} className="shrink-0" style={{ color: MUTED }} />
         </button>
 
         <button
-          className="rounded-full p-1.5 text-slate-400 hover:bg-white/10 hover:text-white shrink-0 transition-colors"
           onClick={() => onNav('settings')}
           aria-label="Settings"
+          style={{
+            background: SURFACE.raised, color: PAPER, border: BORDER_THIN,
+            padding: 6, cursor: 'pointer', display: 'flex',
+          }}
         >
           <Settings size={14} />
         </button>
 
-        <button className="relative rounded-full p-1.5 text-slate-400 hover:bg-white/10 hover:text-white shrink-0 transition-colors" aria-label="Notifications">
+        <button
+          aria-label="Notifications"
+          style={{
+            position: 'relative', background: SURFACE.raised, color: PAPER,
+            border: BORDER_THIN, padding: 6, cursor: 'pointer', display: 'flex',
+          }}
+        >
           <Bell size={14} />
-          <span className="absolute top-1 right-1 w-[5px] h-[5px] bg-cyan-400 rounded-full" />
+          <span
+            style={{
+              position: 'absolute', top: 2, right: 2, width: 7, height: 7,
+              background: DOMAIN.spatial, border: `1px solid ${INK}`,
+            }}
+          />
         </button>
       </div>
       <MobileNavDrawer

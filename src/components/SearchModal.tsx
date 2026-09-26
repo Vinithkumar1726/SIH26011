@@ -1,6 +1,10 @@
 import { useState, useEffect, useRef } from 'react';
-import { Search, X, FileText, Building2, Layers, MapPin, Hash } from 'lucide-react';
+import { Search, X, FileText, Building2, MapPin, Hash } from 'lucide-react';
 import type { Screen } from '../types';
+import { Button } from '../design/primitives';
+import {
+  BORDER, DOMAIN, FONT, INK, MUTED, PAPER, SHADOW_LG, SURFACE,
+} from '../design/tokens';
 
 const RESULTS = [
   {
@@ -44,6 +48,7 @@ interface Props {
 
 export default function SearchModal({ onClose, onNav }: Props) {
   const [query, setQuery] = useState('');
+  const [hoverId, setHoverId] = useState<string | null>(null);
   const inputRef = useRef<HTMLInputElement>(null);
 
   useEffect(() => {
@@ -69,24 +74,13 @@ export default function SearchModal({ onClose, onNav }: Props) {
   return (
     <div
       className="fixed inset-0 flex items-start justify-center pt-24 z-50"
-      style={{ background: 'rgba(11, 19, 43, 0.5)' }}
+      style={{ background: 'rgba(0, 0, 0, 0.6)' }}
       onClick={(e) => { if (e.target === e.currentTarget) onClose(); }}
     >
-      <div
-        className="w-full flex flex-col"
-        style={{
-          maxWidth: 680,
-          background: '#111111',
-          border: '3px solid #000000',
-          boxShadow: '8px 8px 0 #000000',
-        }}
-      >
+      <div className="w-full flex flex-col" style={{ maxWidth: 680, background: SURFACE.panel, border: BORDER, boxShadow: SHADOW_LG }}>
         {/* Input */}
-        <div
-          className="flex items-center gap-3 px-4"
-          style={{ borderBottom: '2px solid #F5C400', minHeight: 60 }}
-        >
-          <Search size={16} style={{ color: '#F5C400' }} />
+        <div className="flex items-center gap-3 px-4" style={{ borderBottom: `3px solid ${INK}`, background: DOMAIN.record, minHeight: 60 }}>
+          <Search size={16} style={{ color: INK }} />
           <input
             ref={inputRef}
             value={query}
@@ -95,20 +89,14 @@ export default function SearchModal({ onClose, onNav }: Props) {
             className="flex-1"
             aria-label="Global cadastral search"
             style={{
-              background: 'transparent',
-              border: 'none',
-              outline: 'none',
-              color: '#FFFFFF',
-              fontFamily: 'var(--brutal-font-mono)',
-              fontSize: 15,
-              fontWeight: 700,
-              letterSpacing: '0.02em',
-              padding: 0,
+              background: 'transparent', border: 'none', outline: 'none',
+              color: INK, fontFamily: FONT.mono, fontSize: 15, fontWeight: 700,
+              letterSpacing: '0.02em', padding: 0,
             }}
           />
-          <button onClick={onClose} className="brutal-btn-gold brutal-btn" style={{ padding: '4px 10px', fontSize: 10 }} aria-label="Close search">
+          <Button domain="record" onClick={onClose} aria-label="Close search" style={{ padding: '4px 10px', background: INK, color: PAPER }}>
             <X size={12} />
-          </button>
+          </Button>
         </div>
 
         {/* Results */}
@@ -117,72 +105,68 @@ export default function SearchModal({ onClose, onNav }: Props) {
             <div key={group.group}>
               <div
                 className="px-4 py-2 flex items-center gap-2"
-                style={{ borderBottom: '2px solid #F5C400', background: '#1c1c1c' }}
+                style={{ borderBottom: `2px solid ${INK}`, background: SURFACE.raised }}
               >
-                <span style={{ color: '#F5C400' }}>{group.icon}</span>
+                <span style={{ color: DOMAIN.record }}>{group.icon}</span>
                 <span
                   style={{
-                    fontSize: 10,
-                    fontWeight: 700,
-                    letterSpacing: '0.14em',
-                    color: '#FFFFFF',
-                    fontFamily: 'var(--brutal-font-body)',
+                    fontSize: 10, fontWeight: 700, letterSpacing: '0.14em',
+                    color: PAPER, fontFamily: FONT.body,
                   }}
                 >
                   {group.group}
                 </span>
               </div>
-              {group.items.map((item) => (
-                <button
-                  key={item.id}
-                  className="w-full flex flex-col px-5 py-3 text-left"
-                  style={{ background: '#111111', border: 'none', borderBottom: '1px solid #333', cursor: 'pointer' }}
-                  onMouseEnter={(e) => { e.currentTarget.style.background = '#F5C400'; const l = e.currentTarget.querySelector('[data-label]'); if (l) (l as HTMLElement).style.color = '#111111'; }}
-                  onMouseLeave={(e) => { e.currentTarget.style.background = '#111111'; const l = e.currentTarget.querySelector('[data-label]'); if (l) (l as HTMLElement).style.color = '#FFFFFF'; }}
-                  onClick={() => { onNav('records'); onClose(); }}
-                >
-                  <span
-                    data-label
-                    className="font-mono"
-                    style={{ fontSize: 12, fontWeight: 700, color: '#FFFFFF', letterSpacing: '0.02em' }}
+              {group.items.map((item) => {
+                const hover = hoverId === item.id;
+                return (
+                  <button
+                    key={item.id}
+                    className="w-full flex flex-col px-5 py-3 text-left"
+                    style={{
+                      background: hover ? DOMAIN.record : 'transparent',
+                      border: 'none', borderBottom: `1px solid ${INK}`, cursor: 'pointer',
+                    }}
+                    onMouseEnter={() => setHoverId(item.id)}
+                    onMouseLeave={() => setHoverId((v) => (v === item.id ? null : v))}
+                    onClick={() => { onNav('records'); onClose(); }}
                   >
-                    {item.label}
-                  </span>
-                  <span
-                    className="font-mono"
-                    style={{ fontSize: 9, color: '#999', marginTop: 2, letterSpacing: '0.04em' }}
-                  >
-                    {item.sub}
-                  </span>
-                </button>
-              ))}
+                    <span
+                      style={{
+                        fontFamily: FONT.mono, fontSize: 12, fontWeight: 700,
+                        color: hover ? INK : PAPER, letterSpacing: '0.02em',
+                      }}
+                    >
+                      {item.label}
+                    </span>
+                    <span
+                      style={{
+                        fontFamily: FONT.mono, fontSize: 9,
+                        color: hover ? INK : MUTED, marginTop: 2, letterSpacing: '0.04em',
+                      }}
+                    >
+                      {item.sub}
+                    </span>
+                  </button>
+                );
+              })}
             </div>
           ))}
         </div>
 
         {/* Keyboard hints */}
-        <div
-          className="flex items-center gap-4 px-4 py-2"
-          style={{ borderTop: '1px solid var(--color-border-primary)' }}
-        >
+        <div className="flex items-center gap-4 px-4 py-2" style={{ borderTop: `2px solid ${INK}` }}>
           {[['↵', 'OPEN'], ['ESC', 'CLOSE'], ['↑↓', 'NAVIGATE']].map(([key, label]) => (
             <div key={key} className="flex items-center gap-1.5">
               <span
-                className="font-mono"
                 style={{
-                  fontSize: 9,
-                  color: 'var(--color-text-primary)',
-                  background: 'var(--color-bg-tertiary)',
-                  border: '1px solid var(--color-border-primary)',
-                  padding: '1px 5px',
-                  borderRadius: 2,
+                  fontFamily: FONT.mono, fontSize: 9, color: PAPER,
+                  background: SURFACE.raised, border: `2px solid ${INK}`, padding: '1px 5px',
                 }}
               >
                 {key}
               </span>
-              <span
-                style={{ fontSize: 9, color: 'var(--color-text-quaternary)', fontFamily: 'var(--font-body)', letterSpacing: '0.06em' }}
-              >
+              <span style={{ fontSize: 9, color: MUTED, fontFamily: FONT.body, letterSpacing: '0.06em' }}>
                 {label}
               </span>
             </div>
