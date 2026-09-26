@@ -295,6 +295,11 @@ export default function Explorer3D() {
   const [showLiveParcels, setShowLiveParcels] = useState(true);
   const [xray, setXray] = useState(false);
   const [subUtils, setSubUtils] = useState<any[]>([]);
+  const [shadowAudit, setShadowAudit] = useState(false);
+  const [dayOfYear, setDayOfYear] = useState<number>(() => {
+    const now = new Date();
+    return Math.floor((now.getTime() - new Date(now.getFullYear(), 0, 0).getTime()) / 86400000);
+  });
   const [lidarTarget, setLidarTarget] = useState('');
   const [lidarRunning, setLidarRunning] = useState(false);
   const [lidarJob, setLidarJob] = useState<{
@@ -1001,7 +1006,7 @@ export default function Explorer3D() {
           camera={{ position: [70, 60, 70], fov: 50 }}
           frameloop={weather === 'monsoon' ? 'always' : 'demand'}
           dpr={quality === 'low' ? 1 : quality === 'medium' ? [1, 1.5] : [1, 2]}
-          shadows={quality !== 'low'}
+          shadows={shadowAudit || quality !== 'low'}
           gl={{ antialias: true, alpha: false, powerPreference: quality === 'low' ? 'low-power' : 'default' }}
           style={{ background: sky.bg, cursor: liveCaptureMode ? 'crosshair' : 'default' }}
         >
@@ -1009,7 +1014,15 @@ export default function Explorer3D() {
           <color attach="background" args={[sky.bg]} />
           <fog attach="fog" args={[sky.bg, cityVisible && cityMeta ? Math.max(sky.fogNear, 1.5 * cityMeta.radiusM) : sky.fogNear, cityVisible && cityMeta ? Math.max(sky.fogFar, 4 * cityMeta.radiusM) : sky.fogFar]} />
           <ambientLight intensity={sky.ambient} />
-          <directionalLight position={[50, 80, 30]} intensity={sky.sun} color={sky.sunColor} castShadow={quality !== 'low'} shadow-mapSize={quality === 'high' ? [2048, 2048] : [1024, 1024]} />
+          <directionalLight position={[50, 80, 30]} intensity={sky.sun} color={sky.sunColor} castShadow={quality !== 'low' && !shadowAudit} shadow-mapSize={quality === 'high' ? [2048, 2048] : [1024, 1024]} />
+          {shadowAudit && (
+            <SolarRig
+              hour={hourOfDay}
+              dayOfYear={dayOfYear}
+              latDeg={cityMeta?.origin.lat ?? 11.0168}
+              extent={cityVisible && cityMeta ? cityMeta.radiusM : 500}
+            />
+          )}
           <directionalLight position={[-30, 40, -20]} intensity={sky.ambient} color={sky.sunColor} />
           <hemisphereLight args={[sky.hemiSky, sky.hemiGround, sky.ambient]} />
           {showTerrain && (
@@ -1190,6 +1203,34 @@ export default function Explorer3D() {
           >
             {xray ? '◉ Deep Cadastre / X-Ray: ON' : '◎ Deep Cadastre / X-Ray'}
           </button>
+          <button
+            type="button"
+            onClick={() => setShadowAudit((v) => !v)}
+            className={`w-full text-[10px] py-1 rounded-none uppercase tracking-wider mb-2 ${shadowAudit ? 'bg-amber-400/15 text-amber-200 border border-amber-300/40' : 'bg-white/5 text-slate-400 border border-transparent hover:text-white'}`}
+          >
+            {shadowAudit ? '◉ Shadow Audit: ON' : '◎ Shadow Audit Mode'}
+          </button>
+          {shadowAudit && (
+            <div className="mb-2" style={{ border: '2px solid #111111', background: '#F5C400', padding: '8px 10px', boxShadow: '3px 3px 0 #111111' }}>
+              <div className="flex items-center justify-between mb-1">
+                <span className="font-mono font-bold" style={{ fontSize: 9, letterSpacing: '0.1em', color: '#111111' }}>DAY OF YEAR</span>
+                <span className="font-mono font-bold" style={{ fontSize: 11, color: '#111111', fontVariantNumeric: 'tabular-nums' }}>{dayOfYear}</span>
+              </div>
+              <input
+                type="range"
+                aria-label="Day of year"
+                min={1}
+                max={365}
+                step={1}
+                value={dayOfYear}
+                onChange={(e) => setDayOfYear(Number(e.target.value))}
+                className="w-full"
+              />
+              <div className="font-mono" style={{ fontSize: 8, color: '#111111', marginTop: 2 }}>
+                Use TIME OF DAY in Environment & View · shadows follow the sun
+              </div>
+            </div>
+          )}
           <div className="mt-1 mb-2" style={{ border: '2px solid #111111', background: isHistorical ? '#F5C400' : '#FFFFFF', padding: '8px 10px', boxShadow: '3px 3px 0 #111111' }}>
             <div className="flex items-center justify-between mb-1">
               <span className="font-mono font-bold" style={{ fontSize: 9, letterSpacing: '0.1em', color: '#111111' }}>4D TIME TRAVEL</span>
@@ -2431,6 +2472,44 @@ function SubterraneanNetwork({ features, origin }: {
   );
 }
 
+function SolarRig({ hour, dayOfYear, latDeg, extent }: {
+  hour: number; dayOfYear: number; latDeg: number; extent: number;
+}) {
+  const pos = useMemo(() => {
+    const lat = (latDeg * Math.PI) / 180;
+    const decl = (-23.44 * Math.PI) / 180 * Math.cos(((2 * Math.PI) / 365) * (dayOfYear + 10));
+    const ha = ((hour - 12) / 12) * Math.PI;
+    const sinAlt = Math.sin(lat) * Math.sin(decl) + Math.cos(lat) * Math.cos(decl) * Math.cos(ha);
+    const alt = Math.asin(Math.max(-1, Math.min(1, sinAlt)));
+    const cosAz = (Math.sin(decl) - Math.sin(alt) * Math.sin(lat)) / (Math.cos(alt) * Math.cos(lat) + 1e-9);
+    const az = Math.acos(Math.max(-1, Math.min(1, cosAz))) * (ha > 0 ? 1 : -1);
+    const D = Math.max(extent * 2, 500);
+    const el = Math.max(alt, 0.06);
+    return [
+      D * Math.cos(el) * Math.sin(az),
+      D * Math.sin(el),
+      -D * Math.cos(el) * Math.cos(az),
+    ] as [number, number, number];
+  }, [hour, dayOfYear, latDeg, extent]);
+  const ortho = Math.max(extent * 1.2, 300);
+  return (
+    <directionalLight
+      position={pos}
+      intensity={2.2}
+      color="#fff4e0"
+      castShadow
+      shadow-mapSize={[1024, 1024]}
+      shadow-camera-left={-ortho}
+      shadow-camera-right={ortho}
+      shadow-camera-top={ortho}
+      shadow-camera-bottom={-ortho}
+      shadow-camera-near={1}
+      shadow-camera-far={Math.max(extent * 6, 2000)}
+      shadow-bias={-0.0004}
+    />
+  );
+}
+
 function LiveParcelInspector({ parcelId, onClose }: { parcelId: string; onClose: () => void }) {  const [detail, setDetail] = useState<any | null>(null);
   const [failed, setFailed] = useState(false);
   useEffect(() => {
@@ -2545,6 +2624,8 @@ function LiveCapturedBlock({ parcel, origin, lowPower, ilimsMode, selected, onSe
       position={[0, 0.02, 0]}
       rotation={[-Math.PI / 2, 0, 0]}
       scale={selected ? [1.02, 1.02, 1.02] : [1, 1, 1]}
+      castShadow
+      receiveShadow
       onClick={(e) => { e.stopPropagation(); onSelect(); onHover(label); }}
       onPointerOver={(e) => { e.stopPropagation(); setHovered(true); onHover(label); document.body.style.cursor = 'pointer'; }}
       onPointerOut={() => { setHovered(false); onHover(null); document.body.style.cursor = 'default'; }}
