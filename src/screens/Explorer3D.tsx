@@ -12,6 +12,8 @@ import QRCode from 'qrcode';
 import CollapsePanel from '../components/CollapsePanel';
 import LiveMapPanel from '../components/LiveMapPanel';
 import MapLibrePanel from '../components/MapLibrePanel';
+import { Badge, Button, StatusDot } from '../design/primitives';
+import { DOMAIN, FONT, INK, MUTED, PAPER, SURFACE } from '../design/tokens';
 import { api } from '../api';
 import CadastralHierarchy from '../components/CadastralHierarchy';
 import { loadLiveHierarchy, fetchCityBuildings, isCadastralBuilding, type BuildingSummary, type CityBuilding, type LiveHierarchy } from '../workspace3d/api';
@@ -1009,7 +1011,7 @@ export default function Explorer3D() {
 
   return (
     <div className="h-full w-full flex min-h-0 min-w-0 relative overflow-hidden" data-explorer-root>
-      <div ref={canvasRef} className={`${splitView ? 'w-1/2' : 'flex-1'} relative bg-void min-h-0 min-w-0`}>
+      <div ref={canvasRef} className={`${splitView ? 'w-1/2' : 'flex-1'} relative min-h-0 min-w-0`} style={{ background: INK }}>
         <div className="absolute inset-0 z-0">
         <Canvas
           camera={{ position: [70, 60, 70], fov: 50 }}
@@ -1174,14 +1176,15 @@ export default function Explorer3D() {
         </div>
 
         <div className={`absolute top-3 left-3 bottom-28 z-10 ${compact ? 'w-44' : narrow ? 'w-52' : 'w-64'} flex flex-col gap-2 overflow-y-auto pointer-events-none`}>
-          <CollapsePanel title="View Controls" tone="glass" open={openPanels.view} onToggle={() => togglePanel('view')}>
+          <CollapsePanel title="View Controls" open={openPanels.view} onToggle={() => togglePanel('view')}>
           {source === 'live' && (
             <div className="mb-2">
-              <div className="text-[10px] text-slate-500 mb-1">BUILDING</div>
+              <div style={{ fontFamily: FONT.mono, fontSize: 10, color: MUTED, marginBottom: 4, letterSpacing: '0.12em' }}>BUILDING</div>
               <select
                 value={building.id}
                 onChange={(e) => switchBuilding(e.target.value)}
-                className="w-full bg-deep text-[10px] text-slate-200 rounded-md px-2 py-1.5 border border-line outline-none focus:border-amber-300/40"
+                className="w-full text-[10px] px-2 py-1.5 outline-none"
+                style={{ background: SURFACE.input, color: PAPER, border: `2px solid ${INK}`, fontFamily: FONT.mono }}
               >
                 {summaries.map((s) => (
                   <option key={s.id} value={s.id}>{s.name} · {s.floorCount}f · {s.unitCount}u</option>
@@ -1189,64 +1192,71 @@ export default function Explorer3D() {
               </select>
             </div>
           )}
-          <label className="flex items-center gap-2 text-xs text-slate-300 cursor-pointer mb-2">
+          <label className="flex items-center gap-2 text-xs cursor-pointer mb-2" style={{ color: PAPER }}>
             <input type="checkbox" checked={exploded} onChange={(e) => setExploded(e.target.checked)} />
             Explode Floors
           </label>
-          <button
-            type="button"
+          <Button
+            domain="spatial"
+            active={liveCaptureMode}
             onClick={() => setLiveCaptureMode((v) => !v)}
-            className={`w-full text-[10px] py-1 rounded-none uppercase tracking-wider mb-2 ${liveCaptureMode ? 'bg-cyan-500/20 text-cyan-300 border border-cyan-400/40' : 'bg-white/5 text-slate-400 border border-transparent hover:text-white'}`}
-          >
+            style={{ width: '100%', marginBottom: 8, fontSize: 10 }}
+            >
             {liveCaptureMode ? '◉ Live Capture: ON' : '◎ Live Capture Mode'}
-          </button>
-          <button
-            type="button"
+          </Button>
+          <Button
+            domain="spatial"
+            active={lowPower}
             onClick={() => setLowPower((v) => !v)}
-            className={`w-full text-[10px] py-1 rounded-none uppercase tracking-wider mb-2 ${lowPower ? 'bg-cyan-500/20 text-cyan-300 border border-cyan-400/40' : 'bg-white/5 text-slate-400 border border-transparent hover:text-white'}`}
-          >
+            style={{ width: '100%', marginBottom: 8, fontSize: 10 }}
+            >
             {lowPower ? '◉ Low Power: ON' : '◎ Low Power Mode'}
-          </button>
-          <button
-            type="button"
+          </Button>
+          <Button
+            domain="spatial"
+            active={ilimsMode}
             onClick={() => setIlimsMode((v) => !v)}
-            className={`w-full text-[10px] py-1 rounded-none uppercase tracking-wider mb-2 ${ilimsMode ? 'bg-cyan-500/20 text-cyan-300 border border-cyan-400/40' : 'bg-white/5 text-slate-400 border border-transparent hover:text-white'}`}
-          >
+            style={{ width: '100%', marginBottom: 8, fontSize: 10 }}
+            >
             {ilimsMode ? '◉ ILIMS Land Bank: ON' : '◎ ILIMS Land Bank Mode'}
-          </button>
-          <button
-            type="button"
+          </Button>
+          <Button
+            domain="spatial"
+            active={splitView}
             onClick={() => setSplitView((v) => !v)}
-            className={`w-full text-[10px] py-1 rounded-none uppercase tracking-wider mb-2 ${splitView ? 'bg-cyan-500/20 text-cyan-300 border border-cyan-400/40' : 'bg-white/5 text-slate-400 border border-transparent hover:text-white'}`}
-          >
+            style={{ width: '100%', marginBottom: 8, fontSize: 10 }}
+            >
             {splitView ? '◉ Split 2D/3D: ON' : '◎ Split 2D/3D View'}
-          </button>
-          <button
-            type="button"
+          </Button>
+          <Button
+            domain="spatial"
+            active={xray}
             onClick={() => setXray((v) => !v)}
-            className={`w-full text-[10px] py-1 rounded-none uppercase tracking-wider mb-2 ${xray ? 'bg-cyan-500/20 text-cyan-300 border border-cyan-400/40' : 'bg-white/5 text-slate-400 border border-transparent hover:text-white'}`}
-          >
+            style={{ width: '100%', marginBottom: 8, fontSize: 10 }}
+            >
             {xray ? '◉ Deep Cadastre / X-Ray: ON' : '◎ Deep Cadastre / X-Ray'}
-          </button>
-          <button
-            type="button"
+          </Button>
+          <Button
+            domain="spatial"
+            active={shadowAudit}
             onClick={() => setShadowAudit((v) => !v)}
-            className={`w-full text-[10px] py-1 rounded-none uppercase tracking-wider mb-2 ${shadowAudit ? 'bg-cyan-500/20 text-cyan-300 border border-cyan-400/40' : 'bg-white/5 text-slate-400 border border-transparent hover:text-white'}`}
-          >
+            style={{ width: '100%', marginBottom: 8, fontSize: 10 }}
+            >
             {shadowAudit ? '◉ Shadow Audit: ON' : '◎ Shadow Audit Mode'}
-          </button>
-          <button
-            type="button"
+          </Button>
+          <Button
+            domain="spatial"
+            active={measureMode}
             onClick={() => { setMeasureMode((v) => !v); setMeasurePoints([]); }}
-            className={`w-full text-[10px] py-1 rounded-lg uppercase tracking-wider mb-2 ${measureMode ? 'bg-cyan-500/20 text-cyan-300 border border-cyan-400/40' : 'bg-white/5 text-slate-400 border border-transparent hover:text-white'}`}
-          >
+            style={{ width: '100%', marginBottom: 8, fontSize: 10 }}
+            >
             {measureMode ? '◉ Measure: ON (click 2 pts)' : '⚏ Measure Distance'}
-          </button>
+          </Button>
           {shadowAudit && (
-            <div className="mb-2" style={{ border: '2px solid #111111', background: '#F5C400', padding: '8px 10px', boxShadow: '3px 3px 0 #111111' }}>
+            <div className="mb-2" style={{ border: `2px solid ${INK}`, background: DOMAIN.warn, padding: '8px 10px', boxShadow: `3px 3px 0 ${INK}` }}>
               <div className="flex items-center justify-between mb-1">
-                <span className="font-mono font-bold" style={{ fontSize: 9, letterSpacing: '0.1em', color: '#111111' }}>DAY OF YEAR</span>
-                <span className="font-mono font-bold" style={{ fontSize: 11, color: '#111111', fontVariantNumeric: 'tabular-nums' }}>{dayOfYear}</span>
+                <span className="font-mono font-bold" style={{ fontSize: 9, letterSpacing: '0.1em', color: INK }}>DAY OF YEAR</span>
+                <span className="font-mono font-bold" style={{ fontSize: 11, color: INK, fontVariantNumeric: 'tabular-nums' }}>{dayOfYear}</span>
               </div>
               <input
                 type="range"
@@ -1257,91 +1267,104 @@ export default function Explorer3D() {
                 value={dayOfYear}
                 onChange={(e) => setDayOfYear(Number(e.target.value))}
                 className="w-full"
+                style={{ accentColor: INK }}
               />
-              <div className="font-mono" style={{ fontSize: 8, color: '#111111', marginTop: 2 }}>
+              <div className="font-mono" style={{ fontSize: 8, color: INK, marginTop: 2 }}>
                 Use TIME OF DAY in Environment & View · shadows follow the sun
               </div>
             </div>
           )}
           <CollapsePanel title={`Parcels (${liveParcels.length})`} open={openPanels.view} onToggle={() => togglePanel('view')}>
             {selectedLiveParcelId && (
-              <button
-                type="button"
+              <Button
+                domain="info"
                 onClick={() => setSelectedLiveParcelId(null)}
-                className="w-full text-[10px] py-1 rounded-none uppercase tracking-wider mb-2 bg-white/5 text-slate-400 border border-transparent hover:text-white"
+                style={{ width: '100%', marginBottom: 8, fontSize: 10 }}
               >
                 ✕ Clear Selection
-              </button>
+              </Button>
             )}
             <div className="flex flex-col gap-1.5 max-h-64 overflow-y-auto">
-              {liveParcels.map((parcel) => (
-                <div
-                  key={parcel.parcel_id}
-                  className={`pointer-events-auto p-2 border-2 transition-all duration-75 flex justify-between items-center gap-2 ${
-                    selectedLiveParcelId === parcel.parcel_id
-                      ? 'bg-amber-300 border-black translate-x-1 translate-y-1'
-                      : 'bg-white border-black hover:bg-slate-50'
-                  }`}
-                  style={{ boxShadow: selectedLiveParcelId === parcel.parcel_id ? '2px 2px 0 #111' : '4px 4px 0 #111' }}
-                >
-                  <div className="min-w-0">
-                    <p className="font-black uppercase text-[10px] text-black truncate">ULPIN: {parcel.parcel_id}</p>
-                    <p className="text-[9px] text-slate-600">Height: {parcel.height_m}m{parcel.encroachment ? ' · CONFLICT' : ''}</p>
-                  </div>
-                  <button
-                    type="button"
-                    onClick={() => setSelectedLiveParcelId(parcel.parcel_id)}
-                    className="bg-black text-white px-2 py-1 font-bold text-[9px] uppercase cursor-pointer hover:bg-amber-400 hover:text-black transition-colors shrink-0"
+              {liveParcels.map((parcel) => {
+                const isSel = selectedLiveParcelId === parcel.parcel_id;
+                return (
+                  <div
+                    key={parcel.parcel_id}
+                    className="pointer-events-auto p-2 flex justify-between items-center gap-2"
+                    style={{
+                      background: isSel ? DOMAIN.spatial : SURFACE.raised,
+                      border: `2px solid ${INK}`,
+                      boxShadow: isSel ? `2px 2px 0 ${INK}` : `4px 4px 0 ${INK}`,
+                      transform: isSel ? 'translate(1px, 1px)' : 'none',
+                    }}
                   >
-                    Locate ⌖
-                  </button>
-                </div>
-              ))}
+                    <div className="min-w-0">
+                      <p className="truncate" style={{ fontFamily: FONT.display, fontWeight: 800, textTransform: 'uppercase', fontSize: 10, color: isSel ? INK : PAPER }}>
+                        ULPIN: {parcel.parcel_id}
+                      </p>
+                      <p style={{ fontSize: 9, color: isSel ? INK : MUTED }}>
+                        Height: {parcel.height_m}m
+                        {parcel.encroachment ? ' · CONFLICT' : ''}
+                      </p>
+                      {parcel.encroachment && <Badge domain="conflict" style={{ fontSize: 8, marginTop: 2 }}>CONFLICT</Badge>}
+                    </div>
+                    <Button
+                      domain={isSel ? 'info' : 'spatial'}
+                      onClick={() => setSelectedLiveParcelId(parcel.parcel_id)}
+                      style={{ fontSize: 9, padding: '4px 8px', flexShrink: 0 }}
+                    >
+                      Locate ⌖
+                    </Button>
+                  </div>
+                );
+              })}
               {liveParcels.length === 0 && (
-                <div className="text-[10px] text-slate-500">No live parcels yet — capture or approve some.</div>
+                <div style={{ fontSize: 10, color: MUTED }}>No live parcels yet — capture or approve some.</div>
               )}
             </div>
           </CollapsePanel>
           {liveCaptureNotice && (
-            <div className="fade-up text-[10px] leading-relaxed text-amber-200 bg-amber-400/10 border-2 border-black rounded-none px-2.5 py-1.5 mb-2" style={{ boxShadow: '3px 3px 0 #000' }}>
+            <div style={{ fontSize: 10, lineHeight: 1.5, color: INK, background: DOMAIN.warn, border: `2px solid ${INK}`, boxShadow: `3px 3px 0 ${INK}`, padding: '6px 10px', marginBottom: 8 }}>
               {liveCaptureNotice}
             </div>
           )}
           <div>
-            <label className="text-[10px] text-slate-500 block mb-1">Z-Range: −3.5m — {zMax}m</label>
-            <input type="range" min={-3.5} max={36} step={0.5} value={zMax} onChange={(e) => setZMax(parseFloat(e.target.value))} className="w-full" />
+            <label className="block mb-1" style={{ fontSize: 10, color: MUTED }}>Z-Range: −3.5m — {zMax}m</label>
+            <input type="range" min={-3.5} max={36} step={0.5} value={zMax} onChange={(e) => setZMax(parseFloat(e.target.value))} className="w-full" style={{ accentColor: DOMAIN.spatial }} />
           </div>
-          <div className="mt-3 pt-3 border-t border-white/10">
-            <div className="text-[10px] text-slate-500 mb-1.5">LIGHTING</div>
+          <div className="mt-3 pt-3" style={{ borderTop: `2px solid ${INK}` }}>
+            <div style={{ fontFamily: FONT.mono, fontSize: 10, color: MUTED, marginBottom: 6, letterSpacing: '0.12em' }}>LIGHTING</div>
             <div className="grid grid-cols-2 gap-1">
-              <button
-                type="button"
+              <Button
+                domain="spatial"
+                active={!isNight}
                 onClick={() => { setLiveSync(false); setHourOfDay(12); }}
-                className={`text-[10px] py-1 rounded-none uppercase tracking-wider ${!isNight ? 'bg-cyan-500/20 text-cyan-300 border border-cyan-400/40' : 'bg-white/5 text-slate-400 border border-transparent hover:text-white'}`}
-              >
+                style={{ flex: 1, fontSize: 10 }}
+                >
                 ☀ DAY
-              </button>
-              <button
-                type="button"
+              </Button>
+              <Button
+                domain="spatial"
+                active={isNight}
                 onClick={() => { setLiveSync(false); setHourOfDay(0); }}
-                className={`text-[10px] py-1 rounded-none uppercase tracking-wider ${isNight ? 'bg-cyan-500/20 text-cyan-300 border border-cyan-400/40' : 'bg-white/5 text-slate-400 border border-transparent hover:text-white'}`}
-              >
+                style={{ flex: 1, fontSize: 10 }}
+                >
                 ☾ NIGHT
-              </button>
+              </Button>
             </div>
           </div>
-          <label className="flex items-center gap-2 text-xs text-slate-300 cursor-pointer mt-3">
+          <label className="flex items-center gap-2 text-xs cursor-pointer mt-3" style={{ color: PAPER }}>
             <input type="checkbox" checked={interiorTour} onChange={(e) => { setInteriorTour(e.target.checked); if (e.target.checked) flyTo('orbit'); }} />
             Interior Tour · zoom in
           </label>
-          <div className="text-[9px] text-slate-500 mt-1">{interiorTour ? 'Close camera enabled — scroll to enter the floor layout.' : 'Enable to unlock close interior navigation.'}</div>
+          <div className="text-[9px] mt-1" style={{ color: MUTED }}>{interiorTour ? 'Close camera enabled — scroll to enter the floor layout.' : 'Enable to unlock close interior navigation.'}</div>
           </CollapsePanel>
-          <CollapsePanel title="Environment & View" tone="glass" open={openPanels.env} onToggle={() => togglePanel('env')}>
+          <CollapsePanel title="Environment & View" open={openPanels.env} onToggle={() => togglePanel('env')}>
             <div className="space-y-3">
               <div>
                 <div className="flex items-center justify-between mb-1">
-                  <span className="text-[10px] text-slate-500">TIME OF DAY</span>
-                  <span className="text-[10px] mono text-amber-200">{formatHour(hourOfDay)} · {isNight ? 'Night' : 'Day'}</span>
+                  <span style={{ fontSize: 10, color: MUTED }}>TIME OF DAY</span>
+                  <span style={{ fontSize: 10, color: DOMAIN.warn, fontFamily: FONT.mono }}>{formatHour(hourOfDay)} · {isNight ? 'Night' : 'Day'}</span>
                 </div>
                 <input
                   type="range"
@@ -1354,49 +1377,51 @@ export default function Explorer3D() {
                   className="w-full"
                   aria-label="Time of day"
                 />
-                <label className="flex items-center gap-2 text-xs text-slate-300 cursor-pointer mt-1">
+                <label className="flex items-center gap-2 text-xs cursor-pointer mt-1" style={{ color: PAPER }}>
                   <input type="checkbox" checked={liveSync} onChange={(e) => setLiveSync(e.target.checked)} />
                   Live sync
                 </label>
               </div>
               <div>
-                <div className="text-[10px] text-slate-500 mb-1">WEATHER</div>
+                <div style={{ fontFamily: FONT.mono, fontSize: 10, color: MUTED, marginBottom: 4, letterSpacing: '0.12em' }}>WEATHER</div>
                 <div className="grid grid-cols-3 gap-1">
                   {(['clear', 'clouds', 'monsoon'] as const).map((w) => (
-                    <button
-                      type="button"
+                    <Button
+                      domain="spatial"
+                      active={weather === w}
                       key={w}
                       onClick={() => setWeather(w)}
-                      className={`text-[10px] py-1 rounded-none uppercase tracking-wider ${weather === w ? 'bg-cyan-500/20 text-cyan-300 border border-cyan-400/40' : 'bg-white/5 text-slate-400 border border-transparent hover:text-white'}`}
-                    >
+                      style={{ flex: 1, fontSize: 10 }}
+                      >
                       {w}
-                    </button>
+                    </Button>
                   ))}
                 </div>
               </div>
               <div>
-                <div className="text-[10px] text-slate-500 mb-1">CAMERA VIEWS</div>
+                <div style={{ fontFamily: FONT.mono, fontSize: 10, color: MUTED, marginBottom: 4, letterSpacing: '0.12em' }}>CAMERA VIEWS</div>
                 <div className="grid grid-cols-1 gap-1">
                   {((cityVisible
                     ? [['freeroam', 'Free Roam'], ['city', 'City Overview'], ['orbit', 'Free Orbit'], ['bird', "Bird's Eye"], ['plan', 'Cadastral Plan'], ['cutaway', 'Underground Cutaway'], ['street', 'Street Walk · 1.7m']]
                     : [['orbit', 'Free Orbit'], ['bird', "Bird's Eye"], ['plan', 'Cadastral Plan'], ['cutaway', 'Underground Cutaway'], ['street', 'Street Walk · 1.7m']]) as [ViewPreset, string][]).map(([v, label]) => (
                     <div key={v}>
-                      <button
-                        type="button"
+                      <Button
+                        domain="spatial"
+                        active={viewPreset === v}
                         onClick={() => { flyTo(v); if (v === 'street' || v !== 'orbit') setInteriorTour(false); }}
-                        className={`w-full text-left text-[10px] py-1 px-2 rounded-none uppercase tracking-wider ${viewPreset === v ? 'bg-cyan-500/20 text-cyan-300 border border-cyan-400/40' : 'bg-white/5 text-slate-400 border border-transparent hover:text-white'}`}
-                      >
+                        style={{ width: '100%', textAlign: 'left', fontSize: 10 }}
+                        >
                         {label}
-                      </button>
+                      </Button>
                       {v === 'cutaway' && (
-                        <div className="text-[9px] text-slate-500 mt-0.5 px-1">No utility data loaded — basement levels only</div>
+                        <div className="text-[9px] mt-0.5 px-1" style={{ color: MUTED }}>No utility data loaded — basement levels only</div>
                       )}
                     </div>
                   ))}
                 </div>
               </div>
               <div>
-                <div className="text-[10px] text-slate-500 mb-1">LAYERS</div>
+                <div style={{ fontFamily: FONT.mono, fontSize: 10, color: MUTED, marginBottom: 4, letterSpacing: '0.12em' }}>LAYERS</div>
                 <div className="space-y-1">
                   {([
                     [showGrid, setShowGrid, 'Reference grid'],
@@ -1406,19 +1431,19 @@ export default function Explorer3D() {
                     [showTerrain, setShowTerrain, 'Terrain surface'],
                     [showLiveParcels, setShowLiveParcels, 'Live-captured parcels'],
                   ] as const).map(([val, setVal, label]) => (
-                    <label key={label} className="flex items-center gap-2 text-xs text-slate-300 cursor-pointer">
+                    <label key={label} className="flex items-center gap-2 text-xs cursor-pointer" style={{ color: PAPER }}>
                       <input type="checkbox" checked={val} onChange={(e) => setVal(e.target.checked)} />
                       {label}
                     </label>
                   ))}
                   {cityAvailable && (
-                    <label className="flex items-center gap-2 text-xs text-slate-300 cursor-pointer">
+                    <label className="flex items-center gap-2 text-xs cursor-pointer" style={{ color: PAPER }}>
                       <input type="checkbox" checked={showCity} onChange={(e) => setShowCity(e.target.checked)} />
                       City context (OSM)
                     </label>
                   )}
                   {buildingPipes.length > 0 && (
-                    <label className="flex items-center gap-2 text-xs text-slate-300 cursor-pointer">
+                    <label className="flex items-center gap-2 text-xs cursor-pointer" style={{ color: PAPER }}>
                       <input type="checkbox" checked={showPipes} onChange={(e) => setShowPipes(e.target.checked)} />
                       Underground utilities (synthetic)
                     </label>
@@ -1426,49 +1451,51 @@ export default function Explorer3D() {
                 </div>
               </div>
               <div>
-                <div className="text-[10px] text-slate-500 mb-1">GRAPHICS QUALITY</div>
+                <div style={{ fontFamily: FONT.mono, fontSize: 10, color: MUTED, marginBottom: 4, letterSpacing: '0.12em' }}>GRAPHICS QUALITY</div>
                 <div className="grid grid-cols-3 gap-1">
                   {(['low', 'medium', 'high'] as const).map((q) => (
-                    <button
-                      type="button"
+                    <Button
+                      domain="spatial"
+                      active={quality === q}
                       key={q}
                       onClick={() => setQuality(q)}
-                      className={`text-[10px] py-1 rounded-none uppercase tracking-wider ${quality === q ? 'bg-cyan-500/20 text-cyan-300 border border-cyan-400/40' : 'bg-white/5 text-slate-400 border border-transparent hover:text-white'}`}
-                    >
+                      style={{ flex: 1, fontSize: 10 }}
+                      >
                       {q}
-                    </button>
+                    </Button>
                   ))}
                 </div>
               </div>
               <div>
-                <div className="text-[10px] text-slate-500 mb-1">AI LIDAR</div>
+                <div style={{ fontFamily: FONT.mono, fontSize: 10, color: MUTED, marginBottom: 4, letterSpacing: '0.12em' }}>AI LIDAR</div>
                 <div className="flex gap-1 mb-1">
                   <input
                     value={lidarTarget}
                     onChange={(e) => setLidarTarget(e.target.value)}
                     placeholder={building.id}
                     aria-label="LIDAR target id"
-                    className="flex-1 min-w-0 bg-deep text-[10px] text-slate-200 rounded-md px-2 py-1 border border-line outline-none focus:border-amber-300/40"
+                    className="flex-1 min-w-0 text-[10px] px-2 py-1 outline-none"
+                    style={{ background: SURFACE.input, color: PAPER, border: `2px solid ${INK}`, fontFamily: FONT.mono }}
                   />
-                  <button
-                    type="button"
+                  <Button
+                    domain="ai"
                     onClick={() => void runLidar()}
                     disabled={lidarRunning}
-                    className="text-[10px] px-2 py-1 rounded-none uppercase tracking-wider bg-amber-400/10 text-amber-200 border border-amber-300/25 hover:bg-amber-400/20 disabled:opacity-50 shrink-0"
+                    style={{ fontSize: 10, padding: '4px 8px', flexShrink: 0 }}
                   >
                     Run
-                  </button>
+                  </Button>
                 </div>
                 {lidarRunning && (
-                  <div className="text-[10px] text-slate-400">Processing LIDAR…</div>
+                  <div className="text-[10px]" style={{ color: MUTED }}>Processing LIDAR…</div>
                 )}
                 {!lidarRunning && lidarJob?.status === 'COMPLETED' && lidarJob.result && (
-                  <div className="text-[10px] text-emerald-300">
+                  <div className="text-[10px]" style={{ color: DOMAIN.ok }}>
                     z {Number(lidarJob.result.z_min).toFixed(1)}–{Number(lidarJob.result.z_max).toFixed(1)} m · {String(lidarJob.result.point_count_clean ?? '?')} pts
                   </div>
                 )}
                 {!lidarRunning && lidarJob?.status === 'FAILED' && (
-                  <div className="text-[10px] text-danger">
+                  <div className="text-[10px]" style={{ color: DOMAIN.conflict }}>
                     {(typeof lidarJob.error === 'string' && lidarJob.error) || 'Job failed'}
                   </div>
                 )}
@@ -1476,23 +1503,23 @@ export default function Explorer3D() {
             </div>
           </CollapsePanel>
           {buildingPipes.length > 0 && (
-            <div className="glass glass-gold rounded-xl pointer-events-auto">
+            <div className="pointer-events-auto" style={{ background: SURFACE.panel, border: `3px solid ${INK}`, boxShadow: `4px 4px 0 ${INK}` }}>
               <div className="p-3">
                 <div className="flex items-center justify-between mb-1">
-                  <div className="text-[10px] font-semibold text-white uppercase tracking-wider">Underground utilities · synthetic</div>
-                  <span className="chip" style={{ background: 'transparent', fontSize: 8 }}>{pipeStatus.length} RUNS</span>
+                  <div className="text-[10px] font-semibold uppercase tracking-wider" style={{ color: PAPER }}>Underground utilities · synthetic</div>
+                  <Badge domain="info" style={{ fontSize: 8 }}>{pipeStatus.length} RUNS</Badge>
                 </div>
                 <div className="space-y-1">
                   {pipeStatus.map((p) => (
                     <div key={p.id} className="flex items-center justify-between gap-2 text-[10px]">
-                      <span className="text-slate-400 mono truncate">{p.id} · −{p.depth}m</span>
-                      <span className={p.status === 'Conflict' ? 'text-danger' : p.status === 'Within buffer' ? 'text-amber-300' : p.status === '—' ? 'text-slate-500' : 'text-emerald-300'}>
+                      <span className="truncate" style={{ color: MUTED }}>{p.id} · −{p.depth}m</span>
+                      <span style={{ color: p.status === 'Conflict' ? DOMAIN.conflict : p.status === 'Within buffer' ? DOMAIN.warn : p.status === '—' ? MUTED : DOMAIN.ok }}>
                         {p.status}{typeof p.dist === 'number' ? ` · ${p.dist.toFixed(1)}m` : ''}
                       </span>
                     </div>
                   ))}
                 </div>
-                <div className="text-[9px] text-slate-500 mt-1">Synthetic demo utilities routed on OSM road lines — not surveyed.</div>
+                <div className="text-[9px] mt-1" style={{ color: MUTED }}>Synthetic demo utilities routed on OSM road lines — not surveyed.</div>
               </div>
             </div>
           )}
@@ -1504,35 +1531,45 @@ export default function Explorer3D() {
             open={openPanels.floor}
             onToggle={() => togglePanel('floor')}
             extra={(
-              <span className="text-[9px] text-amber-200 mono">
+              <Badge domain="spatial" style={{ fontSize: 9 }}>
                 {selectedFloorId ? floors.find((fl) => fl.id === selectedFloorId)?.code : 'ALL'}
-              </span>
+              </Badge>
             )}
           >
           <div className="space-y-1 max-h-52 overflow-y-auto">
             <button
               type="button"
               onClick={() => { setSelectedFloorId(null); setSelected(null); setSelectedScope(null); }}
-              className={`w-full flex items-center gap-2 text-left text-[11px] py-1 px-2 rounded transition-colors ${selectedFloorId === null ? 'bg-amber-400/10 text-amber-200' : 'text-slate-300 hover:bg-white/5 hover:text-white'}`}
+              className="w-full flex items-center gap-2 text-left text-[11px] py-1 px-2"
+              style={
+                selectedFloorId === null
+                  ? { background: DOMAIN.spatial, border: `2px solid ${INK}`, color: INK, fontWeight: 700 }
+                  : { background: 'transparent', border: '2px solid transparent', color: PAPER }
+              }
             >
-              <span className="w-3 h-3 rounded-full border border-current flex items-center justify-center">
-                {selectedFloorId === null && <span className="w-1.5 h-1.5 rounded-full bg-current" />}
+              <span className="w-3 h-3 border border-current flex items-center justify-center">
+                {selectedFloorId === null && <span className="w-1.5 h-1.5 bg-current" />}
               </span>
               <span className="flex-1">ALL FLOORS</span>
-              <span className="text-[9px] mono text-slate-500">{floors.length}</span>
+              <span className="text-[9px]" style={{ color: selectedFloorId === null ? INK : MUTED }}>{floors.length}</span>
             </button>
             {floors.map((fl) => (
               <button
                 type="button"
                 key={fl.id}
                 onClick={() => { setSelectedFloorId(fl.id); setSelected(null); setSelectedScope('floor'); }}
-                className={`w-full flex items-center gap-2 text-left text-[11px] py-1 px-2 rounded transition-colors ${selectedFloorId === fl.id ? 'bg-amber-400/10 text-amber-200' : 'text-slate-300 hover:bg-white/5 hover:text-white'}`}
+                className="w-full flex items-center gap-2 text-left text-[11px] py-1 px-2"
+                style={
+                  selectedFloorId === fl.id
+                    ? { background: DOMAIN.spatial, border: `2px solid ${INK}`, color: INK, fontWeight: 700 }
+                    : { background: 'transparent', border: '2px solid transparent', color: PAPER }
+                }
               >
-                <span className="w-3 h-3 rounded-full border border-current flex items-center justify-center">
-                  {selectedFloorId === fl.id && <span className="w-1.5 h-1.5 rounded-full bg-current" />}
+                <span className="w-3 h-3 border border-current flex items-center justify-center">
+                  {selectedFloorId === fl.id && <span className="w-1.5 h-1.5 bg-current" />}
                 </span>
                 <span className="flex-1 truncate">{fl.label}</span>
-                <span className="text-[9px] mono text-slate-600">{fl.code}</span>
+                <span className="text-[9px]" style={{ color: selectedFloorId === fl.id ? INK : MUTED }}>{fl.code}</span>
               </button>
             ))}
           </div>
@@ -1542,72 +1579,73 @@ export default function Explorer3D() {
             open={openPanels.val}
             onToggle={() => togglePanel('val')}
             extra={reportFilterActive && (
-              <span className="text-[9px] text-amber-300 mono">{matchingFloorIds.size}/{floors.length}</span>
+              <Badge domain="warn" style={{ fontSize: 9 }}>{matchingFloorIds.size}/{floors.length}</Badge>
             )}
           >
-          <input value={reportSearch} onChange={(e) => setReportSearch(e.target.value)} placeholder="Search floor or owner…" className="w-full bg-deep text-[10px] text-slate-200 rounded-md px-2 py-1.5 border border-line outline-none focus:border-amber-300/40 mb-2" />
-          <select value={ownershipFilter} onChange={(e) => setOwnershipFilter(e.target.value)} className="w-full bg-deep text-[10px] text-slate-300 rounded-md px-2 py-1.5 border border-line outline-none mb-2">
+          <input value={reportSearch} onChange={(e) => setReportSearch(e.target.value)} placeholder="Search floor or owner…" className="w-full text-[10px] px-2 py-1.5 outline-none mb-2" style={{ background: SURFACE.input, color: PAPER, border: `2px solid ${INK}`, fontFamily: FONT.mono }} />
+          <select value={ownershipFilter} onChange={(e) => setOwnershipFilter(e.target.value)} className="w-full text-[10px] px-2 py-1.5 outline-none mb-2" style={{ background: SURFACE.input, color: PAPER, border: `2px solid ${INK}`, fontFamily: FONT.mono }}>
             {ownershipOptions.map((option) => <option key={option} value={option}>{option === 'ALL' ? 'All ownership types' : option}</option>)}
           </select>
-          <label className="text-[9px] text-slate-500 block mb-1">{source === 'live' ? 'Minimum market value · — (no backend source)' : `Minimum market value · ₹${minimumMarketValue.toLocaleString('en-IN')}`}</label>
-          <input type="range" min={0} max={60000000} step={1000000} value={minimumMarketValue} disabled={source === 'live'} onChange={(e) => setMinimumMarketValue(Number(e.target.value))} className="w-full" />
+          <label className="block mb-1" style={{ fontSize: 9, color: MUTED }}>{source === 'live' ? 'Minimum market value · — (no backend source)' : `Minimum market value · ₹${minimumMarketValue.toLocaleString('en-IN')}`}</label>
+          <input type="range" min={0} max={60000000} step={1000000} value={minimumMarketValue} disabled={source === 'live'} onChange={(e) => setMinimumMarketValue(Number(e.target.value))} className="w-full" style={{ accentColor: DOMAIN.record }} />
           <div className="grid grid-cols-2 gap-1 mt-2">
-            <button type="button" onClick={() => downloadCsv(building, floors)} className="text-[9px] py-1.5 rounded bg-amber-400/10 text-amber-200 border border-amber-300/25 hover:bg-amber-400/20">CSV REPORT</button>
-            <button type="button" onClick={async () => { setPopupBlocked(false); setPopupBlocked(!(await printPdfReport(building, floors, units, spatialIDs))); }} className="brutal-btn brutal-btn-gold w-full justify-center" style={{ fontSize: 9 }}>Generate SVAMITVA Passport & QR</button>
+            <Button domain="info" style={{ fontSize: 9, padding: '6px 4px' }} onClick={() => downloadCsv(building, floors)}>CSV REPORT</Button>
+            <Button domain="record" style={{ fontSize: 9, justifyContent: 'center' }} onClick={async () => { setPopupBlocked(false); setPopupBlocked(!(await printPdfReport(building, floors, units, spatialIDs))); }}>Generate SVAMITVA Passport & QR</Button>
           </div>
-          {popupBlocked && <div className="text-[9px] text-amber-300 mt-2">Download failed — check browser download permissions and retry.</div>}
-          {reportFilterActive && matchingFloorIds.size === 0 && <div className="text-[9px] text-danger mt-2">No floors match this filter.</div>}
+          {popupBlocked && <div className="mt-2" style={{ fontSize: 9, color: DOMAIN.warn }}>Download failed — check browser download permissions and retry.</div>}
+          {reportFilterActive && matchingFloorIds.size === 0 && <div className="mt-2" style={{ fontSize: 9, color: DOMAIN.conflict }}>No floors match this filter.</div>}
           </CollapsePanel>
         </div>
 
         {liveCaptureLoading && (
-          <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 glass rounded-none px-5 py-3 pointer-events-none">
-            <span className="text-[11px] text-slate-200">Extracting 3D geometry & staging for review…</span>
+          <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 pointer-events-none" style={{ background: SURFACE.panel, border: `3px solid ${INK}`, boxShadow: `4px 4px 0 ${INK}`, padding: '12px 20px' }}>
+            <span style={{ fontSize: 11, color: PAPER, fontFamily: FONT.mono }}>Extracting 3D geometry & staging for review…</span>
           </div>
         )}
 
         {inspectorVisible && (
-          <div className={`absolute bottom-3 right-3 z-10 glass rounded-none w-[400px] ${compact ? 'max-w-[calc(100%-2rem)]' : narrow ? 'max-w-full' : 'max-w-[calc(100%-34rem)]'} max-h-[48%] flex flex-col pointer-events-none`}>
+          <div className={`absolute bottom-3 right-3 z-10 w-[400px] ${compact ? 'max-w-[calc(100%-2rem)]' : narrow ? 'max-w-full' : 'max-w-[calc(100%-34rem)]'} max-h-[48%] flex flex-col pointer-events-none`} style={{ background: SURFACE.panel, border: `3px solid ${INK}`, boxShadow: `6px 6px 0 ${INK}` }}>
             <div className="pointer-events-auto flex flex-col min-h-0">
             <button
               type="button"
               onClick={() => setInspOpen((v) => !v)}
               className="w-full flex items-center justify-between p-3 text-left shrink-0"
+              style={{ background: 'transparent', border: 'none', cursor: 'pointer' }}
             >
-              <span className="text-[10px] font-semibold text-white uppercase tracking-wider">Building Inspector</span>
-              <span className="text-slate-400 text-xs">{inspOpen ? '▾' : '▸'}</span>
+              <span style={{ fontSize: 10, fontWeight: 700, color: PAPER, textTransform: 'uppercase', letterSpacing: '0.12em', fontFamily: FONT.mono }}>Building Inspector</span>
+              <span className="text-xs" style={{ color: MUTED }}>{inspOpen ? '▾' : '▸'}</span>
             </button>
             {inspOpen && (
               <div className="px-3 pb-3 space-y-3 overflow-y-auto">
-                {source === 'demo' && <div className="text-[9px] text-slate-500">Demo data — not live backend</div>}
+                {source === 'demo' && <div style={{ fontSize: 9, color: MUTED }}>Demo data — not live backend</div>}
                 <div className="space-y-1 text-[11px]">
                   <div className="flex items-center justify-between gap-2">
-                    <span className="text-slate-500">Name</span>
-                    <span className="text-slate-200 truncate">{building.name}</span>
+                    <span style={{ color: MUTED }}>Name</span>
+                    <span className="truncate" style={{ color: PAPER }}>{building.name}</span>
                   </div>
                   <div className="flex items-center justify-between gap-2">
-                    <span className="text-slate-500">Parcel ID</span>
-                    <span className="text-slate-200 mono truncate">{parcel.ulpin}<CopyBtn value={parcel.ulpin} /></span>
+                    <span style={{ color: MUTED }}>Parcel ID</span>
+                    <span className="truncate" style={{ color: PAPER }}>{parcel.ulpin}<CopyBtn value={parcel.ulpin} /></span>
                   </div>
                   <div className="flex items-center justify-between gap-2">
-                    <span className="text-slate-500">3D identifier</span>
-                    <span className="text-slate-200">—</span>
+                    <span style={{ color: MUTED }}>3D identifier</span>
+                    <span style={{ color: PAPER }}>—</span>
                   </div>
                   <div className="flex items-center justify-between gap-2">
-                    <span className="text-slate-500">Storeys</span>
-                    <span className="text-slate-200">{building.floors_count}</span>
+                    <span style={{ color: MUTED }}>Storeys</span>
+                    <span style={{ color: PAPER }}>{building.floors_count}</span>
                   </div>
                   <div className="flex items-center justify-between gap-2">
-                    <span className="text-slate-500">Total height</span>
-                    <span className="text-slate-200">{building.height_m}m</span>
+                    <span style={{ color: MUTED }}>Total height</span>
+                    <span style={{ color: PAPER }}>{building.height_m}m</span>
                   </div>
                   <div className="flex items-center justify-between gap-2">
-                    <span className="text-slate-500">Footprint area</span>
-                    <span className="text-slate-200">{footprintArea.toFixed(0)} m²</span>
+                    <span style={{ color: MUTED }}>Footprint area</span>
+                    <span style={{ color: PAPER }}>{footprintArea.toFixed(0)} m²</span>
                   </div>
                 </div>
                 <div>
-                  <div className="text-[10px] text-slate-500 mb-1">FLOORS</div>
+                  <div style={{ fontFamily: FONT.mono, fontSize: 10, color: MUTED, marginBottom: 4, letterSpacing: '0.12em' }}>FLOORS</div>
                   <div className="flex flex-wrap gap-1">
                     {floors.map((fl) => (
                       <button
@@ -1625,7 +1663,12 @@ export default function Explorer3D() {
                             setSelectedScope('floor');
                           }
                         }}
-                        className={`text-[10px] mono py-1 px-2 rounded border ${selectedFloorId === fl.id ? 'bg-amber-400/20 text-amber-200 border-amber-300/40' : 'bg-white/5 text-slate-400 border-transparent hover:text-white'}`}
+                        className="text-[10px] py-1 px-2"
+                        style={
+                          selectedFloorId === fl.id
+                            ? { background: DOMAIN.spatial, color: INK, border: `2px solid ${INK}`, fontWeight: 700, fontFamily: FONT.mono }
+                            : { background: SURFACE.raised, color: PAPER, border: `2px solid ${INK}`, fontFamily: FONT.mono }
+                        }
                       >
                         {fl.code}
                       </button>
@@ -1634,7 +1677,7 @@ export default function Explorer3D() {
                 </div>
                 {inspectorFloor ? (
                   <div>
-                    <div className="text-[10px] text-slate-500 mb-1">UNITS · {inspectorFloor.code}</div>
+                    <div style={{ fontFamily: FONT.mono, fontSize: 10, color: MUTED, marginBottom: 4, letterSpacing: '0.12em' }}>UNITS · {inspectorFloor.code}</div>
                     <div className="space-y-1 max-h-40 overflow-y-auto">
                       {inspectorUnits.map((u) => {
                         const sid = spatialIDs.find((s) => s.unit_id === u.id)?.full ?? '—';
@@ -1643,17 +1686,22 @@ export default function Explorer3D() {
                           <div
                             key={u.id}
                             onClick={() => { setSelected(u); setSelectedScope(null); setSelectedFloorId(u.floor_id); }}
-                            className={`px-2 py-1.5 rounded border cursor-pointer ${isSel ? 'bg-amber-400/10 border-amber-300/30' : 'bg-white/[0.02] border-transparent hover:bg-white/5'}`}
+                            className="px-2 py-1.5 cursor-pointer"
+                            style={
+                              isSel
+                                ? { background: DOMAIN.spatial, border: `2px solid ${INK}` }
+                                : { background: SURFACE.raised, border: `2px solid ${INK}` }
+                            }
                           >
                             <div className="flex items-center justify-between gap-2 text-[11px]">
-                              <span className={isSel ? 'text-amber-200' : 'text-slate-200'}>{u.label}</span>
-                              <span className="text-slate-500 capitalize">{u.type}</span>
+                              <span style={{ color: isSel ? INK : PAPER, fontWeight: isSel ? 700 : 400 }}>{u.label}</span>
+                              <span className="capitalize" style={{ color: isSel ? INK : MUTED }}>{u.type}</span>
                             </div>
-                            <div className="flex items-center justify-between gap-2 text-[9px] mono text-slate-500">
-                              <span className="truncate">{sid}</span>
+                            <div className="flex items-center justify-between gap-2 text-[9px]" style={{ color: isSel ? INK : MUTED }}>
+                              <span className="truncate" style={{ fontFamily: FONT.mono }}>{sid}</span>
                               {sid !== '—' && <CopyBtn value={sid} />}
                             </div>
-                            <div className="text-[9px] text-slate-500 mt-0.5">
+                            <div className="text-[9px] mt-0.5" style={{ color: isSel ? INK : MUTED }}>
                               {inspectorFloor.z_min.toFixed(1)}m – {inspectorFloor.z_max.toFixed(1)}m · {u.area_sqm.toFixed(1)} m² · {volumeText(u.volume_cum)}
                             </div>
                           </div>
@@ -1662,7 +1710,7 @@ export default function Explorer3D() {
                     </div>
                   </div>
                 ) : (
-                  <div className="text-[10px] text-slate-500">Select a floor to list its units.</div>
+                  <div style={{ fontSize: 10, color: MUTED }}>Select a floor to list its units.</div>
                 )}
               </div>
             )}
@@ -1671,19 +1719,19 @@ export default function Explorer3D() {
         )}
 
         {cityVisible && osmRecord && !inspectorVisible && (
-          <div className={`absolute bottom-3 left-1/2 -translate-x-1/2 z-10 glass rounded-none w-[400px] ${compact ? 'max-w-[calc(100%-2rem)]' : 'max-w-[calc(100%-34rem)]'} max-h-[48%] flex flex-col pointer-events-none`}>
+          <div className={`absolute bottom-3 left-1/2 -translate-x-1/2 z-10 w-[400px] ${compact ? 'max-w-[calc(100%-2rem)]' : 'max-w-[calc(100%-34rem)]'} max-h-[48%] flex flex-col pointer-events-none`} style={{ background: SURFACE.panel, border: `3px solid ${INK}`, boxShadow: `6px 6px 0 ${INK}` }}>
             <div className="pointer-events-auto flex flex-col min-h-0">
             <div className="w-full flex items-center justify-between p-3 shrink-0">
-              <span className="text-[10px] font-semibold text-white uppercase tracking-wider">OSM building (context)</span>
+              <span style={{ fontSize: 10, fontWeight: 700, color: PAPER, textTransform: 'uppercase', letterSpacing: '0.12em', fontFamily: FONT.mono }}>OSM building (context)</span>
               <span className="flex items-center gap-2">
-                <span className="text-[9px] font-semibold uppercase tracking-wider text-amber-300 border border-amber-400/40 bg-amber-500/10 rounded px-1.5 py-0.5">OSM · illustrative</span>
-                <button type="button" onClick={clearOsm} aria-label="Close" className="text-slate-400 hover:text-white text-xs px-1">✕</button>
+                <Badge domain="warn" style={{ fontSize: 9 }}>OSM · illustrative</Badge>
+                <Button domain="info" onClick={clearOsm} aria-label="Close" style={{ fontSize: 10, padding: '2px 6px' }}>✕</Button>
               </span>
             </div>
             <div className="px-3 pb-3 space-y-1 text-[11px] overflow-y-auto">
               <div className="flex items-center justify-between gap-2">
-                <span className="text-slate-500">OSM id</span>
-                <span className="text-slate-200 mono">
+                <span style={{ color: MUTED }}>OSM id</span>
+                <span style={{ color: PAPER, fontFamily: FONT.mono }}>
                   {osmRecord.id}
                   {osmRecord.id.startsWith('w') && (
                     <a
@@ -1691,7 +1739,7 @@ export default function Explorer3D() {
                       target="_blank"
                       rel="noopener noreferrer"
                       onClick={(e) => e.stopPropagation()}
-                      className="ml-2 text-amber-200 hover:underline"
+                      className="ml-2" style={{ color: DOMAIN.warn, textDecoration: 'underline' }}
                     >
                       Open in OSM
                     </a>
@@ -1699,30 +1747,30 @@ export default function Explorer3D() {
                 </span>
               </div>
               <div className="flex items-center justify-between gap-2">
-                <span className="text-slate-500">Name</span>
-                <span className="text-slate-200">{osmRecord.name || 'Unnamed'}</span>
+                <span style={{ color: MUTED }}>Name</span>
+                <span style={{ color: PAPER }}>{osmRecord.name || 'Unnamed'}</span>
               </div>
               <div className="flex items-center justify-between gap-2">
-                <span className="text-slate-500">Type</span>
-                <span className="text-slate-200">{osmRecord.type || '—'}</span>
+                <span style={{ color: MUTED }}>Type</span>
+                <span style={{ color: PAPER }}>{osmRecord.type || '—'}</span>
               </div>
               <div className="flex items-center justify-between gap-2">
-                <span className="text-slate-500">Levels</span>
-                <span className="text-slate-200">{osmRecord.levels ?? '—'}</span>
+                <span style={{ color: MUTED }}>Levels</span>
+                <span style={{ color: PAPER }}>{osmRecord.levels ?? '—'}</span>
               </div>
               <div className="flex items-center justify-between gap-2">
-                <span className="text-slate-500">Height</span>
-                <span className="text-slate-200">
+                <span style={{ color: MUTED }}>Height</span>
+                <span style={{ color: PAPER }}>
                   {osmRecord.height} m ({osmRecord.heightSource === 'osm_height' || osmRecord.heightSource === 'osm_levels' ? 'OSM tag' : 'assumed'})
                 </span>
               </div>
               <div className="flex items-center justify-between gap-2">
-                <span className="text-slate-500">Footprint area</span>
-                <span className="text-slate-200">{Number.isFinite(osmRecord.area) ? `${osmRecord.area} m²` : '—'}</span>
+                <span style={{ color: MUTED }}>Footprint area</span>
+                <span style={{ color: PAPER }}>{Number.isFinite(osmRecord.area) ? `${osmRecord.area} m²` : '—'}</span>
               </div>
               <div className="flex items-center justify-between gap-2">
-                <span className="text-slate-500">Distance</span>
-                <span className="text-slate-200">
+                <span style={{ color: MUTED }}>Distance</span>
+                <span style={{ color: PAPER }}>
                   {cityOffset ? `${Math.hypot(cityOffset[0] + osmRecord.cx, -cityOffset[1] + osmRecord.cz).toFixed(0)} m` : '—'}
                 </span>
               </div>
@@ -1734,139 +1782,143 @@ export default function Explorer3D() {
                   <>
                     {sf && (
                       <div className="flex items-center justify-between gap-2">
-                        <span className="text-slate-500">Floor</span>
-                        <span className="text-slate-200">{sf.code} · {sf.z_min.toFixed(1)}–{sf.z_max.toFixed(1)}m</span>
+                        <span style={{ color: MUTED }}>Floor</span>
+                        <span style={{ color: PAPER }}>{sf.code} · {sf.z_min.toFixed(1)}–{sf.z_max.toFixed(1)}m</span>
                       </div>
                     )}
                     {su && (
                       <div className="flex items-center justify-between gap-2">
-                        <span className="text-slate-500">Unit</span>
-                        <span className="text-slate-200">{su.label} · {su.area_sqm.toFixed(1)} m²</span>
+                        <span style={{ color: MUTED }}>Unit</span>
+                        <span style={{ color: PAPER }}>{su.label} · {su.area_sqm.toFixed(1)} m²</span>
                       </div>
                     )}
                   </>
                 );
               })()}
-              <div className="text-[9px] text-slate-500 pt-1">Context data — not a cadastral record. Heights are assumed unless tagged.</div>
-              <div className="text-[9px] text-slate-500">Synthetic subdivision of an OSM footprint — not cadastral records.</div>
+              <div className="text-[9px] pt-1" style={{ color: MUTED }}>Context data — not a cadastral record. Heights are assumed unless tagged.</div>
+              <div className="text-[9px]" style={{ color: MUTED }}>Synthetic subdivision of an OSM footprint — not cadastral records.</div>
             </div>
             </div>
           </div>
         )}
 
         <div className="absolute bottom-16 left-3 md:hidden flex flex-col gap-2 z-30">
-          <button
-            type="button"
+          <Button
+            domain="record"
+            active={mobilePanel === 'hierarchy'}
             onClick={() => setMobilePanel((p) => (p === 'hierarchy' ? null : 'hierarchy'))}
-            className={`glass rounded-none px-3 py-2 text-[10px] font-semibold uppercase tracking-wider ${mobilePanel === 'hierarchy' ? 'text-amber-200' : 'text-slate-200'}`}
+            style={{ fontSize: 10 }}
           >
             🏢 Hierarchy
-          </button>
-          <button
-            type="button"
+          </Button>
+          <Button
+            domain="spatial"
+            active={mobilePanel === 'inspector'}
             onClick={() => setMobilePanel((p) => (p === 'inspector' ? null : 'inspector'))}
-            className={`glass rounded-none px-3 py-2 text-[10px] font-semibold uppercase tracking-wider ${mobilePanel === 'inspector' ? 'text-amber-200' : 'text-slate-200'}`}
+            style={{ fontSize: 10 }}
           >
             📋 Inspector
-          </button>
+          </Button>
         </div>
 
         {mobilePanel === 'hierarchy' && (
-          <div className="md:hidden fixed inset-x-0 bottom-0 z-40 max-h-[70vh] overflow-y-auto bg-abyss border-t border-line">
+          <div className="md:hidden fixed inset-x-0 bottom-0 z-40 max-h-[70vh] overflow-y-auto" style={{ background: SURFACE.panel, borderTop: `3px solid ${INK}` }}>
             <div className="flex items-center justify-end p-2">
-              <button
-                type="button"
+              <Button
+                domain="info"
                 onClick={() => setMobilePanel(null)}
                 aria-label="Close panel"
-                className="text-slate-400 hover:text-white text-xs px-2 py-1"
+                style={{ fontSize: 10, padding: '4px 8px' }}
               >
                 ✕
-              </button>
+              </Button>
             </div>
             <CadastralHierarchy className="w-full" />
           </div>
         )}
 
-        <div className="absolute bottom-3 left-3 glass rounded-none px-3 py-2 flex items-center gap-4">
-          <div className="text-center"><div className="text-sm font-bold text-white">{units.length}</div><div className="text-[9px] text-slate-500">Units</div></div>
-          <div className="w-px h-6 bg-white/10"></div>
-          <div className="text-center"><div className="text-sm font-bold text-white">{floors.length}</div><div className="text-[9px] text-slate-500">Floors</div></div>
-          <div className="w-px h-6 bg-white/10"></div>
-          <div className="text-center"><div className="text-sm font-bold text-white">{building.height_m}m</div><div className="text-[9px] text-slate-500">Height</div></div>
-          <div className="w-px h-6 bg-white/10"></div>
+        <div className="absolute bottom-3 left-3 px-3 py-2 flex items-center gap-4" style={{ background: SURFACE.panel, border: `3px solid ${INK}`, boxShadow: `4px 4px 0 ${INK}` }}>
+          <div className="text-center"><div className="text-sm font-bold" style={{ color: PAPER }}>{units.length}</div><div className="text-[9px]" style={{ color: MUTED }}>Units</div></div>
+          <div className="w-px h-6" style={{ background: INK }}></div>
+          <div className="text-center"><div className="text-sm font-bold" style={{ color: PAPER }}>{floors.length}</div><div className="text-[9px]" style={{ color: MUTED }}>Floors</div></div>
+          <div className="w-px h-6" style={{ background: INK }}></div>
+          <div className="text-center"><div className="text-sm font-bold" style={{ color: PAPER }}>{building.height_m}m</div><div className="text-[9px]" style={{ color: MUTED }}>Height</div></div>
+          <div className="w-px h-6" style={{ background: INK }}></div>
           <div className="flex items-center gap-1" role="group" aria-label="Graphics quality">
             {(['low', 'medium', 'high'] as const).map((q) => (
-              <button
+              <Button
                 key={q}
+                domain="info"
+                active={quality === q}
                 type="button"
                 title={`Graphics quality: ${q}`}
                 onClick={() => setQuality(q)}
-                className={`text-[9px] font-semibold uppercase tracking-wider px-1.5 py-0.5 rounded ${quality === q ? 'bg-amber-400/15 text-amber-200' : 'text-slate-500 hover:text-slate-300'}`}
+                style={{ fontSize: 9, padding: '2px 6px' }}
               >
                 {q === 'medium' ? 'Med' : q === 'high' ? 'High' : 'Low'}
-              </button>
+              </Button>
             ))}
           </div>
           {conflicts.size > 0 && (
             <>
-              <div className="w-px h-6 bg-white/10"></div>
-              <div className="text-center"><div className="text-sm font-bold text-danger">{conflicts.size}</div><div className="text-[9px] text-slate-500">Conflicts</div></div>
+              <div className="w-px h-6" style={{ background: INK }}></div>
+              <div className="text-center"><div className="text-sm font-bold" style={{ color: DOMAIN.conflict }}>{conflicts.size}</div><div className="text-[9px]" style={{ color: MUTED }}>Conflicts</div></div>
             </>
           )}
         </div>
 
         {cityVisible && (
-          <div className="absolute bottom-14 right-3 glass rounded px-2 py-1 max-w-56">
-            <div className="text-[9px] text-slate-500">OSM context (not cadastral) - © OpenStreetMap contributors (ODbL) - heights assumed</div>
+          <div className="absolute bottom-14 right-3 px-2 py-1 max-w-56" style={{ background: SURFACE.panel, border: `2px solid ${INK}` }}>
+            <div className="text-[9px]" style={{ color: MUTED }}>OSM context (not cadastral) - © OpenStreetMap contributors (ODbL) - heights assumed</div>
           </div>
         )}
 
-        <div className="absolute bottom-3 right-3 glass rounded-none px-3 py-2">
+        <div className="absolute bottom-3 right-3 px-3 py-2" style={{ background: SURFACE.panel, border: `2px solid ${INK}` }}>
           <div className="flex items-center gap-3 text-[10px]">
-            <div className="flex items-center gap-1"><div className="w-2 h-2 rounded-sm bg-emerald-500"></div><span className="text-slate-400">Apartment</span></div>
-            <div className="flex items-center gap-1"><div className="w-2 h-2 rounded-sm bg-slate-500"></div><span className="text-slate-400">Parking</span></div>
-            <div className="flex items-center gap-1"><div className="w-2 h-2 rounded-sm bg-orange-500"></div><span className="text-slate-400">Commercial</span></div>
-            {conflicts.size > 0 && <div className="flex items-center gap-1"><div className="w-2 h-2 rounded-sm bg-danger"></div><span className="text-slate-400">Conflict</span></div>}
+            <div className="flex items-center gap-1"><StatusDot domain="ok" size={8} /><span style={{ color: MUTED }}>Apartment</span></div>
+            <div className="flex items-center gap-1"><StatusDot domain="info" size={8} /><span style={{ color: MUTED }}>Parking</span></div>
+            <div className="flex items-center gap-1"><StatusDot domain="warn" size={8} /><span style={{ color: MUTED }}>Commercial</span></div>
+            {conflicts.size > 0 && <div className="flex items-center gap-1"><StatusDot domain="conflict" size={8} /><span style={{ color: MUTED }}>Conflict</span></div>}
           </div>
         </div>
 
         <div className="absolute top-3 left-1/2 -translate-x-1/2 z-10 flex flex-col items-center gap-1 max-w-[calc(100%-34rem)] pointer-events-none">
           <div className="flex items-center gap-2 pointer-events-auto">
-            <div className="glass rounded-none px-3 py-1" style={{ border: '2px solid #111111' }}>
+            <div className="px-3 py-1" style={{ background: SURFACE.panel, border: `2px solid ${INK}`, boxShadow: `3px 3px 0 ${INK}` }}>
               {osmRecord ? (
-                <span className="text-[10px] text-amber-300">● OSM · illustrative</span>
+                <span className="text-[10px]" style={{ color: DOMAIN.warn }}>● OSM · illustrative</span>
               ) : source === 'live' ? (
-                <span className="text-[10px] text-emerald-300">● Live backend</span>
+                <span className="text-[10px]" style={{ color: DOMAIN.ok }}>● Live backend</span>
               ) : source === 'loading' ? (
-                <span className="text-[10px] text-slate-400">Loading…</span>
+                <span className="text-[10px]" style={{ color: MUTED }}>Loading…</span>
               ) : (
-                <span className="text-[10px] text-amber-300">● Demo data</span>
+                <span className="text-[10px]" style={{ color: DOMAIN.warn }}>● Demo data</span>
               )}
             </div>
             {conflicts.size > 0 && (
-              <button
-                type="button"
+              <Button
+                domain="conflict"
                 onClick={() => setConflictOpen((v) => !v)}
                 aria-expanded={conflictOpen}
-                className="glass rounded-full px-3 py-1 flex items-center gap-1.5"
+                style={{ fontSize: 10, padding: '4px 12px', display: 'flex', alignItems: 'center', gap: 6 }}
               >
-                <i className="fas fa-triangle-exclamation text-danger text-[10px]"></i>
-                <span className="text-[10px] text-danger">{conflicts.size} overlaps</span>
-              </button>
+                <i className="fas fa-triangle-exclamation text-[10px]"></i>
+                <span>{conflicts.size} overlaps</span>
+              </Button>
             )}
           </div>
           {hoverBlock && (
-            <div className="glass rounded px-2 py-1 pointer-events-none">
-              <span className="text-[10px] text-slate-200">{hoverBlock.startsWith('Live-captured') ? hoverBlock : `${hoverBlock} · simplified footprint`}</span>
+            <div className="px-2 py-1 pointer-events-none" style={{ background: SURFACE.panel, border: `2px solid ${INK}` }}>
+              <span className="text-[10px]" style={{ color: PAPER }}>{hoverBlock.startsWith('Live-captured') ? hoverBlock : `${hoverBlock} · simplified footprint`}</span>
             </div>
           )}
           {conflicts.size > 0 && conflictOpen && (
-            <div className="glass rounded-none px-4 py-3 border border-danger/30 max-w-lg pointer-events-auto">
+            <div className="px-4 py-3 max-w-lg pointer-events-auto" style={{ background: SURFACE.panel, border: `3px solid ${DOMAIN.conflict}`, boxShadow: `4px 4px 0 ${INK}` }}>
               <div className="flex items-start gap-2">
-                <i className="fas fa-triangle-exclamation text-danger text-xs mt-0.5"></i>
+                <i className="fas fa-triangle-exclamation text-xs mt-0.5" style={{ color: DOMAIN.conflict }}></i>
                 <div className="flex-1">
-                  <div className="text-xs text-danger font-medium mb-1">Volumetric Overlap Detected</div>
-                  <div className="text-[11px] text-text-secondary">
+                  <div className="text-xs font-medium mb-1" style={{ color: DOMAIN.conflict }}>Volumetric Overlap Detected</div>
+                  <div className="text-[11px]" style={{ color: MUTED }}>
                     The system detects duplicate or overlapping volumetric spatial claims using computational 3D topology validation.
                   </div>
                 </div>
@@ -1874,9 +1926,10 @@ export default function Explorer3D() {
             </div>
           )}
         </div>
-      </div>
-
-      <div className={`${mobilePanel === 'inspector' ? 'fixed' : 'hidden'} md:absolute md:flex inset-x-0 bottom-0 md:inset-x-auto md:top-4 md:right-4 md:bottom-24 md:w-[22rem] z-40 max-h-[70vh] md:max-h-none overflow-y-auto no-scrollbar flex-shrink-0 flex-col bg-slate-900/60 backdrop-blur-xl border border-white/10 rounded-2xl text-slate-200 font-sans tracking-wide`} style={{ boxShadow: '0 25px 50px -12px rgb(0 0 0 / 0.55)' }}>
+      <div
+        className={`${mobilePanel === 'inspector' ? 'fixed' : 'hidden'} md:absolute md:flex inset-x-0 bottom-0 md:inset-x-auto md:top-4 md:right-4 md:bottom-24 md:w-[22rem] z-40 max-h-[70vh] md:max-h-none overflow-y-auto no-scrollbar flex-shrink-0 flex-col`}
+        style={{ background: SURFACE.panel, border: `3px solid ${INK}`, boxShadow: `6px 6px 0 ${INK}` }}
+      >
         <AnimatePresence>
           {selectedLiveParcelId && (
             <motion.div
@@ -1894,29 +1947,29 @@ export default function Explorer3D() {
             </motion.div>
           )}
         </AnimatePresence>
-        <div className="p-4 border-b border-white/10">
+        <div className="p-4" style={{ borderBottom: `2px solid ${INK}` }}>
           <div className="flex items-center justify-between">
-            <h3 className="text-sm font-semibold text-slate-100 flex items-center gap-2">
-              <span className="w-2 h-2 rounded-full bg-cyan-400" style={{ boxShadow: '0 0 8px rgba(34,211,238,0.9)' }} />
+            <h3 className="text-sm font-semibold flex items-center gap-2" style={{ color: PAPER, fontFamily: FONT.display }}>
+              <StatusDot domain="spatial" size={8} />
               Inspector
             </h3>
             <button
               type="button"
               onClick={() => setMobilePanel(null)}
               aria-label="Close panel"
-              className="md:hidden text-white hover:bg-[#F5C400] hover:text-black text-xs px-2 py-1"
-              style={{ border: '2px solid #F5C400' }}
+              className="md:hidden text-xs px-2 py-1"
+              style={{ color: PAPER, background: SURFACE.raised, border: `2px solid ${INK}` }}
             >
               ✕
             </button>
           </div>
         </div>
-        <div className="p-4" style={{ borderBottom: '2px solid #111111' }}>
+        <div className="p-4" style={{ borderBottom: `2px solid ${INK}` }}>
           {selected ? (
-            <div className="space-y-3 animate-fade-in">
-              <div className="rounded-xl bg-slate-900/60 backdrop-blur-xl border border-white/10 p-3">
-                <div className="font-mono text-[9px] tracking-[0.18em] text-cyan-300/80 mb-1">SPATIAL IDENTIFIER</div>
-                <div className="text-[11px] mono font-medium break-all text-white">{spatialIDs.find((s) => s.unit_id === selected.id)?.full}</div>
+            <div className="space-y-3 ">
+              <div style={{ background: SURFACE.raised, border: `2px solid ${INK}`, padding: 12 }}>
+                <div style={{ fontFamily: FONT.mono, fontSize: 9, letterSpacing: '0.18em', color: DOMAIN.spatial, marginBottom: 4, fontWeight: 700 }}>SPATIAL IDENTIFIER</div>
+                <div className="text-[11px] font-medium break-all" style={{ color: PAPER }}>{spatialIDs.find((s) => s.unit_id === selected.id)?.full}</div>
               </div>
               <div className="grid grid-cols-2 gap-2">
                 <InfoCell label="Label" value={selected.label} />
@@ -1930,16 +1983,16 @@ export default function Explorer3D() {
                 <InfoCell label="Volume" value={volumeText(selected.volume_cum)} />
                 <InfoCell label="Geom. Version" value={`V${String(selected.version).padStart(2, '0')}`} />
               </div>
-              <div className="rounded-xl bg-slate-900/60 backdrop-blur-xl border border-white/10 p-3">
-                <div className="font-mono text-[9px] tracking-[0.18em] text-cyan-300/80 mb-1">Geometry Hash (SHA-256)</div>
-                <div className="text-[9px] mono font-medium break-all text-slate-200">{selected.hash}</div>
+              <div style={{ background: SURFACE.raised, border: `2px solid ${INK}`, padding: 12 }}>
+                <div style={{ fontFamily: FONT.mono, fontSize: 9, letterSpacing: '0.18em', color: DOMAIN.spatial, marginBottom: 4, fontWeight: 700 }}>Geometry Hash (SHA-256)</div>
+                <div className="text-[9px] font-medium break-all" style={{ color: PAPER }}>{selected.hash}</div>
               </div>
-              <div className="rounded-xl bg-slate-900/60 backdrop-blur-xl border border-white/10 p-3">
-                <div className="font-mono text-[9px] tracking-[0.18em] text-cyan-300/80 mb-1.5">Validation Status</div>
+              <div style={{ background: SURFACE.raised, border: `2px solid ${INK}`, padding: 12 }}>
+                <div style={{ fontFamily: FONT.mono, fontSize: 9, letterSpacing: '0.18em', color: DOMAIN.spatial, marginBottom: 6, fontWeight: 700 }}>Validation Status</div>
                 {conflicts.has(selected.id) ? (
-                  <span className="font-mono text-[10px] font-bold px-2 py-0.5 rounded-full bg-red-500/20 text-red-300 border border-red-400/40">▲ CONFLICT DETECTED</span>
+                  <Badge domain="conflict">▲ CONFLICT DETECTED</Badge>
                 ) : (
-                  <span className="font-mono text-[10px] font-bold px-2 py-0.5 rounded-full bg-emerald-500/20 text-emerald-300 border border-emerald-400/40">● VALID — NO OVERLAPS</span>
+                  <Badge domain="ok">● VALID — NO OVERLAPS</Badge>
                 )}
               </div>
             </div>
@@ -1961,20 +2014,24 @@ export default function Explorer3D() {
             />
           ) : (
             <div className="text-center py-8">
-              <i className="fas fa-mouse-pointer text-slate-700 text-2xl mb-2"></i>
-              <p className="text-xs text-slate-600">Click a building, floor, or unit in the 3D view</p>
+              <i className="fas fa-mouse-pointer text-2xl mb-2" style={{ color: MUTED }}></i>
+              <p className="text-xs" style={{ color: MUTED }}>Click a building, floor, or unit in the 3D view</p>
             </div>
           )}
         </div>
-        <div className="p-3" style={{ borderBottom: '1px solid rgb(255 255 255 / 0.1)' }}>
+        <div className="p-3" style={{ borderBottom: `2px solid ${INK}` }}>
           <div className="relative">
-            <i className="fas fa-search absolute left-3 top-1/2 -translate-y-1/2 text-slate-500 text-xs"></i>
+            <i className="fas fa-search absolute left-3 top-1/2 -translate-y-1/2 text-xs" style={{ color: MUTED }}></i>
             <input
               type="text"
               placeholder="Search units, IDs…"
               value={search}
               onChange={(e) => setSearch(e.target.value)}
-              className="w-full bg-white/5 text-xs text-slate-200 rounded-lg pl-9 pr-3 py-2 border border-white/10 focus:border-cyan-400/50 outline-none placeholder-slate-500"
+              className="w-full text-xs pl-9 pr-3 py-2"
+              style={{
+                background: SURFACE.input, color: PAPER, border: `2px solid ${INK}`,
+                fontFamily: FONT.mono, outline: 'none',
+              }}
             />
           </div>
         </div>
@@ -1986,30 +2043,33 @@ export default function Explorer3D() {
               <button
                 key={u.id}
                 onClick={() => { setSelected(u); setSelectedScope(null); setSelectedFloorId(u.floor_id); }}
-                className={`w-full text-left px-3 py-2 rounded-lg text-xs transition-all ${
-                  isSelected ? 'bg-cyan-500/15 border border-cyan-400/40' : 'hover:bg-white/5 border border-transparent'
-                }`}
+                className="w-full text-left px-3 py-2 text-xs"
+                style={
+                  isSelected
+                    ? { background: DOMAIN.spatial, border: `2px solid ${INK}`, boxShadow: `3px 3px 0 ${INK}` }
+                    : { background: 'transparent', border: '2px solid transparent' }
+                }
               >
                 <div className="flex items-center justify-between">
-                  <span className={`truncate ${isSelected ? 'text-cyan-200' : 'text-slate-300'}`}>{u.label}</span>
-                  <span className="text-[9px] text-slate-500 ml-2 flex-shrink-0">{u.area_sqm}m²</span>
+                  <span className="truncate" style={{ color: isSelected ? INK : PAPER, fontWeight: isSelected ? 700 : 400 }}>{u.label}</span>
+                  <span className="text-[9px] ml-2 flex-shrink-0" style={{ color: isSelected ? INK : MUTED }}>{u.area_sqm}m²</span>
                 </div>
-                {sid && <div className="text-[9px] mono text-slate-500 truncate mt-0.5">{sid.full}</div>}
+                {sid && <div className="text-[9px] truncate mt-0.5" style={{ color: isSelected ? INK : MUTED }}>{sid.full}</div>}
               </button>
             );
           })}
         </div>
       </div>
-      {/* 4D temporal dock: bottom-center glass pill */}
+      {/* 4D temporal dock: bottom-center command bar */}
       <motion.div
         className="absolute bottom-6 left-1/2 -translate-x-1/2 z-40 pointer-events-none"
         initial={{ y: 50, opacity: 0 }}
         animate={{ y: 0, opacity: 1 }}
         transition={{ duration: 0.25, ease: 'easeOut' }}
       >
-        <div className="pointer-events-auto flex items-center gap-4 px-6 py-3 rounded-full bg-slate-900/60 backdrop-blur-xl border border-white/10" style={{ boxShadow: '0 10px 30px -10px rgb(0 0 0 / 0.6)' }}>
-          <span className="font-mono font-bold text-[9px] tracking-[0.14em] text-cyan-300 shrink-0">4D TIME</span>
-          <span className="font-mono font-bold text-[13px] text-white shrink-0" style={{ fontVariantNumeric: 'tabular-nums', minWidth: 76, textAlign: 'center' }}>
+        <div className="pointer-events-auto flex items-center gap-4 px-6 py-3" style={{ background: SURFACE.panel, border: `3px solid ${INK}`, boxShadow: `4px 4px 0 ${INK}` }}>
+          <span className="shrink-0" style={{ fontFamily: FONT.mono, fontWeight: 700, fontSize: 9, letterSpacing: '0.14em', color: DOMAIN.temporal }}>4D TIME</span>
+          <span className="shrink-0" style={{ fontFamily: FONT.mono, fontWeight: 700, fontSize: 13, color: PAPER, fontVariantNumeric: 'tabular-nums', minWidth: 76, textAlign: 'center' }}>
             {new Date(targetEpochMs).toLocaleDateString('en-IN', { month: 'short', year: 'numeric' }).toUpperCase()}
           </span>
           <input
@@ -2020,37 +2080,38 @@ export default function Explorer3D() {
             step={30 * 24 * 3600 * 1000}
             value={targetEpochMs}
             onChange={(e) => setTargetEpochMs(Number(e.target.value))}
-            className="w-48 md:w-64 accent-cyan-500"
+            className="w-48 md:w-64"
+            style={{ accentColor: DOMAIN.temporal }}
           />
-          <span className={`font-mono text-[8px] font-bold px-2 py-0.5 rounded-full shrink-0 ${isHistorical ? 'bg-cyan-500/20 text-cyan-300' : 'bg-emerald-500/20 text-emerald-300'}`}>
+          <Badge domain={isHistorical ? 'temporal' : 'ok'}>
             {isHistorical ? 'HISTORICAL' : '● LIVE'}
-          </span>
+          </Badge>
           {isHistorical && (
-            <button
-              type="button"
+            <Button
+              domain="temporal"
               onClick={() => setTargetEpochMs(epochBounds.max)}
-              className="rounded-full bg-cyan-500/20 hover:bg-cyan-500/30 text-cyan-200 font-bold shrink-0 transition-colors"
               style={{ fontSize: 8, padding: '4px 10px' }}
             >
               LIVE
-            </button>
+            </Button>
           )}
         </div>
       </motion.div>
+      </div>
       {splitView && (
-        <div className="w-1/2 flex flex-col min-h-0 self-stretch" style={{ borderLeft: '3px solid #111111', background: '#F4F1E8' }}>
-          <div className="flex items-center gap-0 px-3 py-1.5 shrink-0" style={{ background: '#FFFFFF', borderBottom: '3px solid #111111' }}>
-            <span className="brutal-eyebrow mr-2">2D VIEW</span>
+        <div className="w-1/2 flex flex-col min-h-0 self-stretch" style={{ borderLeft: `3px solid ${INK}`, background: SURFACE.app }}>
+          <div className="flex items-center gap-2 px-3 py-1.5 shrink-0" style={{ background: DOMAIN.spatial, borderBottom: `3px solid ${INK}` }}>
+            <span className="mr-2" style={{ fontFamily: FONT.mono, fontSize: 9, fontWeight: 700, letterSpacing: '0.18em', color: INK }}>2D VIEW</span>
             {(['satellite', 'vector'] as const).map((m) => (
-              <button
+              <Button
                 key={m}
-                type="button"
+                domain="spatial"
+                active={map2DMode === m}
                 onClick={() => setMap2DMode(m)}
-                className={`brutal-tab ${map2DMode === m ? 'active' : ''}`}
-                style={{ fontSize: 9 }}
+                style={{ fontSize: 9, background: map2DMode === m ? INK : 'transparent', color: map2DMode === m ? DOMAIN.spatial : INK, borderColor: INK }}
               >
                 {m === 'satellite' ? '▭ Satellite AOI' : '◉ Satellite 3D'}
-              </button>
+              </Button>
             ))}
           </div>
           <div className="flex-1 min-h-0 flex flex-col">
@@ -2632,64 +2693,64 @@ function LiveParcelInspector({ parcelId, encroachment, onClose }: { parcelId: st
   ] : [];
   return (
     <>
-    <div className="rounded-2xl overflow-hidden" style={{ background: 'transparent' }}>
-      <div className="flex items-center justify-between px-4 py-3" style={{ borderBottom: '1px solid rgb(255 255 255 / 0.1)' }}>
+    <div className="overflow-hidden" style={{ background: 'transparent' }}>
+      <div className="flex items-center justify-between px-4 py-3" style={{ borderBottom: `2px solid ${INK}` }}>
         <div>
-          <div className="font-mono text-[9px] tracking-[0.18em] text-cyan-300/80">LIVE PARCEL</div>
-          <div className="font-mono font-medium tracking-widest text-cyan-400" style={{ fontSize: 13 }}>{parcelId}</div>
+          <div style={{ fontFamily: FONT.mono, fontSize: 9, letterSpacing: '0.18em', color: DOMAIN.spatial, fontWeight: 700 }}>LIVE PARCEL</div>
+          <div className="font-mono font-medium tracking-widest" style={{ fontSize: 13, color: DOMAIN.spatial }}>{parcelId}</div>
         </div>
-        <button type="button" onClick={onClose} aria-label="Close parcel inspector" className="text-slate-400 hover:text-white text-xs px-2 py-1 rounded-lg border border-white/10">✕</button>
+        <Button domain="info" onClick={onClose} aria-label="Close parcel inspector" style={{ fontSize: 10, padding: '4px 8px' }}>✕</Button>
       </div>
       <div className="p-4">
-      {failed && <div className="rounded-lg px-3 py-2 text-[11px] text-red-200" style={{ background: 'rgb(127 29 29 / 0.5)', border: '1px solid rgb(248 113 113 / 0.4)' }}>Inspector detail unavailable.</div>}
-      {!detail && !failed && <div className="animate-pulse space-y-2">{[0, 1, 2, 3].map((i) => (<div key={i} className="rounded" style={{ height: 12, background: 'rgb(255 255 255 / 0.08)' }} />))}</div>}
+      {failed && <Card><span style={{ fontSize: 11, color: DOMAIN.conflict }}>Inspector detail unavailable.</span></Card>}
+      {!detail && !failed && <div className="animate-pulse space-y-2">{[0, 1, 2, 3].map((i) => (<div key={i} style={{ height: 12, background: SURFACE.raised, border: `2px solid ${INK}` }} />))}</div>}
       {rows.map(([k, v]) => (
-        <div key={k} className="flex items-start justify-between gap-2 py-1.5" style={{ borderBottom: '1px solid rgb(255 255 255 / 0.05)' }}>
-          <span className="text-[9px] text-slate-400 uppercase tracking-widest shrink-0 font-sans">{k}</span>
-          <span className="text-[11px] text-white font-medium text-right break-all font-sans">{v}</span>
+        <div key={k} className="flex items-start justify-between gap-2 py-1.5" style={{ borderBottom: `1px solid ${INK}` }}>
+          <span className="text-[9px] uppercase tracking-widest shrink-0" style={{ color: MUTED }}>{k}</span>
+          <span className="text-[11px] font-medium text-right break-all" style={{ color: PAPER }}>{v}</span>
         </div>
       ))}
       {detail && (
-        <button type="button" className="w-full mt-3 rounded-lg border border-cyan-500 text-cyan-400 hover:bg-cyan-500/10 text-[11px] font-semibold tracking-wider py-2 transition-colors" onClick={onClose}>
+        <Button domain="spatial" style={{ width: '100%', marginTop: 12 }} onClick={onClose}>
           OPEN 3D VIEW
-        </button>
+        </Button>
       )}
       {encroachment && (
-        <button
-          type="button"
+        <Button
+          domain="conflict"
           onClick={() => void generateNotice()}
           disabled={noticeBusy}
-          className="w-full mt-3 rounded-lg bg-red-600/80 hover:bg-red-500 text-white text-[11px] font-semibold tracking-wider py-2 transition-colors disabled:opacity-50"
-          style={{ boxShadow: '0 0 15px rgba(220,38,38,0.4)' }}
+          style={{ width: '100%', marginTop: 12 }}
         >
           {noticeBusy ? 'DRAFTING…' : '▲ GENERATE ENFORCEMENT NOTICE'}
-        </button>
+        </Button>
       )}
       {notice && !noticeOpen && (
-        <button type="button" onClick={() => setNoticeOpen(true)} className="w-full mt-2 rounded-lg border border-white/15 text-slate-200 hover:bg-white/5 text-[11px] py-2 transition-colors">
+        <Button domain="info" style={{ width: '100%', marginTop: 8 }} onClick={() => setNoticeOpen(true)}>
           VIEW DRAFT NOTICE
-        </button>
+        </Button>
       )}
       </div>
     </div>
   );
   {noticeOpen && notice && (
-    <div className="fixed inset-0 z-50 flex items-center justify-center p-4" style={{ background: 'rgba(2,6,23,0.6)', backdropFilter: 'blur(4px)' }} onClick={(e) => { if (e.target === e.currentTarget) setNoticeOpen(false); }}>
-      <div className="rounded-2xl bg-slate-900/70 backdrop-blur-xl border border-white/10 text-slate-200" style={{ maxWidth: 640, width: '100%', maxHeight: '85vh', display: 'flex', flexDirection: 'column', boxShadow: '0 25px 50px -12px rgb(0 0 0 / 0.6), 0 0 24px rgba(6,182,212,0.15)' }}>
-        <div className="flex items-center justify-between px-4 py-3" style={{ borderBottom: '1px solid rgb(255 255 255 / 0.1)' }}>
-          <span className="text-xs font-semibold tracking-widest text-slate-100">DRAFT ENFORCEMENT NOTICE</span>
-          <button type="button" onClick={() => setNoticeOpen(false)} className="rounded-lg border border-white/15 text-slate-300 hover:bg-white/10 text-xs px-2 py-1" aria-label="Close notice">✕</button>
+    <div className="fixed inset-0 z-50 flex items-center justify-center p-4" onClick={(e) => { if (e.target === e.currentTarget) setNoticeOpen(false); }}>
+      <div className="absolute inset-0" style={{ background: SURFACE.app, opacity: 0.8 }} />
+      <div className="relative" style={{ background: SURFACE.panel, border: `3px solid ${INK}`, boxShadow: `6px 6px 0 ${INK}`, maxWidth: 640, width: '100%', maxHeight: '85vh', display: 'flex', flexDirection: 'column' }}>
+        <div className="flex items-center justify-between px-4 py-3" style={{ borderBottom: `2px solid ${INK}` }}>
+          <span className="text-xs font-semibold tracking-widest" style={{ color: PAPER }}>DRAFT ENFORCEMENT NOTICE</span>
+          <Button domain="info" onClick={() => setNoticeOpen(false)} style={{ fontSize: 10, padding: '4px 8px' }} aria-label="Close notice">✕</Button>
         </div>
         <div className="overflow-y-auto no-scrollbar" style={{ padding: 16 }}>
-          <pre style={{ whiteSpace: 'pre-wrap', fontFamily: 'IBM Plex Mono, monospace', fontSize: 11, color: '#e2e8f0', margin: 0 }}>{notice}</pre>
+          <pre style={{ whiteSpace: 'pre-wrap', fontFamily: FONT.mono, fontSize: 11, color: PAPER, margin: 0 }}>{notice}</pre>
         </div>
-        <div className="flex gap-2" style={{ padding: 14, borderTop: '1px solid rgb(255 255 255 / 0.1)' }}>
-          <button type="button" onClick={printNotice} className="rounded-lg bg-cyan-500/90 hover:bg-cyan-400 text-[#062026] text-[11px] font-bold tracking-wider px-4 py-2 transition-colors" style={{ boxShadow: '0 0 15px rgba(6,182,212,0.35)' }}>
+        <div className="flex gap-2" style={{ padding: 14, borderTop: `2px solid ${INK}` }}>
+          <Button domain="spatial" onClick={printNotice} style={{ fontSize: 11, padding: '8px 16px' }}>
             PRINT / EXPORT TO PDF
-          </button>
-          <button type="button" onClick={() => setNoticeOpen(false)} className="rounded-lg border border-white/15 text-slate-200 hover:bg-white/10 text-[11px] px-4 py-2 transition-colors">
+          </Button>
+          <Button domain="info" onClick={() => setNoticeOpen(false)} style={{ fontSize: 11, padding: '8px 16px' }}>
             CLOSE
-          </button>
+          </Button>
         </div>
       </div>
     </div>
@@ -2717,16 +2778,16 @@ function MeasurementLine({ points, onClear }: { points: THREE.Vector3[]; onClear
           <Line points={[points[0], points[1]]} color="#22d3ee" lineWidth={2} dashed dashSize={2} gapSize={1.2} />
           <Html position={mid} center distanceFactor={60}>
             <div className="flex items-center gap-2">
-              <div className="px-2 py-1 rounded bg-slate-900/80 text-cyan-400 font-mono text-xs border border-white/10 whitespace-nowrap">
+              <div className="px-2 py-1 font-mono text-xs whitespace-nowrap" style={{ background: SURFACE.panel, color: DOMAIN.spatial, border: `2px solid ${INK}` }}>
                 {dist.toFixed(2)}m
               </div>
-              <button
-                type="button"
+              <Button
+                domain="info"
                 onClick={(e) => { e.stopPropagation(); onClear(); }}
-                className="px-2 py-1 rounded bg-slate-900/80 text-slate-300 hover:text-white font-mono text-xs border border-white/10"
+                style={{ fontSize: 10, padding: '4px 8px', fontFamily: FONT.mono }}
               >
                 ✕
-              </button>
+              </Button>
             </div>
           </Html>
         </>
@@ -2963,44 +3024,11 @@ function solidToBufferGeometry(solid: Solid3D): THREE.BufferGeometry {
 
 // ─── Shared Components ─────────────────────────────────────────
 
-function Panel({ title, icon, iconSpin, subtitle, children }: any) {
-  return (
-    <div className="card overflow-hidden">
-      <div className="px-5 py-3.5 border-b border-line flex items-center gap-3">
-        <div className="w-7 h-7 rounded-md bg-surface flex items-center justify-center">
-          <i className={`fas ${icon} text-[10px] text-text-tertiary ${iconSpin ? 'fa-spin' : ''}`}></i>
-        </div>
-        <div><h3 className="text-sm font-semibold text-text-primary">{title}</h3>{subtitle && <p className="text-[10px] text-text-tertiary mt-0.5">{subtitle}</p>}</div>
-      </div>
-      <div className="p-5">{children}</div>
-    </div>
-  );
-}
-
-function MetricCard({ label, value, icon }: any) {
-  return (
-    <div className="card card-interactive p-5 animate-fade-in">
-      <div className="w-10 h-10 rounded-lg bg-accent-soft flex items-center justify-center mb-3"><i className={`fas ${icon}`}></i></div>
-      <div className="text-3xl font-bold text-text-primary mb-1">{value}</div>
-      <div className="text-xs text-text-tertiary">{label}</div>
-    </div>
-  );
-}
-
-function DataRow({ k, v, good }: any) {
-  return (
-    <div className="flex items-center justify-between py-2.5">
-      <span className="text-xs text-text-tertiary">{k}</span>
-      <span className={`text-sm ${good ? 'text-accent' : 'text-text-primary'}`}>{v}</span>
-    </div>
-  );
-}
-
 function InfoCell({ label, value }: any) {
   return (
-    <div className="rounded-lg bg-white/5 border border-white/10 p-2.5">
-      <div className="font-mono text-[8px] tracking-[0.16em] text-slate-500 mb-0.5">{label}</div>
-      <div className="text-xs font-semibold text-slate-100 capitalize">{value}</div>
+    <div className="p-2.5" style={{ background: SURFACE.raised, border: `2px solid ${INK}` }}>
+      <div className="font-mono text-[8px] tracking-[0.16em] mb-0.5" style={{ color: MUTED }}>{label}</div>
+      <div className="text-xs font-semibold capitalize" style={{ color: PAPER }}>{value}</div>
     </div>
   );
 }
@@ -3022,7 +3050,8 @@ function CopyBtn({ value }: { value: string }) {
         setOk(true);
         setTimeout(() => setOk(false), 1200);
       }}
-      className="ml-1 text-[10px] text-slate-500 hover:text-emerald-300"
+      className="ml-1 text-[10px]"
+      style={{ color: ok ? DOMAIN.ok : MUTED, background: 'transparent', border: 'none', cursor: 'pointer' }}
     >
       {ok ? '✓' : '⧉'}
     </button>
@@ -3039,15 +3068,15 @@ function InspectorEntityPanel({ kind, title, subtitle, ownership, valuation }: {
   const dash = '—';
   const currency = new Intl.NumberFormat('en-IN', { style: 'currency', currency: valuation?.currency ?? 'INR', maximumFractionDigits: 0 });
   return (
-    <div className="space-y-3 animate-fade-in">
-      <div className="rounded-xl bg-slate-900/60 backdrop-blur-xl border border-white/10 p-3">
-        <div className="font-mono text-[9px] tracking-[0.18em] text-cyan-300/80 mb-1">{kind} RECORD</div>
-        <div className="text-sm text-white font-semibold">{title}</div>
-        <div className="text-[10px] mt-1 text-slate-400">{subtitle}</div>
+    <div className="space-y-3">
+      <div className="p-3" style={{ background: SURFACE.raised, border: `2px solid ${INK}` }}>
+        <div className="font-mono text-[9px] tracking-[0.18em] mb-1" style={{ color: DOMAIN.spatial }}>{kind} RECORD</div>
+        <div className="text-sm font-semibold" style={{ color: PAPER }}>{title}</div>
+        <div className="text-[10px] mt-1" style={{ color: MUTED }}>{subtitle}</div>
       </div>
-      <div className="rounded-xl bg-slate-900/60 backdrop-blur-xl border border-white/10 p-3">
-        <div className="font-mono text-[9px] tracking-[0.18em] text-cyan-300/80 mb-2">Ownership</div>
-        <div className="text-xs font-semibold mb-2 text-slate-100">{ownership?.ownerName ?? dash}</div>
+      <div className="p-3" style={{ background: SURFACE.raised, border: `2px solid ${INK}` }}>
+        <div className="font-mono text-[9px] tracking-[0.18em] mb-2" style={{ color: DOMAIN.spatial }}>Ownership</div>
+        <div className="text-xs font-semibold mb-2" style={{ color: PAPER }}>{ownership?.ownerName ?? dash}</div>
         <div className="grid grid-cols-2 gap-2">
           <InfoCell label="Title" value={ownership?.ownershipType ?? dash} />
           <InfoCell label="Tenure" value={ownership?.tenure ?? dash} />
@@ -3055,18 +3084,18 @@ function InspectorEntityPanel({ kind, title, subtitle, ownership, valuation }: {
           <InfoCell label="Verified" value={ownership?.lastVerified ?? dash} />
         </div>
       </div>
-      <div className="rounded-xl bg-slate-900/60 backdrop-blur-xl border border-white/10 p-3">
+      <div className="p-3" style={{ background: SURFACE.raised, border: `2px solid ${INK}` }}>
         <div className="flex items-center justify-between mb-2">
-          <div className="font-mono text-[9px] tracking-[0.18em] text-cyan-300/80">Property Valuation</div>
-          <span className="font-mono text-[9px] px-2 py-0.5 rounded-full bg-cyan-500/20 text-cyan-300">{valuation?.valuationYear ?? dash}</span>
+          <div className="font-mono text-[9px] tracking-[0.18em]" style={{ color: DOMAIN.spatial }}>Property Valuation</div>
+          <Badge domain="spatial" style={{ fontSize: 9 }}>{valuation?.valuationYear ?? dash}</Badge>
         </div>
         <div className="grid grid-cols-2 gap-2 mb-2">
           <InfoCell label="Market Value" value={valuation ? currency.format(valuation.marketValue) : dash} />
           <InfoCell label="Assessed Value" value={valuation ? currency.format(valuation.assessedValue) : dash} />
         </div>
-        <div className="flex items-center justify-between text-[10px] text-slate-400">
+        <div className="flex items-center justify-between text-[10px]" style={{ color: MUTED }}>
           <span>{valuation?.method ?? dash}</span>
-          <span className="font-mono text-[9px] px-2 py-0.5 rounded-full bg-emerald-500/20 text-emerald-300">{valuation ? `${Math.round(valuation.confidence * 100)}% CONF` : dash}</span>
+          <Badge domain="ok" style={{ fontSize: 9 }}>{valuation ? `${Math.round(valuation.confidence * 100)}% CONF` : dash}</Badge>
         </div>
       </div>
     </div>

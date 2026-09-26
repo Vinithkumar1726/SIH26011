@@ -1,8 +1,9 @@
 import { useState, useEffect } from 'react';
-import { ChevronRight, ChevronDown, MapPin, Building2, Layers, Box, Copy, Search } from 'lucide-react';
+import { ChevronRight, ChevronDown, MapPin, Building2, Layers, Box, Search } from 'lucide-react';
 import { api } from '../api';
 import { useAuth } from '../App';
-import { BrutalEmpty } from './brutal';
+import { Badge, Button, Empty } from '../design/primitives';
+import { DOMAIN, FONT, INK, MUTED, PAPER, SURFACE, type DomainKey } from '../design/tokens';
 
 export default function CadastralHierarchy({ className = 'hidden md:flex w-72' }: { className?: string }) {
   const { user } = useAuth();
@@ -46,78 +47,80 @@ export default function CadastralHierarchy({ className = 'hidden md:flex w-72' }
     );
   });
 
+  const shell = (children: React.ReactNode) => (
+    <div className={`flex flex-col shrink-0 ${className}`} style={{ background: SURFACE.panel, borderLeft: `3px solid ${INK}` }}>
+      <div className="px-4 py-3" style={{ borderBottom: `3px solid ${INK}`, background: DOMAIN.record }}>
+        <div style={{ fontFamily: FONT.mono, fontSize: 9, fontWeight: 700, letterSpacing: '0.18em', color: INK }}>Registry</div>
+        <h3 style={{ fontFamily: FONT.display, fontWeight: 700, fontSize: 14, color: INK }}>HIERARCHY</h3>
+      </div>
+      {children}
+    </div>
+  );
+
   if (loading) {
-    return (
-      <div className={`bg-white flex flex-col shrink-0 ${className}`} style={{ borderLeft: '3px solid #111111' }}>
-        <div className="px-4 py-3" style={{ borderBottom: '3px solid #111111', background: '#111111' }}>
-          <div className="brutal-eyebrow" style={{ color: '#F5C400' }}>Registry</div>
-          <h3 className="font-display font-bold text-sm text-white">HIERARCHY</h3>
-        </div>
-        <div className="flex-1 flex flex-col gap-2 p-4">
-          {[0, 1, 2, 3].map((i) => (
-            <div key={i} className="brutal-skeleton" style={{ height: 34 }} />
-          ))}
-        </div>
+    return shell(
+      <div className="flex-1 flex flex-col gap-2 p-4">
+        {[0, 1, 2, 3].map((i) => (
+          <div key={i} style={{ height: 34, background: SURFACE.raised, border: `2px dashed ${INK}` }} />
+        ))}
       </div>
     );
   }
 
   if (parcels.length === 0) {
-    return (
-      <div className={`bg-white flex flex-col shrink-0 ${className}`} style={{ borderLeft: '3px solid #111111' }}>
-        <div className="px-4 py-3" style={{ borderBottom: '3px solid #111111', background: '#111111' }}>
-          <div className="brutal-eyebrow" style={{ color: '#F5C400' }}>Registry</div>
-          <h3 className="font-display font-bold text-sm text-white">HIERARCHY</h3>
-        </div>
-        <div className="flex-1 flex items-center justify-center p-4">
-          <BrutalEmpty title="No parcels yet" sub="Import cadastral data to populate the registry tree." />
-        </div>
+    return shell(
+      <div className="flex-1 flex items-center justify-center p-4">
+        <Empty title="No parcels yet" sub="Import cadastral data to populate the registry tree." />
       </div>
     );
   }
 
   return (
-    <div className={`bg-white flex flex-col shrink-0 ${className}`} style={{ borderLeft: '3px solid #111111' }}>
+    <div className={`flex flex-col shrink-0 ${className}`} style={{ background: SURFACE.panel, borderLeft: `3px solid ${INK}` }}>
       {/* Header */}
-      <div className="px-4 py-3" style={{ borderBottom: '3px solid #111111', background: '#111111' }}>
+      <div className="px-4 py-3" style={{ borderBottom: `3px solid ${INK}`, background: DOMAIN.record }}>
         <div className="flex items-center justify-between mb-2">
           <div>
-            <div className="brutal-eyebrow" style={{ color: '#F5C400' }}>Registry</div>
-            <h3 className="font-display font-bold text-sm text-white">CADASTRAL HIERARCHY</h3>
+            <div style={{ fontFamily: FONT.mono, fontSize: 9, fontWeight: 700, letterSpacing: '0.18em', color: INK }}>Registry</div>
+            <h3 style={{ fontFamily: FONT.display, fontWeight: 700, fontSize: 14, color: INK }}>CADASTRAL HIERARCHY</h3>
           </div>
-          <span className="brutal-badge brutal-badge-gold">{parcels.length} parcel(s)</span>
+          <Badge domain="info">{parcels.length} parcel(s)</Badge>
         </div>
-        <div className="input-icon">
-          <Search size={14} />
+        <div className="flex items-center gap-2">
+          <Search size={14} color={INK} />
           <input
             type="text"
             placeholder="Search parcels..."
             value={search}
             onChange={(e) => setSearch(e.target.value)}
-            className="brutal-input"
-            style={{ background: '#fff' }}
+            style={{
+              flex: 1, background: SURFACE.input, color: PAPER,
+              border: `2px solid ${INK}`, fontFamily: FONT.mono, fontSize: 11,
+              padding: '6px 8px', outline: 'none',
+            }}
           />
         </div>
       </div>
 
       {/* Filter tabs */}
-      <div className="px-4 py-2 border-b border-border flex gap-1 overflow-x-auto">
+      <div className="px-4 py-2 flex gap-1 overflow-x-auto" style={{ borderBottom: `2px solid ${INK}` }}>
         {[
-          { id: 'all', label: 'ALL' },
-          { id: 'parcel', label: 'PARCELS', icon: MapPin },
-          { id: 'building', label: 'BUILDINGS', icon: Building2 },
-          { id: 'floor', label: 'FLOORS', icon: Layers },
-          { id: 'unit', label: 'UNITS', icon: Box },
+          { id: 'all', label: 'ALL', domain: 'info' as DomainKey },
+          { id: 'parcel', label: 'PARCELS', icon: MapPin, domain: 'spatial' as DomainKey },
+          { id: 'building', label: 'BUILDINGS', icon: Building2, domain: 'info' as DomainKey },
+          { id: 'floor', label: 'FLOORS', icon: Layers, domain: 'ok' as DomainKey },
+          { id: 'unit', label: 'UNITS', icon: Box, domain: 'temporal' as DomainKey },
         ].map((f) => (
-          <button
+          <Button
             key={f.id}
+            domain={f.domain}
+            active={filter === f.id}
             onClick={() => setFilter(f.id as any)}
-            className={`chip transition-all ${filter === f.id ? 'chip-gold' : ''}`}
-            style={{ cursor: 'pointer' }}
+            style={{ fontSize: 8, padding: '4px 8px', display: 'inline-flex', alignItems: 'center', gap: 4 }}
           >
             {f.icon && <f.icon size={10} />}
             {f.label}
-          </button>
+          </Button>
         ))}
       </div>
 
@@ -132,7 +135,7 @@ export default function CadastralHierarchy({ className = 'hidden md:flex w-72' }
               label: parcel.name,
               code: parcel.ulpin,
               icon: MapPin,
-              color: '#F59E0B',
+              color: DOMAIN.spatial,
               children: [],
             }}
             isExpanded={isExpanded(parcel.id)}
@@ -145,38 +148,33 @@ export default function CadastralHierarchy({ className = 'hidden md:flex w-72' }
       </div>
 
       {/* Footer */}
-      <div className="px-4 py-3 border-t border-border">
-        <div className="flex items-center gap-2 text-xs text-text-tertiary">
+      <div className="px-4 py-3" style={{ borderTop: `2px solid ${INK}` }}>
+        <div className="flex items-center gap-2 text-xs" style={{ color: MUTED }}>
           <span className="flex items-center gap-1">
-            <MapPin size={10} className="text-amber-500" />
+            <MapPin size={10} color={DOMAIN.spatial} />
             Parcel
           </span>
           <span className="flex items-center gap-1">
-            <Building2 size={10} className="text-blue-500" />
+            <Building2 size={10} color={DOMAIN.info} />
             Building
           </span>
           <span className="flex items-center gap-1">
-            <Layers size={10} className="text-green-500" />
+            <Layers size={10} color={DOMAIN.ok} />
             Floor
           </span>
           <span className="flex items-center gap-1">
-            <Box size={10} className="text-purple-500" />
+            <Box size={10} color={DOMAIN.temporal} />
             Unit
           </span>
         </div>
         {user && (
-          <div className="mt-2 pt-2 border-t border-border">
-            <div className="flex items-center gap-2 text-xs text-text-tertiary">
+          <div className="mt-2 pt-2" style={{ borderTop: `1px solid ${INK}` }}>
+            <div className="flex items-center gap-2 text-xs" style={{ color: MUTED }}>
               <span className="font-mono">Logged in as:</span>
-              <span className="font-medium text-text-primary">{user.displayName}</span>
-              <span className={`px-1.5 py-0.5 rounded text-[9px] font-mono ${
-                user.role === 'admin' ? 'bg-purple-100 text-purple-700' :
-                user.role === 'surveyor' ? 'bg-blue-100 text-blue-700' :
-                user.role === 'reviewer' ? 'bg-green-100 text-green-700' :
-                'bg-gray-100 text-gray-700'
-              }`}>
+              <span className="font-medium" style={{ color: PAPER }}>{user.displayName}</span>
+              <Badge domain={user.role === 'admin' ? 'temporal' : user.role === 'surveyor' ? 'info' : user.role === 'reviewer' ? 'ok' : 'warn'}>
                 {user.role.toUpperCase()}
-              </span>
+              </Badge>
             </div>
           </div>
         )}
@@ -205,34 +203,38 @@ interface HierarchyNodeProps {
 function HierarchyNode({ node, isExpanded, onToggle, onSelect, selectedNode, level }: HierarchyNodeProps) {
   const isSelected = selectedNode?.type === node.type && selectedNode?.id === node.id;
   const hasChildren = node.children && node.children.length > 0;
+  const [hover, setHover] = useState(false);
 
   return (
-    <div className="select-none" style={level > 0 ? { borderLeft: '2px solid #111111', marginLeft: 11, paddingLeft: 4 } : undefined}>
+    <div className="select-none" style={level > 0 ? { borderLeft: `2px solid ${INK}`, marginLeft: 11, paddingLeft: 4 } : undefined}>
       <button
         onClick={(e) => {
           if (hasChildren) onToggle();
           onSelect(node.type, node.id, e);
         }}
-        className="w-full flex items-center gap-2 px-2 py-1.5 transition-all duration-100"
+        className="w-full flex items-center gap-2 px-2 py-1.5"
         style={isSelected
-          ? { background: '#F5C400', border: '2px solid #111111', boxShadow: '3px 3px 0 #111111' }
-          : { border: '2px solid transparent' }}
-        onMouseEnter={(e) => { if (!isSelected) e.currentTarget.style.background = '#F4F1E8'; }}
-        onMouseLeave={(e) => { if (!isSelected) e.currentTarget.style.background = 'transparent'; }}
+          ? { background: DOMAIN.record, border: `2px solid ${INK}`, boxShadow: `3px 3px 0 ${INK}`, cursor: 'pointer' }
+          : {
+              border: '2px solid transparent', cursor: 'pointer',
+              background: hover ? SURFACE.raised : 'transparent',
+            }}
+        onMouseEnter={() => setHover(true)}
+        onMouseLeave={() => setHover(false)}
       >
         {hasChildren && (
-          <span className="flex items-center justify-center w-5 text-text-tertiary">
+          <span className="flex items-center justify-center w-5" style={{ color: MUTED }}>
             {isExpanded ? <ChevronDown size={12} /> : <ChevronRight size={12} />}
           </span>
         )}
         {!hasChildren && <span className="w-5" />}
         <node.icon
           size={14}
-          className={`flex-shrink-0 ${isSelected ? 'text-primary' : ''}`}
-          style={{ color: node.color }}
+          className="flex-shrink-0"
+          style={{ color: isSelected ? INK : node.color }}
         />
-        <span className="font-mono text-xs text-text-primary truncate flex-1">{node.code}</span>
-        <span className="text-xs text-text-tertiary truncate flex-1">{node.label}</span>
+        <span className="font-mono text-xs truncate flex-1" style={{ color: isSelected ? INK : PAPER }}>{node.code}</span>
+        <span className="text-xs truncate flex-1" style={{ color: isSelected ? INK : MUTED, fontFamily: FONT.body }}>{node.label}</span>
       </button>
       {isExpanded && hasChildren && (
         <div className="mt-1">

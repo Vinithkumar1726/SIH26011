@@ -2,6 +2,8 @@ import { useEffect, useRef, useState } from 'react';
 import L from 'leaflet';
 import 'leaflet/dist/leaflet.css';
 import PipelineStatus, { type PipeStep } from './PipelineStatus';
+import { Badge, Button, Input, StatusDot } from '../design/primitives';
+import { DOMAIN, FONT, INK, MUTED, PAPER, SURFACE } from '../design/tokens';
 
 export interface LiveFootprint {
   parcel_id: string;
@@ -29,7 +31,7 @@ const STEP_LABELS = [
   'Height estimation',
   '3D geometry generation',
   'Database persistence',
-  'Cesium visualization',
+  '3D twin update',
 ];
 
 type DrawMode = 'none' | 'rectangle' | 'polygon';
@@ -107,9 +109,9 @@ export default function LiveMapPanel({ apiBase, origin, footprints, selectedParc
       const latlngs = ring.map(([lo, la]) => [la, lo] as [number, number]);
       const sel = fp.parcel_id === selectedParcelId;
       L.polygon(latlngs, {
-        color: fp.encroachment ? '#D92D20' : sel ? '#111111' : '#F5C400',
+        color: fp.encroachment ? DOMAIN.conflict : sel ? INK : DOMAIN.record,
         weight: sel ? 4 : 2,
-        fillColor: fp.encroachment ? '#D92D20' : '#F5C400',
+        fillColor: fp.encroachment ? DOMAIN.conflict : DOMAIN.record,
         fillOpacity: sel ? 0.45 : 0.15,
       })
         .bindTooltip(`${fp.parcel_id}${fp.encroachment ? ' · ENCROACHMENT' : ''}`)
@@ -125,7 +127,7 @@ export default function LiveMapPanel({ apiBase, origin, footprints, selectedParc
     if (aoiLayerRef.current) { map.removeLayer(aoiLayerRef.current); aoiLayerRef.current = null; }
     const pts = drawPtsRef.current;
     if (pts.length < 2) return;
-    aoiLayerRef.current = L.polygon(pts, { color: '#111111', weight: 3, dashArray: '8 4', fillColor: '#F5C400', fillOpacity: 0.15 }).addTo(map);
+    aoiLayerRef.current = L.polygon(pts, { color: INK, weight: 3, dashArray: '8 4', fillColor: DOMAIN.record, fillOpacity: 0.15 }).addTo(map);
   }
 
   function finishRectangle(map: L.Map, a: L.LatLng, b: L.LatLng) {
@@ -155,7 +157,7 @@ export default function LiveMapPanel({ apiBase, origin, footprints, selectedParc
       setAoi(norm);
       if (aoiLayerRef.current) map.removeLayer(aoiLayerRef.current);
       const latlngs = norm.polygon.map(([lo, la]: number[]) => [la, lo] as [number, number]);
-      aoiLayerRef.current = L.polygon(latlngs, { color: '#111111', weight: 3, fillColor: '#F5C400', fillOpacity: 0.12 }).addTo(map);
+      aoiLayerRef.current = L.polygon(latlngs, { color: INK, weight: 3, fillColor: DOMAIN.record, fillOpacity: 0.12 }).addTo(map);
       map.fitBounds(L.polygon(latlngs).getBounds().pad(0.1));
       mark(1, 'done');
       setStats((s) => ({ ...s, 'AOI area': `${norm.area_sqm.toFixed(0)} m²` }));
@@ -262,67 +264,89 @@ export default function LiveMapPanel({ apiBase, origin, footprints, selectedParc
   return (
     <div className="flex flex-col flex-1 min-h-0">
       {/* Toolbar */}
-      <div className="flex items-center gap-2 px-3 py-2 shrink-0 flex-wrap" style={{ background: '#FFFFFF', borderBottom: '3px solid #111111' }}>
-        <div className="input-icon" style={{ flex: 1, minWidth: 140 }}>
-          <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><circle cx="11" cy="11" r="8" /><line x1="21" y1="21" x2="16.65" y2="16.65" /></svg>
-          <input
+      <div className="flex items-center gap-2 px-3 py-2 shrink-0 flex-wrap" style={{ background: SURFACE.panel, borderBottom: `3px solid ${INK}` }}>
+        <div className="flex items-center gap-2" style={{ flex: 1, minWidth: 140 }}>
+          <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke={MUTED} strokeWidth="2"><circle cx="11" cy="11" r="8" /><line x1="21" y1="21" x2="16.65" y2="16.65" /></svg>
+          <Input
             value={search}
             onChange={(e) => setSearch(e.target.value)}
             onKeyDown={(e) => { if (e.key === 'Enter') void gotoSearch(); }}
             placeholder="Search place or lat,lon…"
-            className="bg-white/5 border border-white/10 rounded-md text-slate-200 font-mono"
             style={{ fontSize: 10 }}
           />
         </div>
         {(['none', 'rectangle', 'polygon'] as DrawMode[]).map((m) => (
-          <button
+          <Button
             key={m}
+            domain="spatial"
+            active={drawMode === m}
             onClick={() => { drawPtsRef.current = []; setDrawMode(m); }}
-            className={`brutal-tab ${drawMode === m ? 'active' : ''}`}
             style={{ fontSize: 9, padding: '5px 10px' }}
           >
             {m === 'none' ? 'Pan' : m === 'rectangle' ? '▭ AOI' : '⬠ Polygon'}
-          </button>
+          </Button>
         ))}
-        <button
+        <Button
+          domain="record"
           onClick={() => void acquire()}
           disabled={!aoi || !!busy}
-          className="brutal-btn brutal-btn-gold"
           style={{ fontSize: 9, padding: '5px 10px' }}
         >
           Acquire
-        </button>
-        <button
+        </Button>
+        <Button
+          domain="ai"
           onClick={() => void detect()}
           disabled={!mosaic || !!busy}
-          className="brutal-btn brutal-btn-primary"
           style={{ fontSize: 9, padding: '5px 10px' }}
         >
           Detect
-        </button>
-        <span className="brutal-badge" style={{ fontSize: 8 }}>ESRI SATELLITE</span>
+        </Button>
+        <Badge domain="spatial" style={{ fontSize: 8 }}>ESRI SATELLITE</Badge>
       </div>
 
       {/* Map */}
       <div className="relative flex-1 min-h-0">
         <div ref={divRef} className="absolute inset-0" style={{ cursor: drawMode === 'none' ? undefined : 'crosshair' }} />
-        <div className="absolute bottom-6 left-2 z-[500] glass rounded px-2 py-0.5 font-mono text-[9px] text-slate-300 pointer-events-none">
+        <div
+          className="absolute bottom-6 left-2 z-[500] pointer-events-none"
+          style={{
+            fontFamily: FONT.mono, fontSize: 9, color: PAPER,
+            background: SURFACE.panel, border: `2px solid ${INK}`,
+            boxShadow: `3px 3px 0 ${INK}`, padding: '2px 8px',
+          }}
+        >
           {cursor || '—'}
         </div>
         {busy && (
-          <div className="absolute top-2 left-1/2 -translate-x-1/2 z-[500] glass rounded-full px-3 py-1 font-mono text-[10px] text-amber-200 pointer-events-none">
-            <span className="status-led warning led-pulse" style={{ marginRight: 6 }} />{busy}
+          <div
+            className="absolute top-2 left-1/2 -translate-x-1/2 z-[500] pointer-events-none"
+            style={{
+              fontFamily: FONT.mono, fontSize: 10, color: INK,
+              background: DOMAIN.warn, border: `2px solid ${INK}`,
+              boxShadow: `3px 3px 0 ${INK}`, padding: '4px 12px',
+              display: 'flex', alignItems: 'center',
+            }}
+          >
+            <StatusDot domain="warn" size={8} />{busy}
           </div>
         )}
         {error && (
-          <div className="absolute top-2 left-1/2 -translate-x-1/2 z-[500] rounded px-3 py-1 font-mono text-[10px] text-red-300 pointer-events-none" style={{ background: 'rgb(60 10 10 / 0.9)', border: '1px solid #7f1d1d' }}>
+          <div
+            className="absolute top-2 left-1/2 -translate-x-1/2 z-[500] pointer-events-none"
+            style={{
+              fontFamily: FONT.mono, fontSize: 10, color: PAPER,
+              background: DOMAIN.conflict, border: `2px solid ${INK}`,
+              boxShadow: `3px 3px 0 ${INK}`, padding: '4px 12px', maxWidth: '90%',
+            }}
+          >
             {error}
           </div>
         )}
       </div>
 
       {/* Pipeline */}
-      <div className="shrink-0 max-h-44 overflow-y-auto border-t border-white/10">
+      <div className="shrink-0 max-h-44 overflow-y-auto" style={{ borderTop: `3px solid ${INK}` }}>
         <PipelineStatus steps={steps} stats={stats} compact />
       </div>
     </div>

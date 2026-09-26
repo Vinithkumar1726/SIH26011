@@ -3,6 +3,8 @@ import * as maplibregl from 'maplibre-gl';
 import 'maplibre-gl/dist/maplibre-gl.css';
 import type { LiveFootprint } from './LiveMapPanel';
 import AshPanel, { ASH_IDLE, classifyAshError, sanitizeAshText, traceMapAncestors, type AshSnapshot, type DomTraceNode } from './AshPanel';
+import { Badge } from '../design/primitives';
+import { DOMAIN, FONT, INK, PAPER, SURFACE } from '../design/tokens';
 
 export interface MapTarget {
   lon: number;
@@ -69,7 +71,7 @@ function addExtrusions(m: maplibregl.Map) {
         type: 'fill-extrusion',
         minzoom: 15,
         paint: {
-          'fill-extrusion-color': '#F4F1E8',
+          'fill-extrusion-color': PAPER,
           'fill-extrusion-height': ['interpolate', ['linear'], ['zoom'], 15, 0, 15.05, ['get', 'render_height']],
           'fill-extrusion-base': ['interpolate', ['linear'], ['zoom'], 15, 0, 15.05, ['get', 'render_min_height']],
           'fill-extrusion-opacity': 0.85,
@@ -90,9 +92,9 @@ function addExtrusions(m: maplibregl.Map) {
           'fill-extrusion-color': [
             'case',
             ['==', ['get', 'parcel_id'], ''],
-            '#F4F1E8',
-            ['get', 'encroachment'], '#D92D20',
-            '#F4F1E8',
+            PAPER,
+            ['get', 'encroachment'], DOMAIN.conflict,
+            PAPER,
           ],
           'fill-extrusion-height': ['get', 'height_m'],
           'fill-extrusion-base': 0,
@@ -328,15 +330,15 @@ export default function MapLibrePanel({ apiBase, initial, target, footprints, se
           m.addSource(SRC_REGISTRY, { type: 'geojson', data: fc });
           m.addLayer({
             id: 'sih-reg-fill', type: 'fill', source: SRC_REGISTRY,
-            paint: { 'fill-color': '#F5C400', 'fill-opacity': 0.12 },
+            paint: { 'fill-color': DOMAIN.record, 'fill-opacity': 0.12 },
           });
           m.addLayer({
             id: 'sih-reg-line', type: 'line', source: SRC_REGISTRY,
-            paint: { 'line-color': '#111111', 'line-width': 1.5, 'line-opacity': 0.85 },
+            paint: { 'line-color': INK, 'line-width': 1.5, 'line-opacity': 0.85 },
           });
           m.addLayer({
             id: 'sih-reg-sel', type: 'line', source: SRC_REGISTRY,
-            paint: { 'line-color': '#111111', 'line-width': 4 },
+            paint: { 'line-color': INK, 'line-width': 4 },
             filter: ['==', ['get', 'parcel_id'], ''],
           });
         };
@@ -369,12 +371,12 @@ export default function MapLibrePanel({ apiBase, initial, target, footprints, se
       m.addSource(SRC_LIVE, { type: 'geojson', data: fc });
       m.addLayer({
         id: 'sih-live-fill', type: 'fill', source: SRC_LIVE,
-        paint: { 'fill-color': '#F5C400', 'fill-opacity': 0.45 },
+        paint: { 'fill-color': DOMAIN.record, 'fill-opacity': 0.45 },
       });
       m.addLayer({
         id: 'sih-live-line', type: 'line', source: SRC_LIVE,
         paint: {
-          'line-color': ['case', ['get', 'encroachment'], '#D92D20', '#111111'],
+          'line-color': ['case', ['get', 'encroachment'], DOMAIN.conflict, INK],
           'line-width': 2,
         },
       });
@@ -400,7 +402,7 @@ export default function MapLibrePanel({ apiBase, initial, target, footprints, se
         if (!mm.getLayer('sih-live-sel')) {
           mm.addLayer({
             id: 'sih-live-sel', type: 'line', source: SRC_LIVE,
-            paint: { 'line-color': '#111111', 'line-width': 4 },
+            paint: { 'line-color': INK, 'line-width': 4 },
             filter: ['==', ['get', 'parcel_id'], ''],
           });
         }
@@ -447,22 +449,36 @@ export default function MapLibrePanel({ apiBase, initial, target, footprints, se
   }, []);
 
   return (
-    <div className="flex flex-col flex-1 min-h-0" style={{ background: '#F4F1E8' }}>
-      <div className="flex items-center gap-2 px-3 py-2 shrink-0" style={{ background: '#FFFFFF', borderBottom: '3px solid #111111' }}>
-        <span className="brutal-badge brutal-badge-black" style={{ fontSize: 8 }}>MAPTILER VECTOR</span>
-        <span className="brutal-badge" style={{ fontSize: 8 }}>{registryCount} REGISTRY</span>
-        <span className="brutal-badge brutal-badge-gold" style={{ fontSize: 8 }}>{footprints.length} LIVE</span>
+    <div className="flex flex-col flex-1 min-h-0" style={{ background: SURFACE.app }}>
+      <div className="flex items-center gap-2 px-3 py-2 shrink-0" style={{ background: SURFACE.panel, borderBottom: `3px solid ${INK}` }}>
+        <Badge domain="spatial" style={{ fontSize: 8 }}>MAPTILER VECTOR</Badge>
+        <Badge domain="record" style={{ fontSize: 8 }}>{registryCount} REGISTRY</Badge>
+        <Badge domain="ai" style={{ fontSize: 8 }}>{footprints.length} LIVE</Badge>
       </div>
-      <div className="shrink-0 px-2 py-1" style={{ background: '#F4F1E8', borderBottom: '2px solid #111111' }}>
+      <div className="shrink-0 px-2 py-1" style={{ background: SURFACE.app, borderBottom: `2px solid ${INK}` }}>
         <AshPanel snap={ash} trace={trace} onTrace={runTrace} />
       </div>
       <div className="relative flex-1 min-h-0">
         <div ref={divRef} className="absolute inset-0" />
-        <div className="absolute bottom-8 left-2 z-10 glass rounded px-2 py-0.5 font-mono text-[9px] text-slate-300 pointer-events-none">
+        <div
+          className="absolute bottom-8 left-2 z-10 pointer-events-none"
+          style={{
+            fontFamily: FONT.mono, fontSize: 9, color: PAPER,
+            background: SURFACE.panel, border: `2px solid ${INK}`,
+            boxShadow: `3px 3px 0 ${INK}`, padding: '2px 8px',
+          }}
+        >
           {cursor || '—'}
         </div>
         {error && (
-          <div className="absolute top-2 left-1/2 -translate-x-1/2 z-10 rounded px-3 py-1.5 font-mono text-[10px] text-amber-200 max-w-[90%]" style={{ background: 'rgb(40 30 8 / 0.92)', border: '1px solid rgb(201 154 69 / 0.5)' }}>
+          <div
+            className="absolute top-2 left-1/2 -translate-x-1/2 z-10 pointer-events-none"
+            style={{
+              fontFamily: FONT.mono, fontSize: 10, color: INK,
+              background: DOMAIN.warn, border: `2px solid ${INK}`,
+              boxShadow: `3px 3px 0 ${INK}`, padding: '4px 12px', maxWidth: '90%',
+            }}
+          >
             {error}
           </div>
         )}

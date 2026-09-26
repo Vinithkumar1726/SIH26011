@@ -1,4 +1,6 @@
 import { useState } from 'react';
+import { Badge, Button, StatusDot } from '../design/primitives';
+import { DOMAIN, FONT, INK, PAPER, SURFACE, type DomainKey } from '../design/tokens';
 
 export type AshState =
   | 'BOOT' | 'INITIALIZING' | 'WAITING_STYLE' | 'STYLE_READY'
@@ -102,16 +104,6 @@ export const ASH_IDLE: AshSnapshot = {
   explorerH: 0,
 };
 
-function dot(color: string) {
-  return <span style={{ width: 9, height: 9, background: color, border: '2px solid #111', display: 'inline-block', flexShrink: 0 }} />;
-}
-
-function toneFor(ok: boolean, bad: boolean): string {
-  if (bad) return '#D92D20';
-  if (ok) return '#16A34A';
-  return '#6B7280';
-}
-
 export function ashReportText(s: AshSnapshot): string {
   const lines = [
     '## SIH26011 ASH REPORT',
@@ -152,12 +144,12 @@ export default function AshPanel({ snap, trace, onTrace }: {
   const [open, setOpen] = useState(false);
   const [copied, setCopied] = useState(false);
 
-  const rows: Array<[string, string, string, boolean]> = [
-    ['ENGINE', snap.engine, snap.engine === 'READY' ? '#16A34A' : snap.engine === 'FAILED' ? '#D92D20' : '#6B7280', snap.engine === 'FAILED'],
-    ['STYLE', snap.style, snap.style === 'LOADED' ? '#16A34A' : snap.style === 'FAILED' ? '#D92D20' : '#F5C400', snap.style === 'FAILED'],
-    ['TILES', snap.tiles, snap.tiles === 'ACTIVE' ? '#16A34A' : snap.tiles === 'FAILED' ? '#D92D20' : snap.tiles === 'IDLE' ? '#6B7280' : '#F5C400', snap.tiles === 'FAILED'],
-    ['RENDER', snap.render, snap.render === 'IDLE' || snap.render === 'RENDERING' ? '#16A34A' : snap.render === 'NO_TILES' ? '#D92D20' : '#6B7280', snap.render === 'NO_TILES'],
-    ['WEBGL', snap.webgl, snap.webgl === 'OK' ? '#16A34A' : snap.webgl === 'UNAVAILABLE' ? '#D92D20' : '#6B7280', snap.webgl === 'UNAVAILABLE'],
+  const rows: Array<[string, string, DomainKey, boolean]> = [
+    ['ENGINE', snap.engine, snap.engine === 'READY' ? 'ok' : snap.engine === 'FAILED' ? 'conflict' : 'info', snap.engine === 'FAILED'],
+    ['STYLE', snap.style, snap.style === 'LOADED' ? 'ok' : snap.style === 'FAILED' ? 'conflict' : 'warn', snap.style === 'FAILED'],
+    ['TILES', snap.tiles, snap.tiles === 'ACTIVE' ? 'ok' : snap.tiles === 'FAILED' ? 'conflict' : snap.tiles === 'IDLE' ? 'info' : 'warn', snap.tiles === 'FAILED'],
+    ['RENDER', snap.render, snap.render === 'IDLE' || snap.render === 'RENDERING' ? 'ok' : snap.render === 'NO_TILES' ? 'conflict' : 'info', snap.render === 'NO_TILES'],
+    ['WEBGL', snap.webgl, snap.webgl === 'OK' ? 'ok' : snap.webgl === 'UNAVAILABLE' ? 'conflict' : 'info', snap.webgl === 'UNAVAILABLE'],
   ];
 
   const copy = async () => {
@@ -171,31 +163,31 @@ export default function AshPanel({ snap, trace, onTrace }: {
   };
 
   return (
-    <div style={{ background: '#FFFFFF', border: '2px solid #111111', boxShadow: '3px 3px 0 #111111', fontFamily: 'var(--brutal-font-mono, monospace)' }}>
-      <div className="flex items-center gap-2 px-2 py-1" style={{ borderBottom: '2px solid #111111', background: '#111111' }}>
-        <span style={{ fontSize: 9, fontWeight: 700, letterSpacing: '0.14em', color: '#F5C400' }}>ASH / MAPLIBRE SURFACE</span>
-        <span style={{ fontSize: 8, color: '#fff', background: snap.state === 'HEALTHY' ? '#16A34A' : snap.state === 'FAILED' ? '#D92D20' : '#555', padding: '1px 6px', border: '1px solid #fff' }}>
+    <div style={{ background: SURFACE.panel, border: `3px solid ${INK}`, boxShadow: `3px 3px 0 ${INK}`, fontFamily: FONT.mono }}>
+      <div className="flex items-center gap-2 px-2 py-1" style={{ borderBottom: `3px solid ${INK}`, background: DOMAIN.spatial }}>
+        <span style={{ fontSize: 9, fontWeight: 700, letterSpacing: '0.14em', color: INK }}>ASH / MAPLIBRE SURFACE</span>
+        <Badge domain={snap.state === 'HEALTHY' ? 'ok' : snap.state === 'FAILED' ? 'conflict' : 'warn'}>
           {snap.state}
-        </span>
+        </Badge>
         <button
           type="button"
           onClick={() => setOpen((v) => !v)}
           aria-expanded={open}
           aria-label="Toggle ASH diagnostics detail"
-          style={{ marginLeft: 'auto', fontSize: 8, fontWeight: 700, background: '#fff', color: '#111', border: '2px solid #F5C400', padding: '1px 8px', cursor: 'pointer' }}
+          style={{ marginLeft: 'auto', fontSize: 8, fontWeight: 700, background: INK, color: PAPER, border: `2px solid ${INK}`, padding: '1px 8px', cursor: 'pointer', fontFamily: FONT.mono }}
         >
           {open ? 'HIDE DETAILS' : 'ASH DETAILS'}
         </button>
       </div>
       <div className="flex items-center gap-3 px-2 py-1 flex-wrap">
-        {rows.map(([k, v, c, bad]) => (
-          <span key={k} style={{ display: 'inline-flex', alignItems: 'center', gap: 4, fontSize: 8, fontWeight: 700, color: bad ? '#D92D20' : '#111' }}>
-            {dot(c)}{k} {v}
+        {rows.map(([k, v, d, bad]) => (
+          <span key={k} style={{ display: 'inline-flex', alignItems: 'center', gap: 4, fontSize: 8, fontWeight: 700, color: bad ? DOMAIN.conflict : PAPER }}>
+            <StatusDot domain={d} size={8} />{k} {v}
           </span>
         ))}
       </div>
       {open && (
-        <div className="px-2 py-1" style={{ borderTop: '2px solid #111111', fontSize: 9, color: '#111' }}>
+        <div className="px-2 py-1" style={{ borderTop: `2px solid ${INK}`, fontSize: 9, color: PAPER }}>
           <div className="grid gap-x-4" style={{ gridTemplateColumns: '1fr 1fr' }}>
             <span>CANVAS <b>{snap.canvasW}×{snap.canvasH}</b></span>
             <span>CONTAINER <b>{snap.containerW}×{snap.containerH}</b></span>
@@ -209,33 +201,33 @@ export default function AshPanel({ snap, trace, onTrace }: {
             <span>ERRORS <b>{snap.errors.length}</b></span>
           </div>
           {snap.errors.length > 0 && (
-            <div style={{ marginTop: 6, maxHeight: 120, overflowY: 'auto', border: '2px solid #D92D20', padding: 4 }}>
+            <div style={{ marginTop: 6, maxHeight: 120, overflowY: 'auto', border: `2px solid ${DOMAIN.conflict}`, padding: 4 }}>
               {snap.errors.map((e, i) => (
-                <div key={i} style={{ fontSize: 8, color: '#111', wordBreak: 'break-all' }}>
+                <div key={i} style={{ fontSize: 8, color: PAPER, wordBreak: 'break-all' }}>
                   [{e.time}][{e.source}] {e.message}
                 </div>
               ))}
             </div>
           )}
-          <button
-            type="button"
+          <Button
+            domain="spatial"
             onClick={() => void copy()}
-            style={{ marginTop: 6, fontSize: 8, fontWeight: 700, background: '#F5C400', color: '#111', border: '2px solid #111', padding: '2px 10px', cursor: 'pointer' }}
+            style={{ marginTop: 6, fontSize: 8, padding: '2px 10px' }}
           >
             {copied ? 'COPIED' : 'COPY DIAGNOSTICS'}
-          </button>
-          <button
-            type="button"
+          </Button>
+          <Button
+            domain="info"
             onClick={onTrace}
             aria-label="Trace map container ancestor heights"
-            style={{ marginTop: 6, marginLeft: 6, fontSize: 8, fontWeight: 700, background: '#fff', color: '#111', border: '2px solid #111', padding: '2px 10px', cursor: 'pointer' }}
+            style={{ marginTop: 6, marginLeft: 6, fontSize: 8, padding: '2px 10px' }}
           >
             TRACE DOM HEIGHTS
-          </button>
+          </Button>
           {trace.length > 0 && (
-            <div style={{ marginTop: 6, maxHeight: 220, overflowY: 'auto', border: '2px solid #111', padding: 4, background: '#fff' }}>
+            <div style={{ marginTop: 6, maxHeight: 220, overflowY: 'auto', border: `2px solid ${INK}`, padding: 4, background: SURFACE.input }}>
               {trace.map((n) => (
-                <div key={n.index} style={{ fontSize: 8, color: Number.parseFloat(n.height) === 0 ? '#D92D20' : '#111', fontWeight: Number.parseFloat(n.height) === 0 ? 700 : 400, wordBreak: 'break-all' }}>
+                <div key={n.index} style={{ fontSize: 8, color: Number.parseFloat(n.height) === 0 ? DOMAIN.conflict : PAPER, fontWeight: Number.parseFloat(n.height) === 0 ? 700 : 400, wordBreak: 'break-all' }}>
                   [{n.index}] {n.tag}{n.cls ? `.${n.cls}` : ''} {n.width}×{n.height} d:{n.display} pos:{n.position} flex:{n.flex} dir:{n.flexDirection} minH:{n.minHeight} over:{n.overflow}
                 </div>
               ))}
