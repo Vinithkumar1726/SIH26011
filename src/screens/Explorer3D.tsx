@@ -2622,7 +2622,7 @@ function LiveParcelInspector({ parcelId, encroachment, onClose }: { parcelId: st
     ['CENTROID', detail.centroid ? detail.centroid.coordinates.map((v: number) => v.toFixed(6)).join(', ') : '—'],
     ['HEIGHT', `${detail.height_m} m`],
     ['FLOORS (EST)', String(detail.floors_estimated)],
-    ['VOLUME', detail.volume_cum != null ? `${detail.volume_cum.toFixed(1)} m³` : detail.solid_valid === false ? 'INVALID SOLID' : '—'],
+    ['VOLUME', detail.volume_cum != null ? `${detail.volume_cum.toFixed(1)} m³` : detail.fp_valid === false ? 'INVALID FOOTPRINT' : '—'],
     ['ELEVATION MSL', `${detail.elevation_msl_m} m`],
     ['GEOMETRY VERSION', `V01 (parcel record)`],
     ['GEOMETRY SOURCE', detail.geometry_source ?? '—'],

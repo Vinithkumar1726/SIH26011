@@ -533,7 +533,7 @@ WITH params AS (
     WHERE footprint IS NOT NULL AND (:floor_id IS NULL OR floor_id = :floor_id)
 ),
 m AS (
-    SELECT id, floor_id, solid_geom,
+    SELECT id, floor_id, solid_geom, footprint,
            ST_XMin(solid_geom) AS xmin, ST_XMax(solid_geom) AS xmax,
            ST_YMin(solid_geom) AS ymin, ST_YMax(solid_geom) AS ymax,
            ST_ZMin(solid_geom) AS zmin, ST_ZMax(solid_geom) AS zmax,
@@ -541,9 +541,13 @@ m AS (
     FROM property_unit
     WHERE solid_geom IS NOT NULL AND (:floor_id IS NULL OR floor_id = :floor_id)
 )
-SELECT s.id_a, s.id_b, ST_Volume(s.inter) AS volume
+-- Reported volume is analytic: 2D footprint-intersection area x overlapping
+-- z-range. Exact for the vertical-prism extrusions stored here, and never
+-- read off the ST_IsValid-invalid solid soup. Detection below unchanged.
+SELECT s.id_a, s.id_b, ST_Area(ST_Intersection(s.fp_a, s.fp_b)::geography) * GREATEST(0.0, s.oz) AS volume
 FROM (
     SELECT a.id AS id_a, b.id AS id_b,
+           a.footprint AS fp_a, b.footprint AS fp_b,
            ST_3DIntersection(a.solid_geom, b.solid_geom) AS inter,
            (ABS(a.vol - (a.xmax - a.xmin) * (a.ymax - a.ymin) * (a.zmax - a.zmin))
                 <= 1e-9 * (a.xmax - a.xmin) * (a.ymax - a.ymin) * (a.zmax - a.zmin)
@@ -575,25 +579,27 @@ WITH params AS (
     WHERE floor_id = :floor_id AND footprint IS NOT NULL
 ),
 cand AS (
-    SELECT id, floor_id, solid_geom FROM property_unit
+    SELECT id, floor_id, solid_geom, footprint FROM property_unit
     WHERE floor_id = :floor_id AND id != :unit_id AND solid_geom IS NOT NULL
     UNION ALL
     SELECT CAST(:unit_id AS VARCHAR), CAST(:floor_id AS VARCHAR),
            ST_Translate(
                ST_Extrude(ST_Force3D(ST_GeomFromText(:wkt, 4326)), 0, 0, :dz),
-               0, 0, :zmin)
+               0, 0, :zmin),
+           ST_GeomFromText(:wkt, 4326)
 ),
 m AS (
-    SELECT id, floor_id, solid_geom,
+    SELECT id, floor_id, solid_geom, footprint,
            ST_XMin(solid_geom) AS xmin, ST_XMax(solid_geom) AS xmax,
            ST_YMin(solid_geom) AS ymin, ST_YMax(solid_geom) AS ymax,
            ST_ZMin(solid_geom) AS zmin, ST_ZMax(solid_geom) AS zmax,
            ST_Volume(solid_geom) AS vol
     FROM cand
 )
-SELECT s.id_a, s.id_b, ST_Volume(s.inter) AS volume
+SELECT s.id_a, s.id_b, ST_Area(ST_Intersection(s.fp_a, s.fp_b)::geography) * GREATEST(0.0, s.oz) AS volume
 FROM (
     SELECT a.id AS id_a, b.id AS id_b,
+           a.footprint AS fp_a, b.footprint AS fp_b,
            ST_3DIntersection(a.solid_geom, b.solid_geom) AS inter,
            (ABS(a.vol - (a.xmax - a.xmin) * (a.ymax - a.ymin) * (a.zmax - a.zmin))
                 <= 1e-9 * (a.xmax - a.xmin) * (a.ymax - a.ymin) * (a.zmax - a.zmin)
@@ -2418,11 +2424,11 @@ def draft_legal_notice(payload: dict) -> dict:
         f"**Subject parcel (Bhu-Aadhaar ULPIN):** `{ulpin}`",
         f"**Violation class:** `{vtype}`",
         "",
-        "## Measured spatial evidence (PostGIS, system-generated)",
+        "## Measured spatial evidence (PostGIS analytic, system-generated)",
         "",
     ]
     if inter_vol is not None:
-        lines.append(f"- Intersecting 3D volume: **{inter_vol} m³**")
+        lines.append(f"- Intersecting volume (analytic: footprint-overlap area × height overlap): **{inter_vol} m³**")
     if delta is not None:
         lines.append(f"- Footprint delta vs prior record: **{delta} m²**")
     if depth is not None:
@@ -2598,7 +2604,7 @@ async def cadastral_parcel_detail(parcel_id: str):
         # Vertical prisms: volume = footprint area x height, exact without
         # invoking 3D validity on the stored polygon-soup extrusion.
         volume = area * height if area is not None and height > 0 else None
-        solid_ok = bool(row["fp_valid"] and row["fp_simple"])
+        fp_ok = bool(row["fp_valid"] and row["fp_simple"])
         proposal = (await session.execute(
             select(AIProposal).where(AIProposal.status == "APPROVED").order_by(AIProposal.created_at.desc())
         )).scalars().all()
@@ -2612,7 +2618,7 @@ async def cadastral_parcel_detail(parcel_id: str):
             "perimeter_m": float(row["perimeter_m"]) if row["perimeter_m"] is not None else None,
             "centroid": _json.loads(row["centroid"]) if row["centroid"] else None,
             "volume_cum": volume,
-            "solid_valid": solid_ok,
+            "fp_valid": fp_ok,
             "geometry_version": 1,
             "height_source": meta.get("height_source", "ESTIMATED"),
             "geometry_source": meta.get("source", "live-capture"),
