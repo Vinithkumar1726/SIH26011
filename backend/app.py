@@ -2388,6 +2388,81 @@ async def list_cadastral_parcels():
         ]
 
 
+class LegalNoticeRequest(BaseModel):
+    ulpin: str
+    violation_type: str
+    metrics: Optional[Dict[str, Any]] = None
+
+
+VIOLATION_TYPES = ("air_rights", "subterranean_conflict", "unauthorized_expansion")
+
+
+def draft_legal_notice(payload: dict) -> dict:
+    """Template-based legal-notice draft (LLM stub: no external calls).
+
+    Cites the Tamil Nadu Combined Development and Building Rules with the
+    measured PostGIS metrics interpolated. Estimates are never presented
+    as survey-grade findings; the notice is a DRAFT for human review.
+    """
+    ulpin = payload.get("ulpin", "—")
+    vtype = payload.get("violation_type", "air_rights")
+    metrics = payload.get("metrics") or {}
+    inter_vol = metrics.get("intersection_volume_cum")
+    delta = metrics.get("spatial_delta_sqm")
+    depth = metrics.get("depth_m")
+    lines = [
+        "# DRAFT ENFORCEMENT NOTICE",
+        "",
+        "Issued under the Tamil Nadu Combined Development and Building Rules, 2019.",
+        "",
+        f"**Subject parcel (Bhu-Aadhaar ULPIN):** `{ulpin}`",
+        f"**Violation class:** `{vtype}`",
+        "",
+        "## Measured spatial evidence (PostGIS, system-generated)",
+        "",
+    ]
+    if inter_vol is not None:
+        lines.append(f"- Intersecting 3D volume: **{inter_vol} m³**")
+    if delta is not None:
+        lines.append(f"- Footprint delta vs prior record: **{delta} m²**")
+    if depth is not None:
+        lines.append(f"- Utility depth at conflict: **{depth} m below datum**")
+    if len(lines) == 7:
+        lines.append("- No numeric metrics supplied; see inspector panel.")
+    lines += [
+        "",
+        "## Applicable provisions (template citation — verify before service)",
+        "",
+        "- Tamil Nadu Combined Development and Building Rules, 2019: "
+        "setback, height, and floor-space-index controls for the subject zone.",
+        "- Encroachment into adjoining volumetric holdings or public utility "
+        "corridors as measured above.",
+        "",
+        "> STATUS: DRAFT — machine-generated from spatial measurements. "
+        "Requires human verification and competent-authority signature "
+        "before service. Estimated dimensions are not survey-grade.",
+    ]
+    return {
+        "ulpin": ulpin,
+        "violation_type": vtype,
+        "markdown": "\n".join(lines),
+        "engine": "template-llm-stub-v1",
+    }
+
+
+@app.post("/api/v2/legal/generate-notice")
+async def generate_legal_notice(payload: LegalNoticeRequest):
+    """Draft an enforcement notice from measured spatial metrics."""
+    if not payload.ulpin or len(payload.ulpin) < 4:
+        raise HTTPException(status_code=422, detail="ulpin is required")
+    if payload.violation_type not in VIOLATION_TYPES:
+        raise HTTPException(
+            status_code=422,
+            detail=f"violation_type must be one of {list(VIOLATION_TYPES)}",
+        )
+    return draft_legal_notice(payload.model_dump())
+
+
 @app.get("/api/v2/utilities/subterranean")
 async def subterranean_utilities(bbox: Optional[str] = None):
     """Subterranean utility networks as GeoJSON with 3D coordinates."""

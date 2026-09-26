@@ -1883,6 +1883,7 @@ export default function Explorer3D() {
         {selectedLiveParcelId && (
           <LiveParcelInspector
             parcelId={selectedLiveParcelId}
+            encroachment={liveParcels.find((p) => p.parcel_id === selectedLiveParcelId)?.encroachment === true}
             onClose={() => setSelectedLiveParcelId(null)}
           />
         )}
@@ -2510,8 +2511,52 @@ function SolarRig({ hour, dayOfYear, latDeg, extent }: {
   );
 }
 
-function LiveParcelInspector({ parcelId, onClose }: { parcelId: string; onClose: () => void }) {  const [detail, setDetail] = useState<any | null>(null);
+function LiveParcelInspector({ parcelId, encroachment, onClose }: { parcelId: string; encroachment: boolean; onClose: () => void }) {
+  const [detail, setDetail] = useState<any | null>(null);
   const [failed, setFailed] = useState(false);
+  const [notice, setNotice] = useState<string | null>(null);
+  const [noticeBusy, setNoticeBusy] = useState(false);
+  const [noticeOpen, setNoticeOpen] = useState(false);
+
+  const generateNotice = async () => {
+    if (noticeBusy) return;
+    setNoticeBusy(true);
+    setNotice(null);
+    try {
+      const base = (import.meta.env.VITE_API_URL || 'http://127.0.0.1:8000').replace(/\/$/, '');
+      const res = await fetch(`${base}/api/v2/legal/generate-notice`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          ulpin: parcelId,
+          violation_type: 'air_rights',
+          metrics: detail ? {
+            spatial_delta_sqm: detail.footprint_area_sqm != null ? Number(detail.footprint_area_sqm.toFixed(2)) : null,
+            intersection_volume_cum: detail.volume_cum != null ? Number(detail.volume_cum.toFixed(2)) : null,
+            depth_m: null,
+          } : {},
+        }),
+      });
+      if (!res.ok) throw new Error(`HTTP ${res.status}`);
+      const body = await res.json();
+      setNotice(body.markdown ?? 'No notice returned.');
+      setNoticeOpen(true);
+    } catch {
+      setNotice('Notice generation failed — backend unreachable.');
+    } finally {
+      setNoticeBusy(false);
+    }
+  };
+
+  const printNotice = () => {
+    const w = window.open('', '_blank', 'noopener,noreferrer');
+    if (!w || !notice) return;
+    const esc = notice.replace(/&/g, '&amp;').replace(/</g, '&lt;');
+    w.document.write(`<html><head><title>Enforcement Notice — ${parcelId}</title><style>body{font-family:Arial,sans-serif;color:#111;padding:32px;max-width:720px}h1{font-size:20px;border-bottom:3px solid #111;padding-bottom:8px}pre{white-space:pre-wrap;font-size:12px}</style></head><body><h1>DRAFT ENFORCEMENT NOTICE</h1><pre>${esc}</pre></body></html>`);
+    w.document.close();
+    w.focus();
+    w.print();
+  };
   useEffect(() => {
     let active = true;
     setDetail(null);
@@ -2540,6 +2585,7 @@ function LiveParcelInspector({ parcelId, onClose }: { parcelId: string; onClose:
     ['HEIGHT SOURCE', `${detail.height_source ?? 'ESTIMATED'}${detail.height_source === 'ESTIMATED' ? ' — NOT SURVEY-GRADE' : ''}`],
   ] : [];
   return (
+    <>
     <div className="brutal-panel" style={{ borderLeft: 'none', borderRight: 'none', borderTop: 'none', boxShadow: 'none', background: '#FFFDF5' }}>
       <div className="brutal-header brutal-header-gold">
         <span className="brutal-title">Parcel Inspector</span>
@@ -2559,8 +2605,47 @@ function LiveParcelInspector({ parcelId, onClose }: { parcelId: string; onClose:
           OPEN 3D VIEW
         </button>
       )}
+      {encroachment && (
+        <button
+          type="button"
+          onClick={() => void generateNotice()}
+          disabled={noticeBusy}
+          className="brutal-btn brutal-btn-danger w-full justify-center mt-2"
+          style={{ fontSize: 10 }}
+        >
+          {noticeBusy ? 'DRAFTING…' : '▲ GENERATE ENFORCEMENT NOTICE'}
+        </button>
+      )}
+      {notice && !noticeOpen && (
+        <button type="button" onClick={() => setNoticeOpen(true)} className="brutal-btn w-full justify-center mt-2" style={{ fontSize: 10 }}>
+          VIEW DRAFT NOTICE
+        </button>
+      )}
       </div>
     </div>
+  );
+  {noticeOpen && notice && (
+    <div className="fixed inset-0 z-50 flex items-center justify-center p-4" style={{ background: 'rgba(17,17,17,0.6)' }} onClick={(e) => { if (e.target === e.currentTarget) setNoticeOpen(false); }}>
+      <div className="brutal-panel" style={{ maxWidth: 640, width: '100%', maxHeight: '85vh', display: 'flex', flexDirection: 'column' }}>
+        <div className="brutal-header brutal-header-gold">
+          <span className="brutal-title">Draft Enforcement Notice</span>
+          <button type="button" onClick={() => setNoticeOpen(false)} className="brutal-btn" style={{ fontSize: 9, padding: '2px 8px' }} aria-label="Close notice">✕</button>
+        </div>
+        <div className="overflow-y-auto" style={{ padding: 14 }}>
+          <pre style={{ whiteSpace: 'pre-wrap', fontFamily: 'var(--brutal-font-mono)', fontSize: 11, color: '#111', margin: 0 }}>{notice}</pre>
+        </div>
+        <div className="flex gap-2" style={{ padding: 14, borderTop: '3px solid #111111' }}>
+          <button type="button" onClick={printNotice} className="brutal-btn brutal-btn-primary" style={{ fontSize: 10 }}>
+            PRINT / EXPORT TO PDF
+          </button>
+          <button type="button" onClick={() => setNoticeOpen(false)} className="brutal-btn" style={{ fontSize: 10 }}>
+            CLOSE
+          </button>
+        </div>
+      </div>
+    </div>
+  )}
+    </>
   );
 }
 
