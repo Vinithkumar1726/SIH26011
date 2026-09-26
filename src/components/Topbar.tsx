@@ -25,77 +25,69 @@ export default function Topbar({ screen, onNav, apiOnline }: Props) {
   const [mobileNavOpen, setMobileNavOpen] = useState(false);
 
   return (
-    <header className="flex items-center gap-3 px-4 shrink-0" style={{ height: 56, background: '#FFFFFF', borderBottom: '3px solid #111111' }}>
+    <header className="flex items-center gap-3 px-5 py-2 rounded-full bg-slate-900/60 backdrop-blur-xl border border-white/10 text-slate-200" style={{ boxShadow: '0 10px 30px -10px rgb(0 0 0 / 0.6)' }}>
       {/* Left: mobile menu button + logo */}
-      <div className="flex items-center gap-3 min-w-0">
+      <div className="flex items-center gap-2 min-w-0">
         <button
-          className="lg:hidden shrink-0 p-2 text-[#111] hover:bg-[#F5C400]"
-          style={{ border: '2px solid #111111' }}
+          className="lg:hidden shrink-0 rounded-full p-1.5 text-slate-300 hover:bg-white/10 hover:text-white transition-colors"
           onClick={() => setMobileNavOpen(true)}
           aria-label="Open navigation menu"
         >
-          <Menu size={18} strokeWidth={2.5} />
+          <Menu size={16} />
         </button>
         <div
           className="flex items-center gap-2 cursor-pointer min-w-0"
           onClick={() => onNav('dashboard')}
         >
-          <div className="flex items-center justify-center font-display font-bold text-xs tracking-widest w-9 h-9 shrink-0 text-[#111]" style={{ background: 'var(--accent-primary)', border: '2px solid #111111', boxShadow: '3px 3px 0 #111111' }}>
-            SIH
+          <div className="flex items-center justify-center font-display font-bold text-[10px] tracking-widest w-7 h-7 shrink-0 rounded-full text-[#062026]" style={{ background: '#06B6D4', boxShadow: '0 0 12px rgba(6,182,212,0.5)' }}>
+            AI
           </div>
-          <div className="min-w-0">
-            <div className="font-display font-bold leading-none text-[14px] text-[#111] tracking-[0.02em] truncate">
-              SIH26011
-            </div>
-            <div className="font-mono text-[8px] text-[#555] leading-none mt-1 truncate tracking-[0.14em]">
-              3D CADASTRAL COMMAND
+          <div className="min-w-0 hidden sm:block">
+            <div className="font-semibold leading-none text-[12px] text-cyan-400 tracking-widest truncate">
+              CADASTRAL AI
             </div>
           </div>
         </div>
       </div>
 
       {/* Center: breadcrumb */}
-      <nav aria-label="Breadcrumb" className="hidden sm:flex flex-1 justify-center px-2 min-w-0">
-        <span className="font-mono text-[10px] text-[#111] tracking-[0.12em] truncate px-3 py-1" style={{ border: '2px solid #111111', background: '#F4F1E8' }}>
-          {BREADCRUMBS[screen]}
-        </span>
-      </nav>
+      <div className="hidden md:block font-mono text-[9px] text-slate-400 tracking-[0.12em] truncate px-2">
+        {BREADCRUMBS[screen]}
+      </div>
 
       {/* Right: status + user */}
       <div className="flex items-center gap-2 justify-end shrink-0 ml-auto">
-        <div className="hidden md:flex items-center gap-2">
-          <span className="brutal-badge brutal-badge-green" style={{ borderRadius: 0 }}>
-            <span className="status-led online" />API
+        <div className="hidden md:flex items-center gap-3 font-mono text-[9px] tracking-widest text-slate-400">
+          <span className="flex items-center gap-1.5">
+            <span className="w-2 h-2 rounded-full bg-emerald-400" style={{ boxShadow: '0 0 6px rgba(52,211,153,0.9)' }} />API
           </span>
-          <span className={`brutal-badge ${apiOnline ? 'brutal-badge-green' : 'brutal-badge-red'}`} style={{ borderRadius: 0 }}>
-            <span className={`status-led ${apiOnline ? 'online' : 'error'}`} />{apiOnline ? 'POSTGIS' : 'OFFLINE'}
+          <span className="flex items-center gap-1.5">
+            <span className={`w-2 h-2 rounded-full ${apiOnline ? 'bg-emerald-400' : 'bg-red-400'}`} style={{ boxShadow: '0 0 6px rgba(52,211,153,0.9)' }} />{apiOnline ? 'POSTGIS' : 'OFFLINE'}
           </span>
-          <span className="brutal-badge" style={{ borderRadius: 0 }}>
-            <span className="status-led online" />MAP
+          <span className="flex items-center gap-1.5">
+            <span className="w-2 h-2 rounded-full bg-cyan-400" style={{ boxShadow: '0 0 6px rgba(34,211,238,0.9)' }} />MAP
           </span>
         </div>
 
         <button
-          className="hidden sm:flex items-center gap-1.5 px-2 py-1 text-[#111] hover:bg-[#F5C400] min-w-0 max-w-[140px]"
-          style={{ border: '2px solid #111111' }}
+          className="hidden sm:flex items-center gap-1.5 px-2 py-1 text-slate-200 hover:bg-white/10 rounded-full min-w-0 max-w-[140px] transition-colors"
           title="VINITH K"
         >
-          <span className="truncate text-[11px] font-bold">VINITH K</span>
-          <ChevronDown size={10} className="shrink-0" />
+          <span className="truncate text-[11px] font-semibold">VINITH K</span>
+          <ChevronDown size={10} className="shrink-0 text-slate-500" />
         </button>
 
         <button
-          className="p-1.5 text-[#111] hover:bg-[#F5C400] shrink-0"
-          style={{ border: '2px solid #111111' }}
+          className="rounded-full p-1.5 text-slate-400 hover:bg-white/10 hover:text-white shrink-0 transition-colors"
           onClick={() => onNav('settings')}
           aria-label="Settings"
         >
           <Settings size={14} />
         </button>
 
-        <button className="relative p-1.5 text-[#111] hover:bg-[#F5C400] shrink-0" style={{ border: '2px solid #111111' }} aria-label="Notifications">
+        <button className="relative rounded-full p-1.5 text-slate-400 hover:bg-white/10 hover:text-white shrink-0 transition-colors" aria-label="Notifications">
           <Bell size={14} />
-          <span className="absolute top-0.5 right-0.5 w-[7px] h-[7px] bg-[#D92D20] rounded-none border border-[#111]" />
+          <span className="absolute top-1 right-1 w-[5px] h-[5px] bg-cyan-400 rounded-full" />
         </button>
       </div>
       <MobileNavDrawer

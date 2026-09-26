@@ -1149,7 +1149,7 @@ export default function Explorer3D() {
         </div>
 
         <div className={`absolute top-3 left-3 bottom-28 z-10 ${compact ? 'w-44' : narrow ? 'w-52' : 'w-64'} flex flex-col gap-2 overflow-y-auto pointer-events-none`}>
-          <CollapsePanel title="View Controls" open={openPanels.view} onToggle={() => togglePanel('view')}>
+          <CollapsePanel title="View Controls" tone="glass" open={openPanels.view} onToggle={() => togglePanel('view')}>
           {source === 'live' && (
             <div className="mb-2">
               <div className="text-[10px] text-slate-500 mb-1">BUILDING</div>
@@ -1171,42 +1171,42 @@ export default function Explorer3D() {
           <button
             type="button"
             onClick={() => setLiveCaptureMode((v) => !v)}
-            className={`w-full text-[10px] py-1 rounded-none uppercase tracking-wider mb-2 ${liveCaptureMode ? 'bg-amber-400/15 text-amber-200 border border-amber-300/40' : 'bg-white/5 text-slate-400 border border-transparent hover:text-white'}`}
+            className={`w-full text-[10px] py-1 rounded-none uppercase tracking-wider mb-2 ${liveCaptureMode ? 'bg-cyan-500/20 text-cyan-300 border border-cyan-400/40' : 'bg-white/5 text-slate-400 border border-transparent hover:text-white'}`}
           >
             {liveCaptureMode ? '◉ Live Capture: ON' : '◎ Live Capture Mode'}
           </button>
           <button
             type="button"
             onClick={() => setLowPower((v) => !v)}
-            className={`w-full text-[10px] py-1 rounded-none uppercase tracking-wider mb-2 ${lowPower ? 'bg-amber-400/15 text-amber-200 border border-amber-300/40' : 'bg-white/5 text-slate-400 border border-transparent hover:text-white'}`}
+            className={`w-full text-[10px] py-1 rounded-none uppercase tracking-wider mb-2 ${lowPower ? 'bg-cyan-500/20 text-cyan-300 border border-cyan-400/40' : 'bg-white/5 text-slate-400 border border-transparent hover:text-white'}`}
           >
             {lowPower ? '◉ Low Power: ON' : '◎ Low Power Mode'}
           </button>
           <button
             type="button"
             onClick={() => setIlimsMode((v) => !v)}
-            className={`w-full text-[10px] py-1 rounded-none uppercase tracking-wider mb-2 ${ilimsMode ? 'bg-amber-400/15 text-amber-200 border border-amber-300/40' : 'bg-white/5 text-slate-400 border border-transparent hover:text-white'}`}
+            className={`w-full text-[10px] py-1 rounded-none uppercase tracking-wider mb-2 ${ilimsMode ? 'bg-cyan-500/20 text-cyan-300 border border-cyan-400/40' : 'bg-white/5 text-slate-400 border border-transparent hover:text-white'}`}
           >
             {ilimsMode ? '◉ ILIMS Land Bank: ON' : '◎ ILIMS Land Bank Mode'}
           </button>
           <button
             type="button"
             onClick={() => setSplitView((v) => !v)}
-            className={`w-full text-[10px] py-1 rounded-none uppercase tracking-wider mb-2 ${splitView ? 'bg-amber-400/15 text-amber-200 border border-amber-300/40' : 'bg-white/5 text-slate-400 border border-transparent hover:text-white'}`}
+            className={`w-full text-[10px] py-1 rounded-none uppercase tracking-wider mb-2 ${splitView ? 'bg-cyan-500/20 text-cyan-300 border border-cyan-400/40' : 'bg-white/5 text-slate-400 border border-transparent hover:text-white'}`}
           >
             {splitView ? '◉ Split 2D/3D: ON' : '◎ Split 2D/3D View'}
           </button>
           <button
             type="button"
             onClick={() => setXray((v) => !v)}
-            className={`w-full text-[10px] py-1 rounded-none uppercase tracking-wider mb-2 ${xray ? 'bg-amber-400/15 text-amber-200 border border-amber-300/40' : 'bg-white/5 text-slate-400 border border-transparent hover:text-white'}`}
+            className={`w-full text-[10px] py-1 rounded-none uppercase tracking-wider mb-2 ${xray ? 'bg-cyan-500/20 text-cyan-300 border border-cyan-400/40' : 'bg-white/5 text-slate-400 border border-transparent hover:text-white'}`}
           >
             {xray ? '◉ Deep Cadastre / X-Ray: ON' : '◎ Deep Cadastre / X-Ray'}
           </button>
           <button
             type="button"
             onClick={() => setShadowAudit((v) => !v)}
-            className={`w-full text-[10px] py-1 rounded-none uppercase tracking-wider mb-2 ${shadowAudit ? 'bg-amber-400/15 text-amber-200 border border-amber-300/40' : 'bg-white/5 text-slate-400 border border-transparent hover:text-white'}`}
+            className={`w-full text-[10px] py-1 rounded-none uppercase tracking-wider mb-2 ${shadowAudit ? 'bg-cyan-500/20 text-cyan-300 border border-cyan-400/40' : 'bg-white/5 text-slate-400 border border-transparent hover:text-white'}`}
           >
             {shadowAudit ? '◉ Shadow Audit: ON' : '◎ Shadow Audit Mode'}
           </button>
@@ -1231,41 +1231,6 @@ export default function Explorer3D() {
               </div>
             </div>
           )}
-          <div className="mt-1 mb-2" style={{ border: '2px solid #111111', background: isHistorical ? '#F5C400' : '#FFFFFF', padding: '8px 10px', boxShadow: '3px 3px 0 #111111' }}>
-            <div className="flex items-center justify-between mb-1">
-              <span className="font-mono font-bold" style={{ fontSize: 9, letterSpacing: '0.1em', color: '#111111' }}>4D TIME TRAVEL</span>
-              <span className="brutal-badge" style={{ fontSize: 8, background: isHistorical ? '#111111' : '#16A34A', color: '#fff', borderColor: '#111111' }}>
-                {isHistorical ? 'HISTORICAL' : '● LIVE'}
-              </span>
-            </div>
-            <div className="font-mono font-bold text-center" style={{ fontSize: 13, color: '#111111', fontVariantNumeric: 'tabular-nums' }}>
-              {new Date(targetEpochMs).toLocaleDateString('en-IN', { month: 'short', year: 'numeric' }).toUpperCase()}
-            </div>
-            <input
-              type="range"
-              aria-label="Target epoch for time-travel parcels"
-              min={epochBounds.min}
-              max={epochBounds.max}
-              step={30 * 24 * 3600 * 1000}
-              value={targetEpochMs}
-              onChange={(e) => setTargetEpochMs(Number(e.target.value))}
-              className="w-full mt-1"
-            />
-            <div className="flex items-center justify-between mt-1">
-              <span className="font-mono" style={{ fontSize: 8, color: '#555555' }}>JAN 2015</span>
-              {isHistorical && (
-                <button
-                  type="button"
-                  onClick={() => setTargetEpochMs(epochBounds.max)}
-                  className="brutal-btn brutal-btn-primary"
-                  style={{ fontSize: 8, padding: '3px 8px' }}
-                >
-                  BACK TO LIVE
-                </button>
-              )}
-              <span className="font-mono" style={{ fontSize: 8, color: '#555555' }}>NOW</span>
-            </div>
-          </div>
           <CollapsePanel title={`Parcels (${liveParcels.length})`} open={openPanels.view} onToggle={() => togglePanel('view')}>
             {selectedLiveParcelId && (
               <button
@@ -1320,14 +1285,14 @@ export default function Explorer3D() {
               <button
                 type="button"
                 onClick={() => { setLiveSync(false); setHourOfDay(12); }}
-                className={`text-[10px] py-1 rounded-none uppercase tracking-wider ${!isNight ? 'bg-amber-400/15 text-amber-200 border border-amber-300/40' : 'bg-white/5 text-slate-400 border border-transparent hover:text-white'}`}
+                className={`text-[10px] py-1 rounded-none uppercase tracking-wider ${!isNight ? 'bg-cyan-500/20 text-cyan-300 border border-cyan-400/40' : 'bg-white/5 text-slate-400 border border-transparent hover:text-white'}`}
               >
                 ☀ DAY
               </button>
               <button
                 type="button"
                 onClick={() => { setLiveSync(false); setHourOfDay(0); }}
-                className={`text-[10px] py-1 rounded-none uppercase tracking-wider ${isNight ? 'bg-amber-400/15 text-amber-200 border border-amber-300/40' : 'bg-white/5 text-slate-400 border border-transparent hover:text-white'}`}
+                className={`text-[10px] py-1 rounded-none uppercase tracking-wider ${isNight ? 'bg-cyan-500/20 text-cyan-300 border border-cyan-400/40' : 'bg-white/5 text-slate-400 border border-transparent hover:text-white'}`}
               >
                 ☾ NIGHT
               </button>
@@ -1339,7 +1304,7 @@ export default function Explorer3D() {
           </label>
           <div className="text-[9px] text-slate-500 mt-1">{interiorTour ? 'Close camera enabled — scroll to enter the floor layout.' : 'Enable to unlock close interior navigation.'}</div>
           </CollapsePanel>
-          <CollapsePanel title="Environment & View" open={openPanels.env} onToggle={() => togglePanel('env')}>
+          <CollapsePanel title="Environment & View" tone="glass" open={openPanels.env} onToggle={() => togglePanel('env')}>
             <div className="space-y-3">
               <div>
                 <div className="flex items-center justify-between mb-1">
@@ -1370,7 +1335,7 @@ export default function Explorer3D() {
                       type="button"
                       key={w}
                       onClick={() => setWeather(w)}
-                      className={`text-[10px] py-1 rounded-none uppercase tracking-wider ${weather === w ? 'bg-amber-400/15 text-amber-200 border border-amber-300/40' : 'bg-white/5 text-slate-400 border border-transparent hover:text-white'}`}
+                      className={`text-[10px] py-1 rounded-none uppercase tracking-wider ${weather === w ? 'bg-cyan-500/20 text-cyan-300 border border-cyan-400/40' : 'bg-white/5 text-slate-400 border border-transparent hover:text-white'}`}
                     >
                       {w}
                     </button>
@@ -1387,7 +1352,7 @@ export default function Explorer3D() {
                       <button
                         type="button"
                         onClick={() => { flyTo(v); if (v === 'street' || v !== 'orbit') setInteriorTour(false); }}
-                        className={`w-full text-left text-[10px] py-1 px-2 rounded-none uppercase tracking-wider ${viewPreset === v ? 'bg-amber-400/15 text-amber-200 border border-amber-300/40' : 'bg-white/5 text-slate-400 border border-transparent hover:text-white'}`}
+                        className={`w-full text-left text-[10px] py-1 px-2 rounded-none uppercase tracking-wider ${viewPreset === v ? 'bg-cyan-500/20 text-cyan-300 border border-cyan-400/40' : 'bg-white/5 text-slate-400 border border-transparent hover:text-white'}`}
                       >
                         {label}
                       </button>
@@ -1436,7 +1401,7 @@ export default function Explorer3D() {
                       type="button"
                       key={q}
                       onClick={() => setQuality(q)}
-                      className={`text-[10px] py-1 rounded-none uppercase tracking-wider ${quality === q ? 'bg-amber-400/15 text-amber-200 border border-amber-300/40' : 'bg-white/5 text-slate-400 border border-transparent hover:text-white'}`}
+                      className={`text-[10px] py-1 rounded-none uppercase tracking-wider ${quality === q ? 'bg-cyan-500/20 text-cyan-300 border border-cyan-400/40' : 'bg-white/5 text-slate-400 border border-transparent hover:text-white'}`}
                     >
                       {q}
                     </button>
@@ -1991,6 +1956,38 @@ export default function Explorer3D() {
               </button>
             );
           })}
+        </div>
+      </div>
+      {/* 4D temporal dock: bottom-center glass pill */}
+      <div className="absolute bottom-6 left-1/2 -translate-x-1/2 z-40 pointer-events-none">
+        <div className="pointer-events-auto flex items-center gap-4 px-6 py-3 rounded-full bg-slate-900/60 backdrop-blur-xl border border-white/10" style={{ boxShadow: '0 10px 30px -10px rgb(0 0 0 / 0.6)' }}>
+          <span className="font-mono font-bold text-[9px] tracking-[0.14em] text-cyan-300 shrink-0">4D TIME</span>
+          <span className="font-mono font-bold text-[13px] text-white shrink-0" style={{ fontVariantNumeric: 'tabular-nums', minWidth: 76, textAlign: 'center' }}>
+            {new Date(targetEpochMs).toLocaleDateString('en-IN', { month: 'short', year: 'numeric' }).toUpperCase()}
+          </span>
+          <input
+            type="range"
+            aria-label="Target epoch for time-travel parcels"
+            min={epochBounds.min}
+            max={epochBounds.max}
+            step={30 * 24 * 3600 * 1000}
+            value={targetEpochMs}
+            onChange={(e) => setTargetEpochMs(Number(e.target.value))}
+            className="w-48 md:w-64 accent-cyan-500"
+          />
+          <span className={`font-mono text-[8px] font-bold px-2 py-0.5 rounded-full shrink-0 ${isHistorical ? 'bg-cyan-500/20 text-cyan-300' : 'bg-emerald-500/20 text-emerald-300'}`}>
+            {isHistorical ? 'HISTORICAL' : '● LIVE'}
+          </span>
+          {isHistorical && (
+            <button
+              type="button"
+              onClick={() => setTargetEpochMs(epochBounds.max)}
+              className="rounded-full bg-cyan-500/20 hover:bg-cyan-500/30 text-cyan-200 font-bold shrink-0 transition-colors"
+              style={{ fontSize: 8, padding: '4px 10px' }}
+            >
+              LIVE
+            </button>
+          )}
         </div>
       </div>
       {splitView && (

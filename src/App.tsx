@@ -307,17 +307,19 @@ function AppInner() {
 
   return (
     <div
-      className="app-shell h-screen w-screen flex overflow-hidden"
+      className="app-shell h-screen w-screen flex overflow-hidden relative"
       style={{
         flexDirection: 'column',
-        background: '#F4F1E8',
+        background: '#020617',
       }}
     >
-      <div style={{ display: 'flex', flex: 1, minHeight: 0, overflow: 'hidden' }}>
+      <div className="absolute top-4 left-1/2 -translate-x-1/2 z-50">
+        <Topbar screen={screen} onNav={setScreen} apiOnline={apiOnline} />
+      </div>
+      <div style={{ display: 'flex', flex: 1, minHeight: 0, overflow: 'hidden', paddingTop: 76 }}>
         <Sidebar active={screen} onNav={setScreen} />
 
         <div style={{ flex: 1, minWidth: 0, display: 'flex', flexDirection: 'column', minHeight: 0 }}>
-          <Topbar screen={screen} onNav={setScreen} apiOnline={apiOnline} />
 
           <main className="flex-1 min-h-0 flex flex-col" style={{ minWidth: 0, overflow: 'auto' }}>
             {renderScreen()}
