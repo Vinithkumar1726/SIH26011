@@ -1567,7 +1567,7 @@ export default function Explorer3D() {
         )}
 
         {inspectorVisible && (
-          <div className={`absolute bottom-3 left-1/2 -translate-x-1/2 z-10 glass rounded-none w-[400px] ${compact ? 'max-w-[calc(100%-2rem)]' : narrow ? 'max-w-full' : 'max-w-[calc(100%-34rem)]'} max-h-[48%] flex flex-col pointer-events-none`}>
+          <div className={`absolute bottom-3 right-3 z-10 glass rounded-none w-[400px] ${compact ? 'max-w-[calc(100%-2rem)]' : narrow ? 'max-w-full' : 'max-w-[calc(100%-34rem)]'} max-h-[48%] flex flex-col pointer-events-none`}>
             <div className="pointer-events-auto flex flex-col min-h-0">
             <button
               type="button"
