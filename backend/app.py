@@ -2389,6 +2389,74 @@ async def list_cadastral_parcels():
 
 
 # ============================================================================
+# V2 TEMPORAL API (SCD Type 2 time-travel; v1 endpoints untouched)
+# ============================================================================
+
+class TemporalQuery(BaseModel):
+    bbox: Optional[str] = None  # "minlon,minlat,maxlon,maxlat"
+    target_epoch: Optional[str] = None  # ISO8601 or Unix timestamp
+
+
+def _parse_epoch(value: Optional[str]) -> Optional[datetime]:
+    if not value:
+        return None
+    try:
+        return datetime.fromtimestamp(float(value))
+    except (TypeError, ValueError):
+        pass
+    try:
+        return datetime.fromisoformat(value.replace("Z", "+00:00"))
+    except (TypeError, ValueError):
+        raise HTTPException(status_code=422, detail="target_epoch must be ISO8601 or a Unix timestamp")
+
+
+@app.get("/api/v2/parcels/temporal")
+async def temporal_parcels(bbox: Optional[str] = None, target_epoch: Optional[str] = None):
+    """Time-travel cadastral parcels: bbox + epoch filter (SCD Type 2)."""
+    from sqlalchemy import text
+
+    epoch = _parse_epoch(target_epoch)
+    clauses = ["valid_from <= COALESCE(:epoch, NOW())",
+               "(valid_to IS NULL OR valid_to > COALESCE(:epoch, NOW()))"]
+    params: dict = {"epoch": epoch}
+    if bbox:
+        try:
+            minlon, minlat, maxlon, maxlat = (float(v) for v in bbox.split(","))
+        except (TypeError, ValueError):
+            raise HTTPException(status_code=422, detail="bbox must be minlon,minlat,maxlon,maxlat numbers")
+        clauses.append("footprint && ST_MakeEnvelope(:minlon, :minlat, :maxlon, :maxlat, 4326)")
+        params.update({"minlon": minlon, "minlat": minlat, "maxlon": maxlon, "maxlat": maxlat})
+    async with async_session() as session:
+        import json as _json
+
+        rows = (await session.execute(text(
+            "SELECT parcel_id, height_m, status, valid_from, valid_to, "
+            "parent_building_id, ST_AsGeoJSON(footprint) AS geom "
+            f"FROM cadastral_parcels WHERE {' AND '.join(clauses)} ORDER BY parcel_id"
+        ), params)).all()
+        return {
+            "type": "FeatureCollection",
+            "epoch": epoch.isoformat() if epoch else None,
+            "count": len(rows),
+            "features": [
+                {
+                    "type": "Feature",
+                    "properties": {
+                        "parcel_id": r[0],
+                        "height_m": r[1],
+                        "status": r[2],
+                        "valid_from": r[3].isoformat() if r[3] else None,
+                        "valid_to": r[4].isoformat() if r[4] else None,
+                        "parent_building_id": r[5],
+                    },
+                    "geometry": _json.loads(r[6]) if r[6] else None,
+                }
+                for r in rows
+            ],
+        }
+
+
+# ============================================================================
 # GEOMETRY VERSIONING & AUDIT TRAIL ENDPOINTS
 # ============================================================================
 
