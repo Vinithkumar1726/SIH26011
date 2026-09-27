@@ -1,8 +1,9 @@
-import { Bell, Settings, ChevronDown, Menu } from 'lucide-react';
+import { Bell, Settings, ChevronDown, Menu, LogOut, User } from 'lucide-react';
 import type { Screen } from '../types';
-import { useState } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import MobileNavDrawer from './MobileNavDrawer';
 import { StatusDot } from '../design/primitives';
+import { useAuth } from '../auth';
 import {
   BORDER, BORDER_THIN, DOMAIN, FONT, INK, MUTED, PAPER, SHADOW_SM, SURFACE,
 } from '../design/tokens';
@@ -12,6 +13,7 @@ const BREADCRUMBS: Record<Screen, string> = {
   import: 'WORKSPACE / IMPORT DATA',
   explorer: 'WORKSPACE / 3D EXPLORER',
   records: 'RECORDS / PROPERTY RECORD',
+  'property-detail': 'RECORDS / PROPERTY DETAIL',
   validation: 'ANALYSIS / VALIDATION',
   identifiers: 'ANALYSIS / SPATIAL IDENTIFIERS',
   'ai-review': 'ANALYSIS / AI REVIEW',
@@ -27,6 +29,21 @@ interface Props {
 
 export default function Topbar({ screen, onNav, apiOnline }: Props) {
   const [mobileNavOpen, setMobileNavOpen] = useState(false);
+  const [userMenuOpen, setUserMenuOpen] = useState(false);
+  const { user, logout } = useAuth();
+  const userMenuRef = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    function handleClickOutside(e: MouseEvent) {
+      if (userMenuRef.current && !userMenuRef.current.contains(e.target as Node)) {
+        setUserMenuOpen(false);
+      }
+    }
+    if (userMenuOpen) {
+      document.addEventListener('mousedown', handleClickOutside);
+    }
+    return () => document.removeEventListener('mousedown', handleClickOutside);
+  }, [userMenuOpen]);
 
   return (
     <header
@@ -100,19 +117,58 @@ export default function Topbar({ screen, onNav, apiOnline }: Props) {
           </span>
         </div>
 
-        <button
-          className="hidden sm:flex items-center gap-1.5 px-2 py-1 min-w-0"
-          title="VINITH K"
-          style={{
-            background: 'transparent', border: '2px solid transparent',
-            color: PAPER, cursor: 'pointer', maxWidth: 140,
-          }}
-        >
-          <span className="truncate" style={{ fontSize: 11, fontWeight: 700, fontFamily: FONT.body }}>
-            VINITH K
-          </span>
-          <ChevronDown size={10} className="shrink-0" style={{ color: MUTED }} />
-        </button>
+        <div className="relative" ref={userMenuRef}>
+          <button
+            onClick={() => setUserMenuOpen(!userMenuOpen)}
+            className="hidden sm:flex items-center gap-1.5 px-2 py-1 min-w-0"
+            title={user?.username || 'User'}
+            style={{
+              background: 'transparent', border: '2px solid transparent',
+              color: PAPER, cursor: 'pointer', maxWidth: 180,
+            }}
+          >
+            <User size={12} className="shrink-0" style={{ color: MUTED }} />
+            <span className="truncate" style={{ fontSize: 11, fontWeight: 700, fontFamily: FONT.body }}>
+              {user?.username || 'VINITH K'}
+            </span>
+            <ChevronDown size={10} className="shrink-0" style={{ color: MUTED }} />
+          </button>
+
+          {userMenuOpen && (
+            <motion.div
+              initial={{ opacity: 0, y: -10 }}
+              animate={{ opacity: 1, y: 0 }}
+              exit={{ opacity: 0, y: -10 }}
+              transition={{ duration: 0.15 }}
+              className="absolute right-0 top-full mt-2 min-w-[180px] z-50"
+            >
+              <div style={{ background: SURFACE.panel, border: BORDER, boxShadow: SHADOW_SM, borderRadius: 4, overflow: 'hidden' }}>
+                <div style={{ padding: '8px 12px', borderBottom: BORDER_THIN }}>
+                  <div style={{ fontSize: 11, fontWeight: 700, fontFamily: FONT.body, color: PAPER }}>
+                    {user?.username || 'VINITH K'}
+                  </div>
+                  <div style={{ fontSize: 9, fontFamily: FONT.mono, color: MUTED, textTransform: 'uppercase', letterSpacing: '0.1em' }}>
+                    {user?.role || 'SURVEYOR'}
+                  </div>
+                </div>
+                <button
+                  onClick={() => { logout(); setUserMenuOpen(false); }}
+                  style={{
+                    width: '100%', display: 'flex', alignItems: 'center', gap: 8,
+                    padding: '10px 12px', background: 'transparent', border: 'none',
+                    color: PAPER, cursor: 'pointer', fontSize: 11, fontFamily: FONT.body,
+                    textAlign: 'left',
+                  }}
+                  onMouseEnter={(e) => e.currentTarget.style.background = SURFACE.raised}
+                  onMouseLeave={(e) => e.currentTarget.style.background = 'transparent'}
+                >
+                  <LogOut size={12} />
+                  Logout
+                </button>
+              </div>
+            </motion.div>
+          )}
+        </div>
 
         <button
           onClick={() => onNav('settings')}
