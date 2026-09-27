@@ -1,4 +1,5 @@
 import { Bell, Settings, ChevronDown, Menu, LogOut, User } from 'lucide-react';
+import { motion } from 'framer-motion';
 import type { Screen } from '../types';
 import { useState, useEffect, useRef } from 'react';
 import MobileNavDrawer from './MobileNavDrawer';
