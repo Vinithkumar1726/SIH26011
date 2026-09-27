@@ -1,6 +1,6 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { Copy } from 'lucide-react';
-import { Badge, Button, Panel } from '../design/primitives';
+import { Badge, Button, Panel, Loading, Skeleton } from '../design/primitives';
 import { INK, DOMAIN, FONT, MUTED, PAPER, SURFACE } from '../design/tokens';
 
 const VERSIONS = [
@@ -21,13 +21,45 @@ const VERSIONS = [
 export default function PropertyRecords() {
   const [tab, setTab] = useState<'record' | 'history'>('record');
   const [copied, setCopied] = useState(false);
+  const [loading, setLoading] = useState(true);
 
   const spatialId = '29384756102934-B01-F01-U01-V01';
+
+  // Simulate loading
+  useEffect(() => {
+    const timer = setTimeout(() => setLoading(false), 800);
+    return () => clearTimeout(timer);
+  }, []);
 
   function copy() {
     navigator.clipboard.writeText(spatialId);
     setCopied(true);
     setTimeout(() => setCopied(false), 1500);
+  }
+
+  if (loading) {
+    return (
+      <div className="flex flex-col h-full overflow-hidden" style={{ background: SURFACE.app }}>
+        <div className="px-6 py-4 shrink-0" style={{ borderBottom: `3px solid ${INK}`, background: SURFACE.panel }}>
+          <div className="flex items-start justify-between">
+            <div>
+              <div style={{ fontFamily: FONT.mono, fontSize: 9, fontWeight: 700, letterSpacing: '0.18em', color: DOMAIN.record, marginBottom: 2 }}>
+                PARCEL / B01 / F01 / U01
+              </div>
+              <h1 style={{ fontFamily: FONT.display, fontWeight: 700, fontSize: 18, color: PAPER, letterSpacing: '0.01em' }}>
+                PROPERTY RECORD
+              </h1>
+            </div>
+          </div>
+        </div>
+        <div className="flex-1 overflow-y-auto p-5">
+          <Skeleton variant="card" />
+          <Skeleton variant="card" />
+          <Skeleton variant="card" />
+          <Skeleton variant="card" />
+        </div>
+      </div>
+    );
   }
 
   return (

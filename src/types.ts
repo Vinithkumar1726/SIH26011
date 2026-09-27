@@ -3,6 +3,7 @@ export type Screen =
   | 'import'
   | 'explorer'
   | 'records'
+  | 'property-detail'
   | 'validation'
   | 'identifiers'
   | 'ai-review'

@@ -16,8 +16,9 @@ sys.path.insert(0, str(Path(__file__).parent.parent))
 from fastapi import HTTPException
 from sqlalchemy import text
 
-import app
-from app import UnitGeometryUpdateRequest, async_session
+from backend.routes.units import update_unit_geometry
+from backend.schemas.unit_schemas import UnitGeometryUpdateRequest
+from backend.database import async_session
 
 UNIT = "U0001"
 DONOR = "U0002"
@@ -59,7 +60,7 @@ async def test_put_geometry_gate_conflict_and_clean():
     try:
         # 1. Genuine new conflict: U0001 takes U0002's exact footprint+z.
         with pytest.raises(HTTPException) as exc:
-            await app.update_unit_geometry(
+            await update_unit_geometry(
                 UNIT,
                 UnitGeometryUpdateRequest(
                     footprint=donor_fp,
@@ -81,7 +82,7 @@ async def test_put_geometry_gate_conflict_and_clean():
         # 2. Conflict-free change: nudge z_max slightly; footprints differ
         # so no new overlap with any neighbour is created.
         clean_zmax = float(unit_before[1]) + 0.1
-        resp = await app.update_unit_geometry(
+        resp = await update_unit_geometry(
             UNIT,
             UnitGeometryUpdateRequest(
                 z_max_m=clean_zmax, user_role="surveyor", reason="gate-test clean"

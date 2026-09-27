@@ -1,7 +1,7 @@
 import { useState, useEffect } from 'react';
 import { ChevronRight, ChevronDown, MapPin, Building2, Layers, Box, Search } from 'lucide-react';
 import { api } from '../api';
-import { useAuth } from '../App';
+import { useAuth } from '../auth';
 import { Badge, Button, Empty } from '../design/primitives';
 import { DOMAIN, FONT, INK, MUTED, PAPER, SURFACE, type DomainKey } from '../design/tokens';
 
@@ -103,7 +103,7 @@ export default function CadastralHierarchy({ className = 'hidden md:flex w-72' }
       </div>
 
       {/* Filter tabs */}
-      <div className="px-4 py-2 flex gap-1 overflow-x-auto" style={{ borderBottom: `2px solid ${INK}` }}>
+      <div className="px-4 py-2 flex gap-1 overflow-x-auto whitespace-nowrap" style={{ borderBottom: `2px solid ${INK}` }}>
         {[
           { id: 'all', label: 'ALL', domain: 'info' as DomainKey },
           { id: 'parcel', label: 'PARCELS', icon: MapPin, domain: 'spatial' as DomainKey },
@@ -116,7 +116,7 @@ export default function CadastralHierarchy({ className = 'hidden md:flex w-72' }
             domain={f.domain}
             active={filter === f.id}
             onClick={() => setFilter(f.id as any)}
-            style={{ fontSize: 8, padding: '4px 8px', display: 'inline-flex', alignItems: 'center', gap: 4 }}
+            style={{ fontSize: 8, padding: '4px 6px', display: 'inline-flex', alignItems: 'center', gap: 4, whiteSpace: 'nowrap', flexShrink: 0 }}
           >
             {f.icon && <f.icon size={10} />}
             {f.label}

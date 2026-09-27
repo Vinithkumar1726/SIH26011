@@ -39,7 +39,7 @@ export function useExplorerData(): ExplorerData & { refetch: () => void } {
 
       // Fetch spatial identifiers
       const sidResult = await api.getSpatialIdentifiers();
-      const spatialIDsData = sidResult.success ? sidResult.data : [];
+      const spatialIDsData: any[] = (sidResult.success && sidResult.data) ? sidResult.data : [];
 
       // Transform parcel
       if (geomData.parcels.length > 0) {

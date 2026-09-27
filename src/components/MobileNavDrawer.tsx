@@ -7,7 +7,7 @@ import {
   BORDER_THIN, DOMAIN, FONT, INK, MUTED, PAPER, SCRIM, SHADOW_SM, SURFACE, onDomain, type DomainKey,
 } from '../design/tokens';
 
-const SECTIONS: { title: string; accent: DomainKey; items: { id: string; label: string; icon: React.ReactNode }[] }[] = [
+const SECTIONS: { title: string; accent: DomainKey; items: { id: Screen; label: string; icon: React.ReactNode }[] }[] = [
   {
     title: 'WORKSPACE',
     accent: 'spatial',
@@ -40,8 +40,8 @@ const SECTIONS: { title: string; accent: DomainKey; items: { id: string; label: 
 interface Props {
   isOpen: boolean;
   onClose: () => void;
-  active: string;
-  onNav: (s: string) => void;
+  active: Screen;
+  onNav: (s: Screen) => void;
 }
 
 export default function MobileNavDrawer({ isOpen, onClose, active, onNav }: Props) {

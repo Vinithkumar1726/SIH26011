@@ -17,8 +17,10 @@ sys.path.insert(0, str(Path(__file__).parent.parent))
 from fastapi import HTTPException
 from sqlalchemy import text
 
-import app
-from app import AIProposal, async_session
+from backend.routes.ai_routes import _validate_proposal_wkt, review_ai_proposal
+from backend.models import AIProposal
+from backend.database import async_session
+from backend.database import engine as db_engine
 
 # Concave arrowhead: 2D-valid, simple, 331 m². Approves fine.
 SLIVER_WKT = (
@@ -35,8 +37,6 @@ BOWTIE_WKT = (
 
 
 def test_staging_validator_accepts_sliver_rejects_bowtie():
-    from app import _validate_proposal_wkt
-
     _validate_proposal_wkt(SLIVER_WKT)  # must not raise
     with pytest.raises(HTTPException) as exc:
         _validate_proposal_wkt(BOWTIE_WKT)
@@ -68,15 +68,17 @@ async def _cleanup(proposal_id, ulpin):
         await session.execute(
             text("DELETE FROM ai_proposal WHERE id = :i"), {"i": proposal_id})
         await session.commit()
-    await app.engine.dispose()
+    await db_engine.dispose()
 
+
+from backend.schemas.ai_schemas import ReviewRequest
 
 @pytest.mark.asyncio
 async def test_approval_rejects_self_intersecting_footprint():
     proposal_id, ulpin = await _stage(BOWTIE_WKT)
     try:
         with pytest.raises(HTTPException) as exc:
-            await app.review_ai_proposal(proposal_id, {"decision": "APPROVED"})
+            await review_ai_proposal(proposal_id, ReviewRequest(decision="APPROVED"), async_session())
         assert exc.value.status_code == 422
         assert "invalid" in exc.value.detail
         async with async_session() as session:
@@ -100,17 +102,22 @@ CLEAN_WKT = (
 
 @pytest.mark.asyncio
 async def test_approval_persists_valid_rect_with_analytic_volume():
-    """A clean rectangle approves with volume == area x height exactly."""
-    proposal_id, ulpin = await _stage(CLEAN_WKT, height=10.0)
+    proposal_id, ulpin = await _stage(CLEAN_WKT, height=15.0)
     try:
-        out = await app.review_ai_proposal(proposal_id, {"decision": "APPROVED"})
+        out = await review_ai_proposal(proposal_id, ReviewRequest(decision="APPROVED"), async_session())
         assert out["status"] == "APPROVED"
+        assert out["encroachment"] is False
         async with async_session() as session:
-            det = (await session.execute(
-                text("SELECT ST_Area(footprint::geography) AS a, height_m FROM cadastral_parcels WHERE parcel_id = :u"),
+            row = (await session.execute(
+                text("SELECT parcel_id, height_m, ST_Volume(solid_geom) "
+                     "FROM cadastral_parcels WHERE parcel_id = :u"),
                 {"u": ulpin},
-            )).mappings().first()
-            assert det is not None
-            assert abs(det["a"] * float(det["height_m"]) - det["a"] * 10.0) < 1e-6
+            )).fetchone()
+            assert row is not None
+            parcel_id, height_m, volume = row
+            assert parcel_id == ulpin
+            assert abs(float(height_m) - 15.0) < 1e-6
+            expected_vol = 15.0 * 156.25
+            assert abs(float(volume) - expected_vol) < 0.01
     finally:
         await _cleanup(proposal_id, ulpin)

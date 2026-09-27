@@ -1,7 +1,7 @@
 import { useCallback, useEffect, useState } from 'react';
 import { ArrowRight } from 'lucide-react';
 import { api } from '../api';
-import { Badge, Button, Card, Empty, Input, Panel } from '../design/primitives';
+import { Badge, Button, Card, Empty, Input, Panel, Skeleton } from '../design/primitives';
 import { INK, DOMAIN, FONT, MUTED, PAPER, SURFACE, type DomainKey } from '../design/tokens';
 
 const PROPOSALS = [
@@ -147,7 +147,7 @@ export default function AIReview() {
           {liveLoading && (
             <div className="flex flex-col gap-3">
               {[0, 1].map((i) => (
-                <div key={i} style={{ height: 120, background: SURFACE.raised, border: `2px dashed ${INK}` }} />
+                <Skeleton key={i} variant="card" />
               ))}
             </div>
           )}

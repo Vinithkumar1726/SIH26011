@@ -16,7 +16,7 @@ sys.path.insert(0, str(Path(__file__).parent.parent))
 
 from sqlalchemy import create_engine, text
 
-from app import OVERLAP_PAIRS_SQL
+from backend.services.geometry_service import OVERLAP_PAIRS_SQL
 
 ENG = create_engine('postgresql://postgres:postgres@localhost:5432/sih26011')
 

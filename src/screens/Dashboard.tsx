@@ -4,11 +4,11 @@ import { Upload, Box, MapPin, Building2, Layers, ShieldCheck, Activity } from 'l
 import type { Screen } from '../types';
 import { api, type DashboardStats } from '../api';
 import DashboardCityPreview from '../components/DashboardCityPreview';
-import { Badge, Button, Metric, Panel, StatusDot } from '../design/primitives';
+import { Badge, Button, Metric, Panel, StatusDot, Loading, Skeleton } from '../design/primitives';
 import { INK, DOMAIN, FONT, MUTED, PAPER, SURFACE, type DomainKey } from '../design/tokens';
 
 interface Props {
-  onNav: (s: Screen) => void;
+  onNav?: (s: Screen) => void;
 }
 
 const KPI_CARDS: { label: string; value: string; sub: string; icon: React.ReactNode; domain: DomainKey; trend: string }[] = [
@@ -56,6 +56,36 @@ export default function Dashboard({ onNav }: Props) {
     { label: 'ST_3DIntersects AUDIT', value: stats.total_units ? `${Math.round((stats.validated_units / stats.total_units) * 100)}%` : '—', sub: 'PASS RATE', icon: <ShieldCheck size={14} />, domain: 'ok' as DomainKey, trend: `${stats.conflicts} conflicts` },
   ] : KPI_CARDS;
 
+  // Skeleton loading state
+  if (!stats) {
+    return (
+      <div className="flex flex-col h-full min-w-0 overflow-hidden" style={{ background: SURFACE.app }}>
+        <div className="flex items-start justify-between gap-3 px-6 py-5 shrink-0" style={{ borderBottom: `3px solid ${INK}`, background: SURFACE.panel }}>
+          <div className="min-w-0">
+            <div style={{ fontFamily: FONT.mono, fontSize: 9, fontWeight: 700, letterSpacing: '0.18em', color: DOMAIN.record, marginBottom: 2 }}>
+              COMMAND OVERVIEW
+            </div>
+            <h1 style={{ fontFamily: FONT.display, fontWeight: 700, fontSize: 20, color: PAPER, letterSpacing: '0.01em' }}>
+              CADASTRAL OVERVIEW
+            </h1>
+          </div>
+        </div>
+        <div className="flex-1 min-h-0 min-w-0 overflow-y-auto p-5 md:p-6 flex flex-col gap-6">
+          <Loading variant="stat-card" />
+          <Loading variant="stat-card" />
+          <Loading variant="stat-card" />
+          <Loading variant="stat-card" />
+          <Skeleton variant="card" />
+          <div className="grid gap-6 grid-cols-1 md:grid-cols-2 xl:grid-cols-3">
+            {[1, 2, 3, 4].map((i) => (
+              <Skeleton key={i} variant="card" />
+            ))}
+          </div>
+        </div>
+      </div>
+    );
+  }
+
   return (
     <div className="flex flex-col h-full min-w-0 overflow-hidden" style={{ background: SURFACE.app }}>
       {/* Header */}
@@ -72,10 +102,10 @@ export default function Dashboard({ onNav }: Props) {
           </p>
         </div>
         <div className="flex gap-2 shrink-0">
-          <Button domain="info" onClick={() => onNav('import')}>
+          <Button domain="info" onClick={() => onNav?.('import')}>
             IMPORT DATA
           </Button>
-          <Button domain="record" onClick={() => onNav('explorer')}>
+          <Button domain="record" onClick={() => onNav?.('explorer')}>
             OPEN 3D EXPLORER
           </Button>
         </div>
@@ -111,7 +141,7 @@ export default function Dashboard({ onNav }: Props) {
         <div className="flex flex-col xl:flex-row gap-6 min-w-0">
           {/* 3D city preview */}
           <div className="min-w-0 flex-1">
-            <DashboardCityPreview onLaunch={() => onNav('explorer')} />
+            <DashboardCityPreview onLaunch={() => onNav?.('explorer')} />
           </div>
 
           {/* Right panel */}
@@ -217,7 +247,7 @@ export default function Dashboard({ onNav }: Props) {
           ].map((action, index) => (
             <motion.button
               key={action.title}
-              onClick={() => onNav(action.screen)}
+              onClick={() => onNav?.(action.screen)}
               initial={{ opacity: 0, y: 12 }}
               animate={{ opacity: 1, y: 0 }}
               transition={{ duration: 0.15, delay: index * 0.04 }}

@@ -1,16 +1,14 @@
 import { useState, useEffect } from 'react';
+import { useParams, useNavigate } from 'react-router-dom';
 import { Copy, AlertTriangle, ChevronLeft, MapPin, Building2, Layers, Hash, Clock, User, Shield } from 'lucide-react';
 import { api } from '../api';
-import { useAuth } from '../App';
-import { Badge, Button, Card, Loading, Metric, Panel } from '../design/primitives';
+import { useAuth } from '../auth';
+import { Badge, Button, Card, Loading, Metric, Panel, Skeleton } from '../design/primitives';
 import { INK, DOMAIN, FONT, MUTED, PAPER, SURFACE } from '../design/tokens';
 
-interface Props {
-  unitId: string;
-  onBack: () => void;
-}
-
-export default function PropertyDetail({ unitId, onBack }: Props) {
+export default function PropertyDetail() {
+  const { unitId } = useParams<{ unitId: string }>();
+  const navigate = useNavigate();
   const { user } = useAuth();
   const [unit, setUnit] = useState<any>(null);
   const [loading, setLoading] = useState(true);
@@ -19,6 +17,11 @@ export default function PropertyDetail({ unitId, onBack }: Props) {
   const [copied, setCopied] = useState<string | null>(null);
 
   useEffect(() => {
+    if (!unitId) {
+      setError('Property unit ID is required');
+      setLoading(false);
+      return;
+    }
     let active = true;
     setLoading(true);
     api.getUnit(unitId).then((result) => {
@@ -40,8 +43,10 @@ export default function PropertyDetail({ unitId, onBack }: Props) {
   if (loading) {
     return (
       <div className="flex flex-col h-full" style={{ background: SURFACE.app }}>
-        <div className="flex items-center justify-center h-full">
-          <Loading label="Loading property record..." />
+        <div className="p-6">
+          <Skeleton variant="card" />
+          <Skeleton variant="card" />
+          <Skeleton variant="card" />
         </div>
       </div>
     );
@@ -55,7 +60,7 @@ export default function PropertyDetail({ unitId, onBack }: Props) {
             <AlertTriangle size={48} color={DOMAIN.conflict} className="mb-4" />
             <h2 className="text-lg font-semibold mb-2" style={{ color: PAPER }}>Failed to Load</h2>
             <p className="mb-4" style={{ color: MUTED }}>{error || 'Property unit not found'}</p>
-            <Button domain="info" onClick={onBack}>← Back to Records</Button>
+            <Button domain="info" onClick={() => navigate('/records')}>← Back to Records</Button>
           </div>
         </div>
       </div>
@@ -73,7 +78,7 @@ export default function PropertyDetail({ unitId, onBack }: Props) {
       <div className="px-6 py-4 shrink-0" style={{ borderBottom: `3px solid ${INK}`, background: SURFACE.panel }}>
         <div className="flex items-start justify-between">
           <div className="flex items-center gap-3">
-            <Button domain="info" style={{ padding: '6px 10px' }} onClick={onBack} aria-label="Back to records">
+            <Button domain="info" style={{ padding: '6px 10px' }} onClick={() => navigate('/records')} aria-label="Back to records">
               <ChevronLeft size={18} />
             </Button>
             <div>
@@ -316,7 +321,7 @@ function ValidationTab({ unit }: any) {
               { label: 'CRITICAL', value: result.failed_checks || '0', domain: 'conflict' as const },
               { label: 'ERRORS', value: '0', domain: 'conflict' as const },
               { label: 'WARNINGS', value: result.issues?.filter((i: any) => i.severity === 'MEDIUM').length || '0', domain: 'warn' as const },
-              { label: 'CHECKS PASSED', value: result.passed_checks || '0', domain: 'ok' as const },
+              { label: 'PASSED', value: result.passed_checks || '0', domain: 'ok' as const },
             ].map((m) => (
               <Metric key={m.label} label={m.label} value={String(m.value)} domain={m.domain} />
             ))}

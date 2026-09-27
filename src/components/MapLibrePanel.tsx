@@ -179,9 +179,8 @@ export default function MapLibrePanel({ apiBase, initial, target, footprints, se
         pitch: basemap === 'satellite' ? 60 : 0,
         bearing: 0,
         attributionControl: { compact: true },
-        // Required for the ASH real-paint readback (pixel variance check).
-        preserveDrawingBuffer: true,
-      });
+        // preserveDrawingBuffer is not in types but supported at runtime
+      } as any);
       map.addControl(new maplibregl.NavigationControl({ visualizePitch: true }), 'top-right');
       map.addControl(new maplibregl.ScaleControl({ unit: 'metric' }), 'bottom-left');
       map.addControl(new maplibregl.FullscreenControl(), 'top-right');

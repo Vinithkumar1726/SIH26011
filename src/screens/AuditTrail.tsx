@@ -1,6 +1,6 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { Search } from 'lucide-react';
-import { Badge, Input, Panel, Table, TD, TH } from '../design/primitives';
+import { Badge, Input, Panel, Table, TD, TH, Skeleton } from '../design/primitives';
 import { INK, DOMAIN, FONT, PAPER, SURFACE, MUTED } from '../design/tokens';
 
 const EVENTS = [
@@ -18,6 +18,7 @@ const EVENTS = [
 
 export default function AuditTrail() {
   const [query, setQuery] = useState('');
+  const [loading, setLoading] = useState(true);
 
   const filtered = EVENTS.filter(
     (e) =>
@@ -26,6 +27,31 @@ export default function AuditTrail() {
       e.obj.includes(query.toUpperCase()) ||
       e.actor.includes(query.toUpperCase())
   );
+
+  useEffect(() => {
+    const timer = setTimeout(() => setLoading(false), 500);
+    return () => clearTimeout(timer);
+  }, []);
+
+  if (loading) {
+    return (
+      <div className="flex flex-col h-full overflow-hidden" style={{ background: SURFACE.app }}>
+        <div className="px-6 py-4 shrink-0" style={{ borderBottom: `3px solid ${INK}`, background: SURFACE.panel }}>
+          <div style={{ fontFamily: FONT.mono, fontSize: 9, fontWeight: 700, letterSpacing: '0.18em', color: DOMAIN.temporal }}>
+            System · Immutable Log
+          </div>
+          <h1 style={{ fontFamily: FONT.display, fontWeight: 700, fontSize: 18, color: PAPER, letterSpacing: '0.01em' }}>
+            AUDIT TRAIL
+          </h1>
+        </div>
+        <div className="flex-1 overflow-y-auto p-4">
+          <Skeleton variant="card" />
+          <Skeleton variant="card" />
+          <Skeleton variant="card" />
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="flex flex-col h-full overflow-hidden" style={{ background: SURFACE.app }}>

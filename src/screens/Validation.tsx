@@ -1,7 +1,7 @@
 import { useState } from 'react';
 import { motion } from 'framer-motion';
 import { ShieldCheck, CheckCircle, AlertTriangle, RotateCcw } from 'lucide-react';
-import { Badge, Button, Loading, Metric, Panel, StatusDot, Table, TD, TH } from '../design/primitives';
+import { Badge, Button, Loading, Metric, Panel, StatusDot, Table, TD, TH, Skeleton } from '../design/primitives';
 import { INK, DOMAIN, FONT, MUTED, PAPER, SURFACE } from '../design/tokens';
 
 const ISSUES = [
@@ -59,7 +59,9 @@ export default function Validation() {
           {running && (
             <Panel eyebrow="VALIDATION IN PROGRESS" title={`${progress}%`} accent="warn"
               right={<StatusDot domain="warn" size={10} />}>
-              <Loading label="" pct={progress} />
+              <Skeleton variant="stat-card" />
+              <Skeleton variant="stat-card" />
+              <Skeleton variant="stat-card" />
               <div style={{ fontFamily: FONT.mono, fontSize: 10, color: MUTED, letterSpacing: '0.04em', marginTop: 8 }}>
                 {progress < 30 ? 'CHECKING GEOMETRY...' :
                  progress < 50 ? 'CHECKING FLOOR LEVELS...' :
@@ -81,7 +83,7 @@ export default function Validation() {
                   { label: 'CRITICAL', value: '0', domain: 'ok' as const, icon: <CheckCircle size={16} color={DOMAIN.ok} /> },
                   { label: 'ERRORS', value: '0', domain: 'ok' as const, icon: <CheckCircle size={16} color={DOMAIN.ok} /> },
                   { label: 'WARNINGS', value: '2', domain: 'warn' as const, icon: <AlertTriangle size={16} color={DOMAIN.warn} /> },
-                  { label: 'CHECKS PASSED', value: '18', domain: 'ok' as const, icon: <CheckCircle size={16} color={DOMAIN.ok} /> },
+                  { label: 'PASSED', value: '18', domain: 'ok' as const, icon: <CheckCircle size={16} color={DOMAIN.ok} /> },
                 ].map((m, index) => (
                   <motion.div
                     key={m.label}

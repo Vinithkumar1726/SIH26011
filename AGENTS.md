@@ -21,6 +21,10 @@ This is the canonical project structure. Start with task-relevant files below. O
 - `vite.config.ts` - Vite configuration with React, Tailwind CSS v4, and Figma Make plugins plus the `@` alias for `src`
 - `.mise.toml` - Toolchain versions for Node.js and pnpm
 
+## Package Manager & Runtime
+- **DO NOT USE `bun`**. Never execute `bun`, `bunx`, or rely on bun runtime/package manager commands.
+- Use `npm` or `node` for running scripts and managing dependencies.
+
 ## Dependencies
 
 - Runtime: React 19 and React DOM 19

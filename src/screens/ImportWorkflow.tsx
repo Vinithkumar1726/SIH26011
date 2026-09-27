@@ -5,7 +5,7 @@ import {
   AlertCircle, Sparkles, ShieldCheck, ArrowRight
 } from 'lucide-react';
 import { api, type ImportAnalyzeResponse } from '../api';
-import { Badge, Button, Card, Metric, Panel, StatusDot, Table, TD, TH } from '../design/primitives';
+import { Badge, Button, Card, Metric, Panel, StatusDot, Table, TD, TH, Loading, Skeleton } from '../design/primitives';
 import { INK, DOMAIN, FONT, MUTED, PAPER, SURFACE, type DomainKey } from '../design/tokens';
 
 type Step = 1 | 2 | 3 | 4 | 5 | 6 | 7;
@@ -83,7 +83,7 @@ const GENERATED_UNITS = [
   { id: 'U04', zMin: '3.20', zMax: '6.40', area: '76.30', vol: '244.16', spatialId: '29384756102934-B01-F02-U04-V01' },
 ];
 
-export default function ImportWorkflow({ onExplore }: { onExplore: () => void }) {
+export default function ImportWorkflow({ onExplore = () => {} }: { onExplore?: () => void }) {
   const [step, setStep] = useState<Step>(1);
   const [uploaded, setUploaded] = useState<Record<string, boolean>>({});
   const [files, setFiles] = useState<Record<string, File>>({});
@@ -317,11 +317,11 @@ export default function ImportWorkflow({ onExplore }: { onExplore: () => void })
             </p>
 
             {analyzing && (
-              <div className="flex items-center gap-3 mb-5" style={{ color: DOMAIN.warn }}>
-                <StatusDot domain="warn" size={10} />
-                <span className="font-mono" style={{ fontSize: 11, letterSpacing: '0.06em' }}>
-                  ANALYZING DATASETS...
-                </span>
+              <div className="flex flex-col gap-4 mb-5">
+                <Skeleton variant="stat-card" />
+                <Skeleton variant="stat-card" />
+                <Skeleton variant="stat-card" />
+                <Skeleton variant="stat-card" />
               </div>
             )}
 
@@ -383,7 +383,7 @@ export default function ImportWorkflow({ onExplore }: { onExplore: () => void })
             <Panel>
               <div style={{ overflowX: 'auto' }}>
                 <div style={{ minWidth: 340 }}>
-                  <div className="grid px-4 py-2" style={{ gridTemplateColumns: '1fr 40px 1fr 32px', borderBottom: `2px solid ${INK}` }}>
+                  <div className="grid px-4 py-2" style={{ gridTemplateColumns: '1fr 40px 1fr 44px', borderBottom: `2px solid ${INK}` }}>
                     <span style={{ fontSize: 9, color: MUTED, letterSpacing: '0.1em', fontWeight: 700 }}>SOURCE FIELD</span>
                     <span />
                     <span style={{ fontSize: 9, color: MUTED, letterSpacing: '0.1em', fontWeight: 700 }}>TARGET FIELD</span>
@@ -393,7 +393,7 @@ export default function ImportWorkflow({ onExplore }: { onExplore: () => void })
                     <div
                       key={i}
                       className="grid items-center px-4 py-2.5"
-                      style={{ gridTemplateColumns: '1fr 40px 1fr 32px', borderBottom: i < MAPPINGS.length - 1 ? `1px solid ${INK}` : undefined }}
+                      style={{ gridTemplateColumns: '1fr 40px 1fr 44px', borderBottom: i < MAPPINGS.length - 1 ? `1px solid ${INK}` : undefined }}
                     >
                       <span className="font-mono" style={{ fontSize: 11, color: MUTED }}>{m.src}</span>
                       <ArrowRight size={12} color={m.ok ? DOMAIN.spatial : MUTED} />
@@ -512,18 +512,9 @@ export default function ImportWorkflow({ onExplore }: { onExplore: () => void })
 
             {validating && (
               <Panel accent="warn">
-                {VALIDATION_CHECKS.slice(0, 2).map((c, i) => (
-                  <div key={i} className="flex items-center gap-3 mb-3">
-                    <CheckCircle size={12} color={DOMAIN.ok} />
-                    <span className="font-mono" style={{ fontSize: 10, color: PAPER, letterSpacing: '0.06em' }}>{c.label}</span>
-                  </div>
-                ))}
-                <div className="flex items-center gap-3">
-                  <StatusDot domain="warn" size={10} />
-                  <span className="font-mono" style={{ fontSize: 10, color: DOMAIN.warn, letterSpacing: '0.06em' }}>
-                    CHECKING 3D OVERLAPS...
-                  </span>
-                </div>
+                <Skeleton variant="stat-card" />
+                <Skeleton variant="stat-card" />
+                <Skeleton variant="stat-card" />
               </Panel>
             )}
 
@@ -544,7 +535,7 @@ export default function ImportWorkflow({ onExplore }: { onExplore: () => void })
                     { label: 'CRITICAL', value: '0', domain: 'ok' as DomainKey },
                     { label: 'ERRORS', value: '0', domain: 'ok' as DomainKey },
                     { label: 'WARNINGS', value: '2', domain: 'warn' as DomainKey },
-                    { label: 'CHECKS PASSED', value: '18', domain: 'ok' as DomainKey },
+                    { label: 'PASSED', value: '18', domain: 'ok' as DomainKey },
                   ].map((m) => (
                     <Metric key={m.label} label={m.label} value={m.value} domain={m.domain} />
                   ))}
@@ -615,16 +606,9 @@ export default function ImportWorkflow({ onExplore }: { onExplore: () => void })
 
             {generating && (
               <div style={{ marginBottom: 16 }}>
-                <div className="flex items-center gap-3 mb-2">
-                  <StatusDot domain="warn" size={10} />
-                  <span className="font-mono" style={{ fontSize: 11, color: DOMAIN.warn, letterSpacing: '0.06em' }}>
-                    GENERATING POLYHEDRAL SURFACES
-                  </span>
-                </div>
-                <div style={{ height: 12, border: `2px solid ${INK}`, background: SURFACE.input }}>
-                  <div style={{ height: '100%', width: '72%', background: DOMAIN.temporal }} />
-                </div>
-                <div className="font-mono" style={{ fontSize: 9, color: MUTED, marginTop: 4 }}>72%</div>
+                <Skeleton variant="stat-card" />
+                <Skeleton variant="stat-card" />
+                <Skeleton variant="stat-card" />
               </div>
             )}
 

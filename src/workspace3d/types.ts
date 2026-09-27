@@ -54,7 +54,7 @@ export interface ValuationDetails {
 export interface Floor {
   id: string;
   building_id: string;
-  code: FloorCode;
+  code: string;
   label: string;
   z_min: number;
   z_max: number;
@@ -74,6 +74,8 @@ export interface Unit {
   footprint: number[][]; // [[lon,lat], ...]
   hash: string;
   version: number;
+  z_min?: number;
+  z_max?: number;
 }
 
 export interface SpatialID {

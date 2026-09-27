@@ -1,5 +1,5 @@
-import { useState } from 'react';
-import { Badge, Input, Panel } from '../design/primitives';
+import { useState, useEffect } from 'react';
+import { Badge, Input, Panel, Skeleton } from '../design/primitives';
 import { INK, DOMAIN, FONT, MUTED, PAPER, SURFACE } from '../design/tokens';
 
 interface SettingRow {
@@ -52,6 +52,32 @@ export default function Settings() {
   const [values, setValues] = useState<Record<string, string>>(
     Object.fromEntries(SECTIONS.flatMap((s) => s.rows.map((r) => [r.key, r.value])))
   );
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    const timer = setTimeout(() => setLoading(false), 400);
+    return () => clearTimeout(timer);
+  }, []);
+
+  if (loading) {
+    return (
+      <div className="flex flex-col h-full overflow-hidden" style={{ background: SURFACE.app }}>
+        <div className="px-6 py-4 shrink-0" style={{ borderBottom: `3px solid ${INK}`, background: SURFACE.panel }}>
+          <div style={{ fontFamily: FONT.mono, fontSize: 9, fontWeight: 700, letterSpacing: '0.18em', color: DOMAIN.temporal }}>
+            System · Preferences
+          </div>
+          <h1 style={{ fontFamily: FONT.display, fontWeight: 700, fontSize: 18, color: PAPER, letterSpacing: '0.01em' }}>
+            SETTINGS
+          </h1>
+        </div>
+        <div className="flex-1 overflow-y-auto p-5">
+          <Skeleton variant="card" />
+          <Skeleton variant="card" />
+          <Skeleton variant="card" />
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="flex flex-col h-full overflow-hidden" style={{ background: SURFACE.app }}>

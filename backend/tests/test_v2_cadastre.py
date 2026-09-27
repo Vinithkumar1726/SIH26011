@@ -14,7 +14,8 @@ from sqlalchemy import text
 from sqlalchemy.ext.asyncio import async_sessionmaker, create_async_engine
 from sqlalchemy.pool import NullPool
 
-from app import DATABASE_URL
+from backend.config import settings
+DATABASE_URL = settings.DATABASE_URL
 from temporal import evaluate_footprint_diff
 
 

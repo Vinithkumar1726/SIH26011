@@ -238,8 +238,18 @@ export default function Explorer3D() {
     ro.observe(el);
     return () => ro.disconnect();
   }, []);
+  
+  // Auto-expand inspector when something is selected
+  useEffect(() => {
+    if (inspectorVisible && inspCollapsed) {
+      setInspCollapsed(false);
+      setInspOpen(true);
+    }
+  }, [inspectorVisible, inspCollapsed]);
+
   const [quality, setQuality] = useState<'low' | 'medium' | 'high'>('low');
   const [inspOpen, setInspOpen] = useState(true);
+  const [inspCollapsed, setInspCollapsed] = useState(false);
   const [interiorTour, setInteriorTour] = useState(false);
   const [reportSearch, setReportSearch] = useState('');
   const [ownershipFilter, setOwnershipFilter] = useState('ALL');
@@ -1018,7 +1028,7 @@ export default function Explorer3D() {
           frameloop={weather === 'monsoon' ? 'always' : 'demand'}
           dpr={quality === 'low' ? 1 : quality === 'medium' ? [1, 1.5] : [1, 2]}
           shadows={shadowAudit || quality !== 'low'}
-          gl={{ antialias: true, alpha: false, powerPreference: quality === 'low' ? 'low-power' : 'default' }}
+          gl={{ antialias: true, alpha: false, preserveDrawingBuffer: true, powerPreference: quality === 'low' ? 'low-power' : 'default' }}
           style={{ background: sky.bg, cursor: liveCaptureMode ? 'crosshair' : 'default' }}
         >
           {quality !== 'high' && <AdaptiveDpr pixelated />}
@@ -1169,7 +1179,7 @@ export default function Explorer3D() {
           {quality !== 'low' && (
             <EffectComposer>
               <Bloom intensity={1.5} luminanceThreshold={1} mipmapBlur />
-              <SSAO color="black" intensity={50} luminanceInfluence={0.5} radius={0.4} />
+              <SSAO color={new THREE.Color('#000000')} intensity={50} luminanceInfluence={0.5} radius={0.4} />
             </EffectComposer>
           )}
         </Canvas>
@@ -1367,6 +1377,58 @@ export default function Explorer3D() {
             Interior Tour · zoom in
           </label>
           <div className="text-[9px] mt-1" style={{ color: MUTED }}>{interiorTour ? 'Close camera enabled — scroll to enter the floor layout.' : 'Enable to unlock close interior navigation.'}</div>
+
+          <div className="mt-3 pt-3" style={{ borderTop: `2px solid ${INK}` }}>
+            <div style={{ fontFamily: FONT.mono, fontSize: 10, color: MUTED, marginBottom: 6, letterSpacing: '0.12em' }}>EXPORT / CAPTURE</div>
+            <Button domain="record" size="xs" style={{ width: '100%', marginBottom: 6 }} onClick={() => {
+              const canvas = document.querySelector('canvas');
+              if (canvas) {
+                // Force a render frame before capture (needed for frameloop="demand")
+                const gl = canvas.getContext('webgl2') || canvas.getContext('webgl');
+                if (gl) {
+                  // Trigger a render via requestAnimationFrame
+                  requestAnimationFrame(() => {
+                    const link = document.createElement('a');
+                    link.download = `sih26011-${Date.now()}.png`;
+                    link.href = canvas.toDataURL('image/png');
+                    link.click();
+                  });
+                } else {
+                  const link = document.createElement('a');
+                  link.download = `sih26011-${Date.now()}.png`;
+                  link.href = canvas.toDataURL('image/png');
+                  link.click();
+                }
+              }
+            }}>
+              📷 Screenshot (PNG)
+            </Button>
+            <Button domain="record" size="xs" style={{ width: '100%', marginBottom: 6 }} onClick={() => {
+              const canvas = document.querySelector('canvas');
+              if (canvas) {
+                const gl = canvas.getContext('webgl2') || canvas.getContext('webgl');
+                if (gl) {
+                  requestAnimationFrame(() => {
+                    const link = document.createElement('a');
+                    link.download = `sih26011-${Date.now()}.jpg`;
+                    link.href = canvas.toDataURL('image/jpeg', 0.9);
+                    link.click();
+                  });
+                } else {
+                  const link = document.createElement('a');
+                  link.download = `sih26011-${Date.now()}.jpg`;
+                  link.href = canvas.toDataURL('image/jpeg', 0.9);
+                  link.click();
+                }
+              }
+            }}>
+              📷 Screenshot (JPG)
+            </Button>
+            <Button domain="info" size="xs" style={{ width: '100%' }} onClick={() => downloadCsv(building, floors)}>
+              CSV Report
+            </Button>
+          </div>
+
           </CollapsePanel>
           <CollapsePanel title="Environment & View" open={openPanels.env} onToggle={() => togglePanel('env')}>
             <div className="space-y-3">
@@ -1612,18 +1674,32 @@ export default function Explorer3D() {
           </div>
         )}
 
-        {inspectorVisible && (
+        {inspectorVisible && !inspCollapsed && (
           <div className={`absolute bottom-3 right-3 z-10 w-[400px] ${compact ? 'max-w-[calc(100%-2rem)]' : narrow ? 'max-w-full' : 'max-w-[calc(100%-34rem)]'} max-h-[48%] flex flex-col pointer-events-none`} style={{ background: SURFACE.panel, border: `3px solid ${INK}`, boxShadow: `6px 6px 0 ${INK}` }}>
             <div className="pointer-events-auto flex flex-col min-h-0">
-            <button
-              type="button"
-              onClick={() => setInspOpen((v) => !v)}
-              className="w-full flex items-center justify-between p-3 text-left shrink-0"
-              style={{ background: 'transparent', border: 'none', cursor: 'pointer' }}
-            >
+            <div className="w-full flex items-center justify-between p-3 shrink-0">
               <span style={{ fontSize: 10, fontWeight: 700, color: PAPER, textTransform: 'uppercase', letterSpacing: '0.12em', fontFamily: FONT.mono }}>Building Inspector</span>
-              <span className="text-xs" style={{ color: MUTED }}>{inspOpen ? '▾' : '▸'}</span>
-            </button>
+              <div className="flex items-center gap-1">
+                <button
+                  type="button"
+                  onClick={() => setInspOpen((v) => !v)}
+                  className="p-1 text-left shrink-0"
+                  style={{ background: 'transparent', border: 'none', cursor: 'pointer', color: MUTED }}
+                  aria-label={inspOpen ? 'Collapse content' : 'Expand content'}
+                >
+                  <span className="text-xs" style={{ color: MUTED }}>{inspOpen ? '▾' : '▸'}</span>
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setInspCollapsed(true)}
+                  className="p-1 shrink-0"
+                  style={{ background: 'transparent', border: 'none', cursor: 'pointer', color: MUTED }}
+                  aria-label="Close inspector"
+                >
+                  <span style={{ fontSize: 14, lineHeight: 1 }}>✕</span>
+                </button>
+              </div>
+            </div>
             {inspOpen && (
               <div className="px-3 pb-3 space-y-3 overflow-y-auto">
                 {source === 'demo' && <div style={{ fontSize: 9, color: MUTED }}>Demo data — not live backend</div>}
@@ -1653,8 +1729,16 @@ export default function Explorer3D() {
                     <span style={{ color: PAPER }}>{footprintArea.toFixed(0)} m²</span>
                   </div>
                 </div>
+                <Button
+                  domain="record"
+                  style={{ width: '100%', marginTop: 8, fontSize: 9, justifyContent: 'center' }}
+                  onClick={async () => { setPopupBlocked(false); setPopupBlocked(!(await printPdfReport(building, floors, units, spatialIDs))); }}
+                >
+                  Generate 3D Bhu-Aadhaar Report
+                </Button>
+                {popupBlocked && <div className="mt-2" style={{ fontSize: 9, color: DOMAIN.warn }}>Download failed — check browser download permissions and retry.</div>}
                 <div>
-                  <div style={{ fontFamily: FONT.mono, fontSize: 10, color: MUTED, marginBottom: 4, letterSpacing: '0.12em' }}>FLOORS</div>
+                  <div style={{ fontFamily: FONT.mono, fontSize: 10, color: MUTED, marginBottom: 4, marginTop: 12, letterSpacing: '0.12em' }}>FLOORS</div>
                   <div className="flex flex-wrap gap-1">
                     {floors.map((fl) => (
                       <button
@@ -1725,6 +1809,30 @@ export default function Explorer3D() {
             )}
             </div>
           </div>
+        )}
+
+        {inspectorVisible && inspCollapsed && (
+          <button
+            onClick={() => { setInspCollapsed(false); setInspOpen(true); }}
+            className="absolute bottom-3 right-3 z-10 pointer-events-auto"
+            style={{
+              background: DOMAIN.spatial,
+              color: INK,
+              border: `2px solid ${INK}`,
+              boxShadow: `4px 4px 0 ${INK}`,
+              padding: '6px 12px',
+              fontFamily: FONT.mono,
+              fontSize: 10,
+              fontWeight: 700,
+              letterSpacing: '0.1em',
+              cursor: 'pointer',
+              borderRadius: 4,
+              textTransform: 'uppercase',
+            }}
+            aria-label="Open Inspector"
+          >
+            ▸ Inspector
+          </button>
         )}
 
         {cityVisible && osmRecord && !inspectorVisible && (
@@ -2070,14 +2178,14 @@ export default function Explorer3D() {
           })}
         </div>
       </div>
-      {/* 4D temporal dock: bottom-center command bar */}
+      {/* 4D temporal dock: top-right position (avoids bottom conflicts with inspector, status bar, OSM panel) */}
       <motion.div
-        className="absolute bottom-6 left-1/2 -translate-x-1/2 z-40 pointer-events-none"
-        initial={{ y: 50, opacity: 0 }}
-        animate={{ y: 0, opacity: 1 }}
+        className="absolute top-16 right-3 z-40 pointer-events-none"
+        initial={{ x: 50, opacity: 0 }}
+        animate={{ x: 0, opacity: 1 }}
         transition={{ duration: 0.25, ease: 'easeOut' }}
       >
-        <div className="pointer-events-auto flex items-center gap-4 px-6 py-3" style={{ background: SURFACE.panel, border: `3px solid ${INK}`, boxShadow: `4px 4px 0 ${INK}` }}>
+        <div className="pointer-events-auto flex items-center gap-3 px-4 py-2" style={{ background: SURFACE.panel, border: `3px solid ${INK}`, boxShadow: `4px 4px 0 ${INK}`, minWidth: 280 }}>
           <span className="shrink-0" style={{ fontFamily: FONT.mono, fontWeight: 700, fontSize: 9, letterSpacing: '0.14em', color: DOMAIN.temporal }}>4D TIME</span>
           <span className="shrink-0" style={{ fontFamily: FONT.mono, fontWeight: 700, fontSize: 13, color: PAPER, fontVariantNumeric: 'tabular-nums', minWidth: 76, textAlign: 'center' }}>
             {new Date(targetEpochMs).toLocaleDateString('en-IN', { month: 'short', year: 'numeric' }).toUpperCase()}
@@ -2366,14 +2474,14 @@ function CityContext({ url, position, cutaway, quality, onPick }: {
     <primitive
       object={cloned}
       position={position}
-      onClick={(e) => {
+      onClick={(e: any) => {
         const mesh = e.object as THREE.Mesh;
         if (!((mesh?.name || '').toLowerCase().startsWith('buildings'))) return;
         e.stopPropagation();
         const p = e.point.clone().sub(new THREE.Vector3(position[0], position[1], position[2]));
         onPick(p.x, p.z);
       }}
-      onPointerOver={(e) => {
+      onPointerOver={(e: any) => {
         const mesh = e.object as THREE.Mesh;
         if (!((mesh?.name || '').toLowerCase().startsWith('buildings'))) return;
         e.stopPropagation();

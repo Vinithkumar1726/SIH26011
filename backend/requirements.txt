@@ -25,6 +25,10 @@ python-dotenv==1.2.3
 pydantic==2.13.5
 pydantic-settings==2.15.0
 
+# Authentication
+python-jose[cryptography]==3.3.0
+passlib[bcrypt]==1.7.4
+
 # Testing
 pytest==8.4.2
 pytest-asyncio==1.4.0
