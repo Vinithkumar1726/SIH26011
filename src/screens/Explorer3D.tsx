@@ -238,6 +238,10 @@ export default function Explorer3D() {
     ro.observe(el);
     return () => ro.disconnect();
   }, []);
+
+  const [quality, setQuality] = useState<'low' | 'medium' | 'high'>('low');
+  const [inspOpen, setInspOpen] = useState(true);
+  const [inspCollapsed, setInspCollapsed] = useState(false);
   
   // Auto-expand inspector when something is selected
   useEffect(() => {
@@ -246,10 +250,6 @@ export default function Explorer3D() {
       setInspOpen(true);
     }
   }, [inspectorVisible, inspCollapsed]);
-
-  const [quality, setQuality] = useState<'low' | 'medium' | 'high'>('low');
-  const [inspOpen, setInspOpen] = useState(true);
-  const [inspCollapsed, setInspCollapsed] = useState(false);
   const [interiorTour, setInteriorTour] = useState(false);
   const [reportSearch, setReportSearch] = useState('');
   const [ownershipFilter, setOwnershipFilter] = useState('ALL');
