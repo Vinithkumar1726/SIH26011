@@ -2,7 +2,9 @@ node_modules/
 dist/
 build/
 .cache/
-.env*
+.env
+.env.*
+!.env.example
 .vite/
 vite.config.*.timestamp-*
 *.tsbuildinfo
@@ -31,3 +33,7 @@ tile_compare_out/
 
 # AOI mosaic disk cache (regenerable fetched imagery)
 backend/.aoi_cache/
+
+# Local database/admin utilities
+check_hash.py
+fix_hash.py

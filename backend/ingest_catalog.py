@@ -9,6 +9,7 @@ Idempotent: existing ids are skipped. Usage: python backend/ingest_catalog.py
 """
 import json
 import math
+import os
 import sys
 from pathlib import Path
 
@@ -41,7 +42,10 @@ def main():
     catalog = json.loads((ROOT / 'public' / 'coimbatore' / 'buildings_catalog.json').read_text())
     print(f'catalog records: {len(catalog)}')
 
-    eng = create_engine('postgresql://postgres:postgres@localhost:5432/sih26011')
+    database_url = os.getenv('DATABASE_URL_SYNC')
+    if not database_url:
+        raise RuntimeError('DATABASE_URL_SYNC is not configured')
+    eng = create_engine(database_url)
     with eng.begin() as conn:
         parcels = conn.execute(text(
             'SELECT id, ST_AsGeoJSON(geometry) AS g FROM land_parcel')).fetchall()

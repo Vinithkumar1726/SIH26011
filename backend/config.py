@@ -8,11 +8,11 @@ from typing import List
 
 class Settings(BaseSettings):
     # Database
-    DATABASE_URL: str = os.getenv("DATABASE_URL", "postgresql+asyncpg://postgres:postgres@localhost:5432/sih26011")
-    DATABASE_URL_SYNC: str = os.getenv("DATABASE_URL_SYNC", "postgresql://postgres:postgres@localhost:5432/sih26011")
+    DATABASE_URL: str = os.getenv("DATABASE_URL", "")
+    DATABASE_URL_SYNC: str = os.getenv("DATABASE_URL_SYNC", "")
     
     # JWT
-    JWT_SECRET: str = os.getenv("JWT_SECRET", "dev-secret-change-in-production")
+    JWT_SECRET: str = os.getenv("JWT_SECRET", "")
     JWT_ALGORITHM: str = "HS256"
     JWT_EXPIRY_HOURS: int = 8
     

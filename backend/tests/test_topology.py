@@ -9,6 +9,7 @@ mirrors OVERLAP_PAIRS_SQL in app.py: axis-aligned boxes need >1 mm of
 overlap on every axis; anything else counts on full-dimension intersection.
 """
 import math
+import os
 import sys
 from pathlib import Path
 
@@ -18,7 +19,11 @@ from sqlalchemy import create_engine, text
 
 from backend.services.geometry_service import OVERLAP_PAIRS_SQL
 
-ENG = create_engine('postgresql://postgres:postgres@localhost:5432/sih26011')
+DATABASE_URL_SYNC = os.getenv('DATABASE_URL_SYNC')
+if not DATABASE_URL_SYNC:
+    raise RuntimeError('DATABASE_URL_SYNC is not configured')
+
+ENG = create_engine(DATABASE_URL_SYNC)
 
 BASE_LON = 76.960
 BASE_LAT = 11.009
